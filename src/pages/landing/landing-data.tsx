@@ -230,12 +230,11 @@ export const stats: Stat[] = [
 ];
 
 export const logoStrip = [
+  "HackByte 4.0",
   "Codeforces",
   "LeetCode",
   "ICPC",
-  "AtCoder",
-  "Hack Club",
-  "IIITM",
+  "CodeChef"
 ];
 
 export const topPowers = ["Key Swap", "Screen Glitch", "Time Freeze"];
