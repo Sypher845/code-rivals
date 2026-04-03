@@ -10,8 +10,7 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export default __t.row({
-  sender: __t.identity(),
-  sent: __t.timestamp(),
-  text: __t.string(),
-});
+export default {
+  email: __t.string(),
+  password: __t.string(),
+};
