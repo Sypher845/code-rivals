@@ -1,0 +1,8 @@
+{
+  "dev": {
+    "run": "npm run dev"
+  },
+  "database": "code-rivals-hrs2l",
+  "server": "maincloud",
+  "module-path": "./spacetimedb"
+}
