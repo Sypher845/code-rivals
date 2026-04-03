@@ -160,47 +160,53 @@ export function ArenaPage({
 
       <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {showHeroCard ? (
-          <section className="relative overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(135deg,rgba(12,20,30,0.95),rgba(12,20,30,0.72)_52%,rgba(0,229,204,0.06))] p-5 sm:p-6 lg:p-7">
-            <div className="pointer-events-none absolute -right-24 -top-24 h-60 w-60 rounded-full bg-[rgba(0,229,204,0.08)] blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-[rgba(224,141,255,0.1)] blur-3xl" />
+          <section className="relative overflow-hidden rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(132deg,rgba(8,13,21,0.92),rgba(8,14,24,0.88)_58%,rgba(0,229,204,0.08))] p-5 sm:p-6 lg:p-8">
+            <div className="pointer-events-none absolute -right-24 -top-20 h-64 w-64 rounded-full bg-[rgba(0,229,204,0.08)] blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-24 h-60 w-60 rounded-full bg-[rgba(126,87,255,0.05)] blur-3xl" />
 
-            <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-4">
+            <div className="relative flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex items-start gap-4">
                 <div className="relative">
-                  <div className="grid h-20 w-20 place-items-center rounded-2xl border border-[rgba(0,229,204,0.35)] bg-[rgba(0,229,204,0.12)] text-2xl font-bold text-(--arena-accent)">
+                  <div className="grid h-24 w-24 place-items-center rounded-2xl border border-[rgba(0,229,204,0.4)] bg-[linear-gradient(140deg,rgba(0,229,204,0.16),rgba(126,87,255,0.14))] text-4xl font-bold text-(--arena-accent)">
                     {username.slice(0, 2).toUpperCase()}
                   </div>
-                  <div className="absolute -bottom-1 -right-1 rounded-full border border-[rgba(255,255,255,0.14)] bg-(--arena-bg) px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-(--arena-accent) uppercase">
-                    User
+                  <div className="absolute -bottom-1 -right-1 rounded-full border border-[rgba(0,229,204,0.5)] bg-[rgba(8,15,24,0.95)] px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-(--arena-accent) uppercase">
+                    II
                   </div>
                 </div>
 
-                <div>
-                  <p className="font-(--font-mono) text-[0.62rem] tracking-[0.24em] text-[rgba(241,243,252,0.58)] uppercase">
+                <div className="pt-1">
+                  <p className="font-(--font-mono) text-[0.62rem] tracking-[0.24em] text-[rgba(241,243,252,0.52)] uppercase">
                     /user/{userSlug}
                   </p>
-                  <h1 className="mt-1 font-(--font-heading) text-3xl tracking-[0.01em] text-(--on-background) sm:text-4xl">
+                  <h1 className="mt-1 font-(--font-heading) text-4xl tracking-[0.01em] text-(--on-background)">
                     Ready for battle, <span className="text-(--arena-accent)">{username}</span>?
                   </h1>
-                  <p className="mt-2 text-sm text-[rgba(241,243,252,0.62)]">
-                    Live arena status synced from your active SpacetimeDB subscriptions.
-                  </p>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center rounded-full border border-[rgba(0,229,204,0.38)] bg-[rgba(0,229,204,0.12)] px-3 py-1 text-[0.74rem] font-semibold tracking-[0.08em] text-(--arena-accent) uppercase">
+                      Diamond II
+                    </span>
+                    <span className="text-[rgba(241,243,252,0.4)]">|</span>
+                    <span className="font-(--font-mono) text-3xl text-(--arena-accent)">
+                      1,847 ELO
+                    </span>
+                    <span className="text-[rgba(241,243,252,0.4)]">|</span>
+                    <span className="text-sm text-[rgba(241,243,252,0.56)]">Top 15%</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.6)] px-4 py-3 text-center">
-                  <p className="text-2xl font-semibold text-(--signal-success)">{myActiveRoomsCount}</p>
-                  <p className="text-[0.62rem] tracking-[0.12em] text-[rgba(241,243,252,0.58)] uppercase">Your Rooms</p>
-                </div>
-                <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.6)] px-4 py-3 text-center">
-                  <p className="text-2xl font-semibold text-(--arena-accent)">{arenaRoomRows.length}</p>
-                  <p className="text-[0.62rem] tracking-[0.12em] text-[rgba(241,243,252,0.58)] uppercase">Open Arenas</p>
-                </div>
-                <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.6)] px-4 py-3 text-center">
-                  <p className="text-2xl font-semibold text-(--tertiary)">{onlineRivalsCount}</p>
-                  <p className="text-[0.62rem] tracking-[0.12em] text-[rgba(241,243,252,0.58)] uppercase">Rivals Online</p>
-                </div>
+              <div className="hidden lg:block" />
+            </div>
+
+            <div className="relative mt-6 grid grid-cols-2 gap-0 border-t border-[rgba(255,255,255,0.08)] pt-4 sm:max-w-md">
+              <div className="px-2 text-center">
+                <p className="text-4xl font-bold text-(--signal-success)">{myActiveRoomsCount}</p>
+                <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">Current Streak</p>
+              </div>
+              <div className="border-l border-[rgba(255,255,255,0.08)] px-2 text-center">
+                <p className="text-4xl font-bold text-(--on-background)">63%</p>
+                <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">Win Rate</p>
               </div>
             </div>
           </section>
@@ -209,14 +215,14 @@ export function ArenaPage({
         <div
           className={`grid flex-1 gap-6 ${
             showQuickArena
-              ? "xl:grid-cols-[minmax(0,1fr)_minmax(460px,540px)]"
+              ? "xl:grid-cols-[minmax(0,1fr)_minmax(340px,400px)]"
               : "xl:grid-cols-[minmax(0,1fr)]"
           }`}
         >
           <div>{renderTabContent()}</div>
 
           {showQuickArena ? (
-            <div className="xl:sticky xl:top-20 xl:self-start">
+            <div className="w-full xl:sticky xl:top-20 xl:max-w-[400px] xl:justify-self-end xl:self-start">
               <ArenaSidebar identity={identity} arenaReady={arenaReady} />
             </div>
           ) : null}
