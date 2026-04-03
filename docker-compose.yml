@@ -1,0 +1,6 @@
+services:
+  api-problemset:
+    image: sypher845/api-problemset:latest
+    container_name: api-problemset
+    ports:
+      - "8080:8080"
