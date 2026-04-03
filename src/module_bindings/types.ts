@@ -60,7 +60,6 @@ export type ArenaRoomTimeoutJob = __Infer<typeof ArenaRoomTimeoutJob>;
 
 export const AuthAccount = __t.object("AuthAccount", {
   id: __t.u64(),
-  userSlug: __t.string(),
   username: __t.string(),
   usernameKey: __t.string(),
   email: __t.string(),
@@ -72,7 +71,6 @@ export type AuthAccount = __Infer<typeof AuthAccount>;
 
 export const AuthSession = __t.object("AuthSession", {
   sessionIdentity: __t.identity(),
-  userSlug: __t.string(),
   username: __t.string(),
   connected: __t.bool(),
   authenticatedAt: __t.timestamp(),

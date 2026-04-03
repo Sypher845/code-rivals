@@ -12,7 +12,6 @@ import {
 
 type PowerupSelectionPageProps = {
   identity: Identity | undefined;
-  userSlug: string;
   username: string;
 };
 
@@ -23,7 +22,6 @@ function mod(index: number, total: number) {
 
 export function PowerupSelectionPage({
   identity,
-  userSlug,
   username,
 }: PowerupSelectionPageProps) {
   const navigate = useNavigate();
@@ -140,7 +138,7 @@ export function PowerupSelectionPage({
       });
       setLockedPowerupId(activePowerup.id);
       navigate(
-        `/user/${encodeURIComponent(userSlug)}/powerups/ready?${new URLSearchParams({
+        `/${encodeURIComponent(username)}/powerups/ready?${new URLSearchParams({
           room: normalizedRoomId,
         }).toString()}`,
       );
@@ -373,7 +371,7 @@ export function PowerupSelectionPage({
                 Back
               </button>
               <Link
-                to={`/user/${encodeURIComponent(userSlug)}`}
+                to={`/${encodeURIComponent(username)}`}
                 className="rounded-md border border-[rgba(0,255,255,0.28)] px-4 py-2 text-xs tracking-[0.1em] text-(--secondary) uppercase"
               >
                 Return to Arena

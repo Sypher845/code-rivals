@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { Identity } from "spacetimedb";
-import { useLocation, useNavigate } from "react-router-dom";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
 import { mockFriends } from "./arena-data";
@@ -15,7 +14,7 @@ import {
 type ArenaSidebarProps = {
   identity: Identity | undefined;
   arenaReady: boolean;
-  userSlug: string;
+  username: string;
 };
 
 function normalizeRoomCode(roomCode: string) {
@@ -41,7 +40,11 @@ function generateRoomId(existingRoomIds: Set<string>) {
   return `${Date.now().toString(36).slice(-6).toUpperCase()}`;
 }
 
-export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarProps) {
+export function ArenaSidebar({
+  identity,
+  arenaReady,
+  username,
+}: ArenaSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [arenaMode, setArenaMode] = useState<"create" | "join">("create");
@@ -73,8 +76,12 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
     return arenaMemberRows
       .filter((member) => member.roomId === activeRoom.roomId)
       .sort((left, right) => {
-        if (left.joinedAt.microsSinceUnixEpoch < right.joinedAt.microsSinceUnixEpoch) return -1;
-        if (left.joinedAt.microsSinceUnixEpoch > right.joinedAt.microsSinceUnixEpoch) return 1;
+        if (left.joinedAt.microsSinceUnixEpoch < right.joinedAt.microsSinceUnixEpoch) {
+          return -1;
+        }
+        if (left.joinedAt.microsSinceUnixEpoch > right.joinedAt.microsSinceUnixEpoch) {
+          return 1;
+        }
         return 0;
       });
   }, [activeRoom, arenaMemberRows]);
@@ -88,7 +95,10 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
       activeRoom &&
       activeRoomMembers.some((member) => member.memberIdentity.isEqual(identity)),
   );
-  const onlineFriends = useMemo(() => mockFriends.filter((friend) => friend.isOnline), []);
+  const onlineFriends = useMemo(
+    () => mockFriends.filter((friend) => friend.isOnline),
+    [],
+  );
 
   const pushStatus = (message: string, tone: "neutral" | "error" = "neutral") => {
     setStatusTone(tone);
@@ -215,13 +225,13 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
     }
 
     const query = new URLSearchParams({ room: activeRoom.roomId });
-    navigate(`/user/${encodeURIComponent(userSlug)}/powerups?${query.toString()}`);
+    navigate(`/${encodeURIComponent(username)}/powerups?${query.toString()}`);
   }, [
     activeRoom,
     isCurrentUserInActiveRoom,
     location.pathname,
     navigate,
-    userSlug,
+    username,
   ]);
 
   const handleStartMatch = async () => {
@@ -281,7 +291,7 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
     <aside className="space-y-5">
       <section className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}>
         <div className={panelNoiseClass} />
-      <div className="relative z-1 space-y-5">
+        <div className="relative z-1 space-y-5">
           <div>
             <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
               Quick Arena
@@ -324,233 +334,163 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
                 onClick={handleCreateArena}
                 disabled={!arenaReady}
               >
-                {!arenaReady ? "Syncing Tables" : "Create Arena"}
+                Create Room
               </button>
-
-              {activeRoom && (
-                <section className="space-y-4 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(5,10,16,0.74)] p-4">
-                  <header className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-(--font-mono) text-[0.62rem] tracking-[0.16em] text-(--secondary) uppercase">
-                        Arena Room Card
-                      </p>
-                      <h3 className="mt-1 flex items-center gap-2 text-xl font-semibold tracking-[-0.02em]">
-                        <span>Room {activeRoom.roomId}</span>
-                        <button
-                          type="button"
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[rgba(241,243,252,0.22)] text-[rgba(241,243,252,0.76)] transition hover:border-[rgba(0,255,255,0.38)] hover:text-(--secondary)"
-                          onClick={() => {
-                            void handleCopyRoomCode();
-                          }}
-                          aria-label="Copy room code"
-                          title="Copy room code"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            className="h-3.5 w-3.5"
-                          >
-                            <rect x="9" y="9" width="10" height="10" rx="2" />
-                            <path d="M5 15V7a2 2 0 0 1 2-2h8" />
-                          </svg>
-                        </button>
-                      </h3>
-                      {roomCodeCopied && (
-                        <p className="mt-1 text-[0.66rem] font-medium tracking-[0.08em] text-(--secondary) uppercase">
-                          Copied
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="rounded-md border border-[rgba(241,243,252,0.22)] px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.08em] uppercase transition hover:border-[rgba(0,255,255,0.35)]"
-                      onClick={() => {
-                        void handleDeleteRoom();
-                      }}
-                      disabled={!isArenaAdmin}
-                    >
-                      Delete Room
-                    </button>
-                  </header>
-
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <article className="rounded-xl border border-[rgba(241,243,252,0.12)] bg-[rgba(5,10,16,0.82)] p-2.5">
-                      <p className="font-[var(--font-mono)] text-[0.56rem] tracking-[0.14em] text-[rgba(241,243,252,0.58)] uppercase">
-                        Room ID
-                      </p>
-                      <p className="mt-1 text-xs font-semibold">{activeRoom.roomId}</p>
-                    </article>
-                    <article className="rounded-xl border border-[rgba(241,243,252,0.12)] bg-[rgba(5,10,16,0.82)] p-2.5">
-                      <p className="font-[var(--font-mono)] text-[0.56rem] tracking-[0.14em] text-[rgba(241,243,252,0.58)] uppercase">
-                        Creator
-                      </p>
-                      <p className="mt-1 text-xs font-semibold">{activeRoom.creatorName}</p>
-                    </article>
-                    <article className="rounded-xl border border-[rgba(241,243,252,0.12)] bg-[rgba(5,10,16,0.82)] p-2.5">
-                      <p className="font-[var(--font-mono)] text-[0.56rem] tracking-[0.14em] text-[rgba(241,243,252,0.58)] uppercase">
-                        Match
-                      </p>
-                      <p className="mt-1 text-xs font-semibold">{activeRoom.matchState.toUpperCase()}</p>
-                    </article>
-                  </div>
-
-                  <section className="rounded-xl border border-[rgba(241,243,252,0.12)] bg-[rgba(5,10,16,0.82)] p-3">
-                    <p className="font-[var(--font-mono)] text-[0.62rem] tracking-[0.16em] text-[rgba(241,243,252,0.62)] uppercase">
-                      Joined Users ({activeRoomMembers.length})
-                    </p>
-
-                    <ul className="mt-2 space-y-2">
-                      {activeRoomMembers.map((member) => (
-                        <li
-                          key={member.memberId.toString()}
-                          className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[rgba(241,243,252,0.1)] bg-[rgba(4,10,16,0.86)] px-2.5 py-2"
-                        >
-                          <div>
-                            <p className="text-xs font-semibold">{member.memberName}</p>
-                            <p className="text-[0.68rem] text-[rgba(241,243,252,0.6)]">
-                              Joined {member.joinedAt.toDate().toLocaleTimeString()}
-                            </p>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            {member.memberIdentity.isEqual(activeRoom.creatorIdentity) && (
-                              <span className="rounded-full border border-[rgba(224,141,255,0.34)] px-2 py-1 font-[var(--font-mono)] text-[0.58rem] tracking-[0.08em] uppercase">
-                                ADMIN
-                              </span>
-                            )}
-                            {identity && member.memberIdentity.isEqual(identity) && (
-                              <span className="rounded-full border border-[rgba(0,255,255,0.34)] px-2 py-1 font-[var(--font-mono)] text-[0.58rem] tracking-[0.08em] text-(--secondary) uppercase">
-                                YOU
-                              </span>
-                            )}
-                            {isArenaAdmin &&
-                              !member.memberIdentity.isEqual(activeRoom.creatorIdentity) && (
-                                <button
-                                  type="button"
-                                  className="rounded-lg border border-[rgba(224,141,255,0.35)] bg-[rgba(45,22,41,0.72)] px-2.5 py-1 text-[0.6rem] font-semibold tracking-[0.08em] uppercase"
-                                  onClick={() => {
-                                    void handleKickMember(member.memberId);
-                                  }}
-                                >
-                                  Kick
-                                </button>
-                              )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      className={`${arenaActionClass} w-full ${isLobbyReady && isArenaAdmin ? "animate-pulse" : ""}`}
-                      onClick={handleStartMatch}
-                      disabled={!isArenaAdmin}
-                    >
-                      {activeRoom.matchState === "started" ? "Match Started" : "Start Match"}
-                    </button>
-
-                    {!isArenaAdmin && (
-                      <p className="text-xs text-[rgba(241,243,252,0.62)]">
-                        Only {activeRoom.creatorName} can start the match and kick users.
-                      </p>
-                    )}
-                  </div>
-                </section>
-              )}
             </div>
           ) : (
             <div className="space-y-3">
-              <label className="font-(--font-mono) text-[0.72rem] tracking-[0.22em] text-[rgba(241,243,252,0.62)] uppercase">
-                Room Code
+              <label className="space-y-2">
+                <span className="text-xs tracking-[0.08em] text-[rgba(241,243,252,0.58)] uppercase">
+                  Room Code
+                </span>
+                <input
+                  className={arenaInputClass}
+                  value={roomCodeInput}
+                  onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase())}
+                  placeholder="ABC123"
+                  maxLength={6}
+                />
               </label>
-              <p className="text-sm text-[rgba(241,243,252,0.58)]">
-                Enter a room code to join an existing arena.
-              </p>
-              <input
-                className={arenaInputClass}
-                type="text"
-                value={roomCodeInput}
-                onChange={(event) => setRoomCodeInput(event.target.value)}
-                autoComplete="off"
-                placeholder="ENTER 6-CHAR ROOM CODE"
-                disabled={!arenaReady}
-              />
               <button
                 className={arenaActionClass}
                 type="button"
                 onClick={handleJoinArena}
                 disabled={!arenaReady}
               >
-                Join Arena
+                Join Room
               </button>
             </div>
           )}
 
-          {statusMessage && (
+          {statusMessage ? (
             <div
-              className={
+              className={`rounded-lg border px-3 py-2 text-sm ${
                 statusTone === "error"
-                  ? "rounded-2xl border border-[rgba(224,141,255,0.25)] bg-[rgba(45,22,41,0.72)] px-4 py-3 text-sm text-(--on-background)"
-                  : "rounded-2xl border border-[rgba(224,141,255,0.18)] bg-[rgba(29,18,39,0.48)] px-4 py-3 text-sm text-[rgba(241,243,252,0.78)]"
-              }
+                  ? "border-[rgba(255,92,122,0.28)] bg-[rgba(255,92,122,0.08)] text-[rgba(255,207,214,0.92)]"
+                  : "border-[rgba(0,229,204,0.24)] bg-[rgba(0,229,204,0.08)] text-[rgba(214,255,249,0.92)]"
+              }`}
             >
               {statusMessage}
             </div>
-          )}
+          ) : null}
 
+          {activeRoom ? (
+            <div className="space-y-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(9,13,19,0.7)] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs tracking-[0.08em] text-[rgba(241,243,252,0.58)] uppercase">
+                    Active Room
+                  </p>
+                  <p className="mt-1 font-(--font-mono) text-lg text-(--on-background)">
+                    {activeRoom.roomId}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleCopyRoomCode();
+                  }}
+                  className="rounded-md border border-[rgba(255,255,255,0.12)] px-3 py-1.5 text-[0.68rem] tracking-[0.08em] uppercase transition hover:border-[rgba(255,255,255,0.2)]"
+                >
+                  {roomCodeCopied ? "Copied" : "Copy"}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {activeRoomMembers.map((member) => (
+                  <div
+                    key={member.memberId.toString()}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-2"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-(--on-background)">
+                        {member.memberName}
+                      </p>
+                      <p className="text-[0.68rem] tracking-[0.08em] text-[rgba(241,243,252,0.5)] uppercase">
+                        Joined
+                      </p>
+                    </div>
+                    {isArenaAdmin && !member.memberIdentity.isEqual(identity!) ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void handleKickMember(member.memberId);
+                        }}
+                        className="rounded-md border border-[rgba(255,92,122,0.24)] px-2.5 py-1 text-[0.68rem] tracking-[0.08em] text-[rgba(255,207,214,0.92)] uppercase transition hover:bg-[rgba(255,92,122,0.08)]"
+                      >
+                        Kick
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-2">
+                {isArenaAdmin ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleStartMatch();
+                    }}
+                    className={arenaActionClass}
+                    disabled={!isLobbyReady}
+                  >
+                    Start Match
+                  </button>
+                ) : null}
+
+                {isArenaAdmin ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void handleDeleteRoom();
+                    }}
+                    className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[rgba(255,92,122,0.24)] px-4 text-xs font-semibold tracking-[0.1em] text-[rgba(255,207,214,0.92)] uppercase transition hover:bg-[rgba(255,92,122,0.08)]"
+                  >
+                    Delete Room
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 
-      <section className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)] p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-bold tracking-[0.12em] text-[rgba(241,243,252,0.6)] uppercase">
-            Friends Online ({onlineFriends.length})
-          </h3>
-          <Link
-            to="friends"
-            className="text-xs text-(--arena-accent) transition hover:underline"
-          >
-            See All
-          </Link>
-        </div>
+      <section className={`${panelFrameClass} p-5`}>
+        <div className={panelNoiseClass} />
+        <div className="relative z-1 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
+              Rivals Online
+            </p>
+            <span className="rounded-full border border-[rgba(255,255,255,0.08)] px-2.5 py-1 text-[0.62rem] tracking-[0.08em] text-[rgba(241,243,252,0.5)] uppercase">
+              {onlineFriends.length} online
+            </span>
+          </div>
 
-        <div className="space-y-3">
-          {mockFriends.slice(0, 4).map((friend) => (
-            <div key={friend.id} className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-[rgba(241,243,252,0.08)] text-xs font-bold text-(--on-background)">
-                    {friend.username.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div
-                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[rgba(6,11,18,0.95)] ${
-                      friend.isOnline ? "bg-(--signal-success)" : "bg-[rgba(241,243,252,0.5)]"
-                    }`}
-                  />
-                </div>
+          <div className="space-y-2">
+            {onlineFriends.map((friend) => (
+              <div
+                key={friend.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-2"
+              >
                 <div>
-                  <p className="text-sm font-medium text-(--on-background)">{friend.username}</p>
-                  <p className="text-xs text-[rgba(241,243,252,0.52)]">
-                    {friend.isOnline ? "Online" : "Away"}
+                  <p className="text-sm font-medium text-(--on-background)">
+                    {friend.username}
+                  </p>
+                  <p className="text-[0.68rem] tracking-[0.08em] text-[rgba(241,243,252,0.5)] uppercase">
+                    {friend.league}
                   </p>
                 </div>
-              </div>
-
-              {friend.isOnline ? (
-                <button
-                  type="button"
-                  className="h-7 rounded-md px-2 text-xs text-[rgba(241,243,252,0.78)] transition hover:bg-[rgba(0,229,204,0.12)] hover:text-(--arena-accent)"
+                <Link
+                  to={`/${encodeURIComponent(username)}/friends`}
+                  className="rounded-md border border-[rgba(255,255,255,0.12)] px-2.5 py-1 text-[0.68rem] tracking-[0.08em] uppercase transition hover:border-[rgba(255,255,255,0.2)]"
                 >
-                  Challenge
-                </button>
-              ) : null}
-            </div>
-          ))}
+                  View
+                </Link>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
     </aside>

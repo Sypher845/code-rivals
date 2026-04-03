@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { BarChart3, Users, Trophy } from "lucide-react";
 
 type ArenaTabsProps = {
-  userSlug: string;
+  username: string;
 };
 
 const tabs = [
@@ -11,18 +11,18 @@ const tabs = [
   { label: "Leaderboard", path: "/leaderboard", icon: Trophy },
 ];
 
-export function ArenaTabs({ userSlug }: ArenaTabsProps) {
+export function ArenaTabs({ username }: ArenaTabsProps) {
   const location = useLocation();
 
   const getTabPath = (tabPath: string) => {
-    if (!tabPath) return `/user/${userSlug}`;
-    return `/user/${userSlug}${tabPath}`;
+    if (!tabPath) return `/${encodeURIComponent(username)}`;
+    return `/${encodeURIComponent(username)}${tabPath}`;
   };
 
   const isActive = (tabPath: string) => {
     const fullPath = getTabPath(tabPath);
     if (tabPath === "") {
-      return location.pathname === `/user/${userSlug}`;
+      return location.pathname === `/${encodeURIComponent(username)}`;
     }
     return location.pathname === fullPath;
   };

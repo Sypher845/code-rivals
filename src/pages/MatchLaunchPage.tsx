@@ -7,13 +7,11 @@ import { tables } from "../module_bindings";
 
 type MatchLaunchPageProps = {
   identity: Identity | undefined;
-  userSlug: string;
   username: string;
 };
 
 export function MatchLaunchPage({
   identity,
-  userSlug,
   username,
 }: MatchLaunchPageProps) {
   const [searchParams] = useSearchParams();
@@ -88,13 +86,13 @@ export function MatchLaunchPage({
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                to={`/user/${encodeURIComponent(userSlug)}`}
+                to={`/${encodeURIComponent(username)}`}
                 className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[rgba(0,255,255,0.28)] px-6 font-(--font-mono) text-xs tracking-[0.16em] text-(--secondary) uppercase transition hover:bg-[rgba(0,255,255,0.08)]"
               >
                 Return to Arena
               </Link>
               <Link
-                to={`/user/${encodeURIComponent(userSlug)}/powerups${normalizedRoomId ? `?room=${normalizedRoomId}` : ""}`}
+                to={`/${encodeURIComponent(username)}/powerups${normalizedRoomId ? `?room=${normalizedRoomId}` : ""}`}
                 className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[rgba(241,243,252,0.14)] bg-[rgba(10,16,25,0.82)] px-6 font-(--font-mono) text-xs tracking-[0.16em] uppercase transition hover:border-[rgba(241,243,252,0.28)]"
               >
                 Review Lock Screen

@@ -14,7 +14,6 @@ type ArenaLobbyPageProps = {
   isLoggingOut: boolean;
   onLogOut: () => void;
   shortIdentity: string;
-  userSlug: string;
   username: string;
 };
 
@@ -23,7 +22,6 @@ export function ArenaLobbyPage({
   isLoggingOut,
   onLogOut,
   shortIdentity,
-  userSlug,
   username,
 }: ArenaLobbyPageProps) {
   const {
@@ -60,7 +58,6 @@ export function ArenaLobbyPage({
           <div className="relative z-[1] space-y-7">
             <ArenaStatsCards
               username={username}
-              userSlug={userSlug}
               activeRoomId={activeRoom?.roomId ?? null}
               arenaRoomCount={arenaRoomRows.length}
             />

@@ -8,13 +8,11 @@ import { StatsSection, CTASection, Footer } from "./landing/BottomSections";
 
 type LandingPageProps = {
   isAuthenticated?: boolean;
-  userSlug?: string;
   username?: string;
 };
 
 export function LandingPage({
   isAuthenticated = false,
-  userSlug,
   username,
 }: LandingPageProps) {
   useEffect(() => {
@@ -57,12 +55,10 @@ export function LandingPage({
 
       <Navbar
         isAuthenticated={isAuthenticated}
-        userSlug={userSlug}
         username={username}
       />
       <HeroSection
         isAuthenticated={isAuthenticated}
-        userSlug={userSlug}
         username={username}
       />
       <LogoStrip />
@@ -70,7 +66,7 @@ export function LandingPage({
       <FlowSection />
       <PowersSection />
       <StatsSection />
-      <CTASection isAuthenticated={isAuthenticated} userSlug={userSlug} />
+      <CTASection isAuthenticated={isAuthenticated} username={username} />
       <Footer />
     </main>
   );

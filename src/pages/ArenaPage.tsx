@@ -15,7 +15,6 @@ type ArenaPageProps = {
   isLoggingOut: boolean;
   onLogOut: () => void;
   shortIdentity: string;
-  userSlug: string;
   username: string;
 };
 
@@ -24,7 +23,6 @@ export function ArenaPage({
   isLoggingOut,
   onLogOut,
   shortIdentity,
-  userSlug,
   username,
 }: ArenaPageProps) {
   const location = useLocation();
@@ -100,7 +98,7 @@ export function ArenaPage({
 
           <nav className="hidden items-center gap-2 md:inline-flex">
             <Link
-              to={`/user/${userSlug}`}
+              to={`/${username}`}
               className={`rounded-md px-3 py-2 text-sm font-medium transition ${
                 !location.pathname.endsWith("/friends") &&
                 !location.pathname.endsWith("/leaderboard")
@@ -111,7 +109,7 @@ export function ArenaPage({
               Dashboard
             </Link>
             <Link
-              to={`/user/${userSlug}/friends`}
+              to={`/${username}/friends`}
               className={`rounded-md px-3 py-2 text-sm font-medium transition ${
                 location.pathname.endsWith("/friends")
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
@@ -121,7 +119,7 @@ export function ArenaPage({
               Friends
             </Link>
             <Link
-              to={`/user/${userSlug}/leaderboard`}
+              to={`/${username}/leaderboard`}
               className={`rounded-md px-3 py-2 text-sm font-medium transition ${
                 location.pathname.endsWith("/leaderboard")
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
@@ -185,7 +183,7 @@ export function ArenaPage({
 
                 <div className="pt-1">
                   <p className="font-(--font-mono) text-[0.62rem] tracking-[0.24em] text-[rgba(241,243,252,0.52)] uppercase">
-                    /user/{userSlug}
+                    /{username}
                   </p>
                   <h1 className="mt-1 font-(--font-heading) text-4xl tracking-[0.01em] text-(--on-background)">
                     Ready for battle,{" "}
@@ -243,7 +241,7 @@ export function ArenaPage({
               <ArenaSidebar
                 identity={identity}
                 arenaReady={arenaReady}
-                userSlug={userSlug}
+                username={username}
               />
             </div>
           ) : null}

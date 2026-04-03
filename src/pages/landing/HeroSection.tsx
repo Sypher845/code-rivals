@@ -6,16 +6,15 @@ import { navLinks, topPowers } from "./landing-data";
 
 type NavbarProps = {
   isAuthenticated: boolean;
-  userSlug?: string;
   username?: string;
 };
 
-export function Navbar({ isAuthenticated, userSlug, username }: NavbarProps) {
+export function Navbar({ isAuthenticated, username }: NavbarProps) {
   const [navScrolled, setNavScrolled] = useState(false);
 
   const userArenaPath =
-    isAuthenticated && userSlug
-      ? `/user/${encodeURIComponent(userSlug)}`
+    isAuthenticated && username
+      ? `/${encodeURIComponent(username)}`
       : "/login";
 
   useEffect(() => {
@@ -113,18 +112,13 @@ function HeroTimer() {
 
 type HeroSectionProps = {
   isAuthenticated: boolean;
-  userSlug?: string;
   username?: string;
 };
 
-export function HeroSection({
-  isAuthenticated,
-  userSlug,
-  username,
-}: HeroSectionProps) {
+export function HeroSection({ isAuthenticated, username }: HeroSectionProps) {
   const userArenaPath =
-    isAuthenticated && userSlug
-      ? `/user/${encodeURIComponent(userSlug)}`
+    isAuthenticated && username
+      ? `/${encodeURIComponent(username)}`
       : "/login";
 
   const primaryCtaLabel = isAuthenticated ? "Open my arena" : "Start a duel";

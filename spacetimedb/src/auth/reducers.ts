@@ -14,41 +14,12 @@ import {
 
 type AuthReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 
-function buildSlugCandidate(seed: string) {
-  const front = digestPassword(seed);
-  const back = digestPassword(seed.split("").reverse().join(""));
-  return `usr_${front}${back.slice(0, 8)}`;
-}
-
-function allocateUserSlug(
-  ctx: AuthReducerCtx,
-  normalizedUsernameKey: string,
-  normalizedEmail: string,
-) {
-  const baseSeed = [
-    ctx.sender.toHexString(),
-    normalizedUsernameKey,
-    normalizedEmail,
-    ctx.timestamp.microsSinceUnixEpoch.toString(),
-  ].join("|");
-
-  for (let attempt = 0; attempt < 2048; attempt += 1) {
-    const candidate = buildSlugCandidate(`${baseSeed}|${attempt.toString(16)}`);
-    if (!ctx.db.authAccount.userSlug.find(candidate)) {
-      return candidate;
-    }
-  }
-
-  throw new SenderError("Unable to allocate user slug. Please retry signup.");
-}
-
-function upsertSession(ctx: AuthReducerCtx, username: string, userSlug: string) {
+function upsertSession(ctx: AuthReducerCtx, username: string) {
   const session = ctx.db.authSession.sessionIdentity.find(ctx.sender);
 
   if (session) {
     ctx.db.authSession.sessionIdentity.update({
       ...session,
-      userSlug,
       username,
       connected: true,
       lastSeenAt: ctx.timestamp,
@@ -58,7 +29,6 @@ function upsertSession(ctx: AuthReducerCtx, username: string, userSlug: string) 
 
   ctx.db.authSession.insert({
     sessionIdentity: ctx.sender,
-    userSlug,
     username,
     connected: true,
     authenticatedAt: ctx.timestamp,
@@ -91,15 +61,8 @@ export const sign_up = spacetimedb.reducer(
       throw new SenderError("That email is already registered.");
     }
 
-    const userSlug = allocateUserSlug(
-      ctx,
-      normalizedUsernameKey,
-      normalizedEmail,
-    );
-
     ctx.db.authAccount.insert({
       id: 0n,
-      userSlug,
       username: normalizedUsername,
       usernameKey: normalizedUsernameKey,
       email: normalizedEmail,
@@ -108,11 +71,9 @@ export const sign_up = spacetimedb.reducer(
       updatedAt: ctx.timestamp,
     });
 
-    upsertSession(ctx, normalizedUsername, userSlug);
+    upsertSession(ctx, normalizedUsername);
 
-    console.log(
-      `[Auth] sign-up success username=${normalizedUsername} slug=${userSlug}`,
-    );
+    console.log(`[Auth] sign-up success username=${normalizedUsername}`);
   },
 );
 
@@ -131,11 +92,9 @@ export const log_in = spacetimedb.reducer(
       updatedAt: ctx.timestamp,
     });
 
-    upsertSession(ctx, account.username, account.userSlug);
+    upsertSession(ctx, account.username);
 
-    console.log(
-      `[Auth] log-in success username=${account.username} slug=${account.userSlug}`,
-    );
+    console.log(`[Auth] log-in success username=${account.username}`);
   },
 );
 
@@ -171,14 +130,12 @@ export const on_connect = spacetimedb.clientConnected((ctx) => {
 
   ctx.db.authSession.sessionIdentity.update({
     ...session,
-    userSlug: account.userSlug,
+    username: account.username,
     connected: true,
     lastSeenAt: ctx.timestamp,
   });
 
-  console.log(
-    `[Auth] client connected username=${session.username} slug=${account.userSlug}`,
-  );
+  console.log(`[Auth] client connected username=${account.username}`);
 });
 
 export const on_disconnect = spacetimedb.clientDisconnected((ctx) => {

@@ -1,20 +1,18 @@
 type ArenaStatsCardsProps = {
   username: string;
-  userSlug: string;
   activeRoomId: string | null;
   arenaRoomCount: number;
 };
 
 export function ArenaStatsCards({
   username,
-  userSlug,
   activeRoomId,
   arenaRoomCount,
 }: ArenaStatsCardsProps) {
   return (
     <div className="space-y-3">
       <p className="font-[var(--font-mono)] text-xs tracking-[0.3em] text-[var(--secondary)] uppercase">
-        /user/{userSlug} Arena Lobby
+        /{username} Arena Lobby
       </p>
       <h1 className="max-w-[14ch] text-[clamp(2.2rem,5vw,3.9rem)] leading-[0.9] font-bold tracking-[-0.04em] uppercase">
         Create Or Join Your Duel Room.

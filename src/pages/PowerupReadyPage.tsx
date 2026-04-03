@@ -9,7 +9,6 @@ import { POWER_CARD_REGISTRY } from "./powerups/powerupRegistry";
 
 type PowerupReadyPageProps = {
   identity: Identity | undefined;
-  userSlug: string;
   username: string;
 };
 
@@ -21,7 +20,6 @@ function formatCountdownLabel(secondsLeft: number) {
 
 export function PowerupReadyPage({
   identity,
-  userSlug,
   username,
 }: PowerupReadyPageProps) {
   const navigate = useNavigate();
@@ -111,13 +109,13 @@ export function PowerupReadyPage({
     hasNavigatedRef.current = true;
     const params = new URLSearchParams({ room: normalizedRoomId });
     const timeoutId = window.setTimeout(() => {
-      navigate(`/user/${encodeURIComponent(userSlug)}/match?${params.toString()}`, {
+      navigate(`/${encodeURIComponent(username)}/match?${params.toString()}`, {
         replace: true,
       });
     }, 400);
 
     return () => window.clearTimeout(timeoutId);
-  }, [bothPlayersLocked, navigate, normalizedRoomId, secondsLeft, userSlug]);
+  }, [bothPlayersLocked, navigate, normalizedRoomId, secondsLeft, username]);
 
   const missingRoomMessage = !normalizedRoomId
     ? "Open this screen from an active room to wait for lock-in."
@@ -136,7 +134,7 @@ export function PowerupReadyPage({
 
     try {
       await unlockArenaPowerup({ roomId: normalizedRoomId });
-      navigate(`/user/${encodeURIComponent(userSlug)}/powerups?room=${normalizedRoomId}`);
+      navigate(`/${encodeURIComponent(username)}/powerups?room=${normalizedRoomId}`);
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Unable to unlock your powerup.",
@@ -277,11 +275,11 @@ export function PowerupReadyPage({
                       void handleUnlock();
                     }}
                     disabled={bothPlayersLocked}
-                  >
-                    Unlock & Return
-                  </button>
-                  <Link
-                    to={`/user/${encodeURIComponent(userSlug)}`}
+                >
+                  Unlock & Return
+                </button>
+                <Link
+                    to={`/${encodeURIComponent(username)}`}
                     className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl border border-[rgba(0,255,255,0.24)] px-5 font-(--font-mono) text-xs tracking-[0.16em] text-(--secondary) uppercase transition hover:bg-[rgba(0,255,255,0.08)]"
                   >
                     Exit to Arena

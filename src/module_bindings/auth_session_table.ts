@@ -12,7 +12,6 @@ import {
 
 export default __t.row({
   sessionIdentity: __t.identity().primaryKey().name("session_identity"),
-  userSlug: __t.string().name("user_slug"),
   username: __t.string(),
   connected: __t.bool(),
   authenticatedAt: __t.timestamp().name("authenticated_at"),

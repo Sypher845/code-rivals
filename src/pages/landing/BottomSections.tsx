@@ -72,13 +72,13 @@ export function LogoStrip() {
 
 type CTASectionProps = {
   isAuthenticated: boolean;
-  userSlug?: string;
+  username?: string;
 };
 
-export function CTASection({ isAuthenticated, userSlug }: CTASectionProps) {
+export function CTASection({ isAuthenticated, username }: CTASectionProps) {
   const userArenaPath =
-    isAuthenticated && userSlug
-      ? `/user/${encodeURIComponent(userSlug)}`
+    isAuthenticated && username
+      ? `/${encodeURIComponent(username)}`
       : "/login";
 
   const footerCtaLabel = isAuthenticated ? "Open arena" : "Create free account";

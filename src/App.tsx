@@ -42,8 +42,8 @@ const defaultSignUpForm: SignUpFormState = {
   confirmPassword: "",
 };
 
-function buildUserArenaPath(userSlug: string) {
-  return `/user/${encodeURIComponent(userSlug)}`;
+function buildUserArenaPath(username: string) {
+  return `/${encodeURIComponent(username)}`;
 }
 
 function isAuthPath(pathname: string) {
@@ -55,7 +55,7 @@ function isAuthPath(pathname: string) {
 }
 
 type UserArenaRouteProps = {
-  expectedSlug: string;
+  expectedUsername: string;
   identity: Identity | undefined;
   isLoggingOut: boolean;
   onLogOut: () => void;
@@ -64,7 +64,7 @@ type UserArenaRouteProps = {
 };
 
 function UserArenaRoute({
-  expectedSlug,
+  expectedUsername,
   identity,
   isLoggingOut,
   onLogOut,
@@ -72,24 +72,27 @@ function UserArenaRoute({
   username,
 }: UserArenaRouteProps) {
   const params = useParams();
-  const requestedSlug = params.slug;
+  const requestedUsername = params.username;
 
-  if (!requestedSlug) {
+  if (!requestedUsername) {
     console.warn(
-      "[Auth] missing slug in path, redirecting to canonical user route",
+      "[Auth] missing username in path, redirecting to canonical user route",
       {
-        expectedSlug,
+        expectedUsername,
       },
     );
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
-  if (requestedSlug !== expectedSlug) {
-    console.warn("[Auth] slug mismatch, rewriting URL to authenticated slug", {
-      requestedSlug,
-      expectedSlug,
-    });
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  if (requestedUsername !== expectedUsername) {
+    console.warn(
+      "[Auth] username mismatch, rewriting URL to authenticated username",
+      {
+        requestedUsername,
+        expectedUsername,
+      },
+    );
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
   return (
@@ -98,87 +101,72 @@ function UserArenaRoute({
       isLoggingOut={isLoggingOut}
       onLogOut={onLogOut}
       shortIdentity={shortIdentity}
-      userSlug={expectedSlug}
       username={username}
     />
   );
 }
 
 type UserPowerupRouteProps = {
-  expectedSlug: string;
+  expectedUsername: string;
   identity: Identity | undefined;
   username: string;
 };
 
-function UserPowerupRoute({ expectedSlug, identity, username }: UserPowerupRouteProps) {
+function UserPowerupRoute({
+  expectedUsername,
+  identity,
+  username,
+}: UserPowerupRouteProps) {
   const params = useParams();
-  const requestedSlug = params.slug;
+  const requestedUsername = params.username;
 
-  if (!requestedSlug) {
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  if (!requestedUsername) {
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
-  if (requestedSlug !== expectedSlug) {
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  if (requestedUsername !== expectedUsername) {
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
-  return (
-    <PowerupSelectionPage
-      userSlug={expectedSlug}
-      username={username}
-      identity={identity}
-    />
-  );
+  return <PowerupSelectionPage identity={identity} username={username} />;
 }
 
 function UserPowerupReadyRoute({
-  expectedSlug,
+  expectedUsername,
   identity,
   username,
 }: UserPowerupRouteProps) {
   const params = useParams();
-  const requestedSlug = params.slug;
+  const requestedUsername = params.username;
 
-  if (!requestedSlug) {
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  if (!requestedUsername) {
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
-  if (requestedSlug !== expectedSlug) {
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  if (requestedUsername !== expectedUsername) {
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
-  return (
-    <PowerupReadyPage
-      userSlug={expectedSlug}
-      username={username}
-      identity={identity}
-    />
-  );
+  return <PowerupReadyPage identity={identity} username={username} />;
 }
 
 function UserMatchRoute({
-  expectedSlug,
+  expectedUsername,
   identity,
   username,
 }: UserPowerupRouteProps) {
   const params = useParams();
-  const requestedSlug = params.slug;
+  const requestedUsername = params.username;
 
-  if (!requestedSlug) {
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  if (!requestedUsername) {
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
-  if (requestedSlug !== expectedSlug) {
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  if (requestedUsername !== expectedUsername) {
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
-  return (
-    <MatchLaunchPage
-      userSlug={expectedSlug}
-      username={username}
-      identity={identity}
-    />
-  );
+  return <MatchLaunchPage identity={identity} username={username} />;
 }
 
 function App() {
@@ -201,9 +189,9 @@ function App() {
   const session = sessionRows.find((row) =>
     identity ? row.sessionIdentity.isEqual(identity) : false,
   );
-  const currentUserSlug = session?.userSlug;
-  const sessionArenaPath = currentUserSlug
-    ? buildUserArenaPath(currentUserSlug)
+  const currentUsername = session?.username;
+  const sessionArenaPath = currentUsername
+    ? buildUserArenaPath(currentUsername)
     : "/login";
 
   const shortIdentity = identity?.toHexString().slice(0, 12) ?? "syncing";
@@ -228,11 +216,11 @@ function App() {
       sessionReady,
       hasSession: Boolean(session),
       currentPath: location.pathname,
-      sessionSlug: currentUserSlug,
+      sessionUsername: currentUsername,
     });
   }, [
     connected,
-    currentUserSlug,
+    currentUsername,
     identity,
     location.pathname,
     session,
@@ -240,27 +228,27 @@ function App() {
   ]);
 
   useEffect(() => {
-    if (!session || !sessionReady || !currentUserSlug) {
+    if (!session || !sessionReady || !currentUsername) {
       return;
     }
 
-    if (!isAuthPath(location.pathname) && location.pathname !== "/slug") {
+    if (!isAuthPath(location.pathname)) {
       return;
     }
 
-    const targetPath = buildUserArenaPath(currentUserSlug);
+    const targetPath = buildUserArenaPath(currentUsername);
     if (location.pathname === targetPath) {
       return;
     }
 
-    console.info("[Auth] redirecting to user slug page", {
+    console.info("[Auth] redirecting to username page", {
       from: location.pathname,
       to: targetPath,
-      slug: currentUserSlug,
+      username: currentUsername,
     });
     navigate(targetPath, { replace: true });
   }, [
-    currentUserSlug,
+    currentUsername,
     location.pathname,
     navigate,
     session,
@@ -281,7 +269,9 @@ function App() {
       await signUp(signUpForm);
       setSignUpForm(defaultSignUpForm);
       setStatusMessage("Account created. Syncing your user page...");
-      console.info("[Auth] sign-up reducer succeeded; waiting for session slug.");
+      console.info(
+        "[Auth] sign-up reducer succeeded; waiting for authenticated username.",
+      );
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Authentication failed.",
@@ -301,7 +291,9 @@ function App() {
       await logIn(loginForm);
       setLoginForm(defaultLoginForm);
       setStatusMessage("Login successful. Syncing your user page...");
-      console.info("[Auth] log-in reducer succeeded; waiting for session slug.");
+      console.info(
+        "[Auth] log-in reducer succeeded; waiting for authenticated username.",
+      );
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Authentication failed.",
@@ -337,7 +329,6 @@ function App() {
         element={
           <LandingPage
             isAuthenticated={Boolean(session)}
-            userSlug={currentUserSlug}
             username={session?.username}
           />
         }
@@ -345,7 +336,7 @@ function App() {
       <Route
         path="/login"
         element={
-          session && currentUserSlug ? (
+          session && currentUsername ? (
             <Navigate replace to={sessionArenaPath} />
           ) : (
             <LoginPage
@@ -367,7 +358,7 @@ function App() {
       <Route
         path="/signup"
         element={
-          session && currentUserSlug ? (
+          session && currentUsername ? (
             <Navigate replace to={sessionArenaPath} />
           ) : (
             <SignupPage
@@ -388,11 +379,11 @@ function App() {
       />
       <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
       <Route
-        path="/user/:slug/powerups/ready"
+        path="/:username/powerups/ready"
         element={
-          session && currentUserSlug ? (
+          session && currentUsername ? (
             <UserPowerupReadyRoute
-              expectedSlug={currentUserSlug}
+              expectedUsername={currentUsername}
               identity={identity}
               username={session.username}
             />
@@ -402,11 +393,11 @@ function App() {
         }
       />
       <Route
-        path="/user/:slug/powerups"
+        path="/:username/powerups"
         element={
-          session && currentUserSlug ? (
+          session && currentUsername ? (
             <UserPowerupRoute
-              expectedSlug={currentUserSlug}
+              expectedUsername={currentUsername}
               identity={identity}
               username={session.username}
             />
@@ -416,11 +407,11 @@ function App() {
         }
       />
       <Route
-        path="/user/:slug/match"
+        path="/:username/match"
         element={
-          session && currentUserSlug ? (
+          session && currentUsername ? (
             <UserMatchRoute
-              expectedSlug={currentUserSlug}
+              expectedUsername={currentUsername}
               identity={identity}
               username={session.username}
             />
@@ -430,11 +421,11 @@ function App() {
         }
       />
       <Route
-        path="/user/:slug/*"
+        path="/:username/*"
         element={
-          session && currentUserSlug ? (
+          session && currentUsername ? (
             <UserArenaRoute
-              expectedSlug={currentUserSlug}
+              expectedUsername={currentUsername}
               identity={identity}
               isLoggingOut={submitting === "logout"}
               onLogOut={() => {
@@ -449,18 +440,13 @@ function App() {
         }
       />
       <Route
-        path="/slug"
-        element={
-          session && currentUserSlug ? (
-            <Navigate replace to={sessionArenaPath} />
-          ) : (
-            <Navigate replace to="/login" />
-          )
-        }
-      />
-      <Route
         path="*"
-        element={<Navigate replace to={session && currentUserSlug ? sessionArenaPath : "/"} />}
+        element={
+          <Navigate
+            replace
+            to={session && currentUsername ? sessionArenaPath : "/"}
+          />
+        }
       />
     </Routes>
   );
