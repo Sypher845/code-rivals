@@ -30,6 +30,22 @@ export const ArenaRoomMember = __t.object("ArenaRoomMember", {
 });
 export type ArenaRoomMember = __Infer<typeof ArenaRoomMember>;
 
+export const ArenaRoomNotice = __t.object("ArenaRoomNotice", {
+  noticeId: __t.u64(),
+  roomId: __t.string(),
+  noticeType: __t.string(),
+  message: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ArenaRoomNotice = __Infer<typeof ArenaRoomNotice>;
+
+export const ArenaRoomTimeoutJob = __t.object("ArenaRoomTimeoutJob", {
+  scheduledId: __t.u64(),
+  scheduledAt: __t.scheduleAt(),
+  roomId: __t.string(),
+});
+export type ArenaRoomTimeoutJob = __Infer<typeof ArenaRoomTimeoutJob>;
+
 export const AuthAccount = __t.object("AuthAccount", {
   id: __t.u64(),
   userSlug: __t.string(),

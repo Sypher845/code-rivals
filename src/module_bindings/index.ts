@@ -35,6 +35,7 @@ import {
 
 // Import all reducer arg schemas
 import CreateArenaRoomReducer from "./create_arena_room_reducer";
+import DeleteArenaRoomReducer from "./delete_arena_room_reducer";
 import JoinArenaRoomReducer from "./join_arena_room_reducer";
 import KickArenaMemberReducer from "./kick_arena_member_reducer";
 import LogInReducer from "./log_in_reducer";
@@ -47,6 +48,7 @@ import StartArenaMatchReducer from "./start_arena_match_reducer";
 // Import all table schema definitions
 import ArenaRoomRow from "./arena_room_table";
 import ArenaRoomMemberRow from "./arena_room_member_table";
+import ArenaRoomNoticeRow from "./arena_room_notice_table";
 import AuthSessionRow from "./auth_session_table";
 
 /** Type-only namespace exports for generated type groups. */
@@ -79,6 +81,17 @@ const tablesSchema = __schema({
       { name: 'arena_room_member_membership_key_key', constraint: 'unique', columns: ['membershipKey'] },
     ],
   }, ArenaRoomMemberRow),
+  arenaRoomNotice: __table({
+    name: 'arena_room_notice',
+    indexes: [
+      { accessor: 'noticeId', name: 'arena_room_notice_notice_id_idx_btree', algorithm: 'btree', columns: [
+        'noticeId',
+      ] },
+    ],
+    constraints: [
+      { name: 'arena_room_notice_notice_id_key', constraint: 'unique', columns: ['noticeId'] },
+    ],
+  }, ArenaRoomNoticeRow),
   authSession: __table({
     name: 'auth_session',
     indexes: [
@@ -95,6 +108,7 @@ const tablesSchema = __schema({
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
   __reducerSchema("create_arena_room", CreateArenaRoomReducer),
+  __reducerSchema("delete_arena_room", DeleteArenaRoomReducer),
   __reducerSchema("join_arena_room", JoinArenaRoomReducer),
   __reducerSchema("kick_arena_member", KickArenaMemberReducer),
   __reducerSchema("log_in", LogInReducer),
