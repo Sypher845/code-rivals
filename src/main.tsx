@@ -5,6 +5,7 @@ import App from './App.tsx';
 import { Identity } from 'spacetimedb';
 import { SpacetimeDBProvider } from 'spacetimedb/react';
 import { DbConnection, ErrorContext } from './module_bindings/index.ts';
+import { BrowserRouter } from 'react-router-dom';
 
 const HOST = import.meta.env.VITE_SPACETIMEDB_HOST ?? 'ws://localhost:3000';
 const DB_NAME = import.meta.env.VITE_SPACETIMEDB_DB_NAME ?? 'quickstart-chat';
@@ -36,8 +37,10 @@ const connectionBuilder = DbConnection.builder()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
-      <App />
-    </SpacetimeDBProvider>
+    <BrowserRouter>
+      <SpacetimeDBProvider connectionBuilder={connectionBuilder}>
+        <App />
+      </SpacetimeDBProvider>
+    </BrowserRouter>
   </StrictMode>
 );
