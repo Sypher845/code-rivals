@@ -366,7 +366,7 @@ export function PowerupSelectionPage({
               <button
                 type="button"
                 className="rounded-md border border-[rgba(241,243,252,0.2)] px-4 py-2 text-xs tracking-[0.1em] uppercase"
-                onClick={() => navigate(-1)}
+                onClick={() => navigate(`/${encodeURIComponent(username)}`)}
               >
                 Back
               </button>
