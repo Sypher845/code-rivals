@@ -48,3 +48,15 @@ export const tableHeaderClass =
 // Table row cell
 export const tableCellClass =
   "px-4 py-3 text-sm text-[var(--text-secondary)]";
+
+// Stat card value
+export const statValueClass =
+  "font-[var(--font-heading)] text-[clamp(3rem,6vw,3.5rem)] leading-none font-bold tracking-[-0.025em]";
+
+
+export const arenaActionClass =
+  "inline-flex min-h-11 items-center justify-center rounded-md border border-[rgba(0,229,204,0.7)] bg-[var(--arena-accent)] px-5 text-sm font-semibold tracking-[0.08em] text-[#071215] uppercase shadow-[0_0_0_1px_rgba(0,0,0,0.2)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60";
+
+// Arena input field
+export const arenaInputClass =
+  "min-h-[3.2rem] w-full rounded-md border border-[var(--arena-border)] bg-[var(--arena-surface-2)] px-4 py-2.5 text-[var(--on-background)] placeholder:text-[rgba(241,243,252,0.45)] outline-none transition focus:border-[rgba(0,229,204,0.5)] focus:ring-2 focus:ring-[rgba(0,229,204,0.16)]";
