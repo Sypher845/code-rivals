@@ -1,10 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useState, useMemo } from "react";
 import type { Identity } from "spacetimedb";
-import { useNavigate } from "react-router-dom";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
-import { mockFriends } from "./arena-data";
 import {
   panelFrameClass,
   panelNoiseClass,
@@ -15,7 +12,6 @@ import {
 type ArenaSidebarProps = {
   identity: Identity | undefined;
   arenaReady: boolean;
-  userSlug: string;
 };
 
 function normalizeRoomCode(roomCode: string) {
@@ -41,25 +37,20 @@ function generateRoomId(existingRoomIds: Set<string>) {
   return `${Date.now().toString(36).slice(-6).toUpperCase()}`;
 }
 
-export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarProps) {
-  const navigate = useNavigate();
+export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
   const [arenaMode, setArenaMode] = useState<"create" | "join">("create");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"neutral" | "error">("neutral");
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [roomCodeInput, setRoomCodeInput] = useState("");
-  const [roomCodeCopied, setRoomCodeCopied] = useState(false);
-  const roomCodeCopiedTimeoutRef = useRef<number | null>(null);
-  const latestTimeoutNoticeIdRef = useRef<bigint | null>(null);
 
   const createArenaRoom = useReducer(reducers.createArenaRoom);
-  const deleteArenaRoom = useReducer(reducers.deleteArenaRoom);
   const joinArenaRoom = useReducer(reducers.joinArenaRoom);
+  const startArenaMatch = useReducer(reducers.startArenaMatch);
   const kickArenaMember = useReducer(reducers.kickArenaMember);
 
   const [arenaRoomRows] = useTable(tables.arenaRoom);
   const [arenaMemberRows] = useTable(tables.arenaRoomMember);
-  const [arenaRoomNoticeRows] = useTable(tables.arenaRoomNotice);
 
   const activeRoom = useMemo(() => {
     if (!activeRoomId) return null;
@@ -81,54 +72,11 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
     activeRoom && identity && activeRoom.creatorIdentity.isEqual(identity),
   );
   const isLobbyReady = Boolean(activeRoom && activeRoomMembers.length >= 2);
-  const onlineFriends = useMemo(() => mockFriends.filter((friend) => friend.isOnline), []);
 
   const pushStatus = (message: string, tone: "neutral" | "error" = "neutral") => {
     setStatusTone(tone);
     setStatusMessage(message);
   };
-
-  useEffect(() => {
-    return () => {
-      if (roomCodeCopiedTimeoutRef.current !== null) {
-        window.clearTimeout(roomCodeCopiedTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!activeRoomId) {
-      return;
-    }
-
-    const stillExists = arenaRoomRows.some((room) => room.roomId === activeRoomId);
-    if (!stillExists) {
-      setActiveRoomId(null);
-    }
-  }, [activeRoomId, arenaRoomRows]);
-
-  useEffect(() => {
-    const timeoutNotices = arenaRoomNoticeRows.filter(
-      (notice) => notice.noticeType === "timeout_deleted",
-    );
-    if (timeoutNotices.length === 0) {
-      return;
-    }
-
-    let latestNotice = timeoutNotices[0];
-    for (const notice of timeoutNotices) {
-      if (notice.noticeId > latestNotice.noticeId) {
-        latestNotice = notice;
-      }
-    }
-
-    if (latestTimeoutNoticeIdRef.current === latestNotice.noticeId) {
-      return;
-    }
-
-    latestTimeoutNoticeIdRef.current = latestNotice.noticeId;
-    pushStatus(latestNotice.message, "error");
-  }, [arenaRoomNoticeRows]);
 
   const handleCreateArena = async () => {
     if (!identity) {
@@ -187,10 +135,15 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
     }
   };
 
-  const handleStartMatch = () => {
+  const handleStartMatch = async () => {
     if (!activeRoom) return;
-    const query = new URLSearchParams({ room: activeRoom.roomId });
-    navigate(`/user/${encodeURIComponent(userSlug)}/powerups?${query.toString()}`);
+    try {
+      await startArenaMatch({ roomId: activeRoom.roomId });
+      pushStatus(`Match started in room ${activeRoom.roomId}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to start this match.";
+      pushStatus(message, "error");
+    }
   };
 
   const handleKickMember = async (memberId: bigint) => {
@@ -204,78 +157,54 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
     }
   };
 
-  const handleCopyRoomCode = async () => {
+  const handleShareRoom = async () => {
     if (!activeRoom) return;
+    const shareUrl = `${window.location.origin}?room=${activeRoom.roomId}`;
     try {
-      await navigator.clipboard.writeText(activeRoom.roomId);
-      setRoomCodeCopied(true);
-      if (roomCodeCopiedTimeoutRef.current !== null) {
-        window.clearTimeout(roomCodeCopiedTimeoutRef.current);
-      }
-      roomCodeCopiedTimeoutRef.current = window.setTimeout(() => {
-        setRoomCodeCopied(false);
-      }, 1500);
+      await navigator.clipboard.writeText(shareUrl);
+      pushStatus("Room URL copied to clipboard.");
     } catch {
-      pushStatus("Clipboard unavailable. Copy the room code manually.", "error");
-    }
-  };
-
-  const handleDeleteRoom = async () => {
-    if (!activeRoom) {
-      return;
-    }
-
-    try {
-      await deleteArenaRoom({ roomId: activeRoom.roomId });
-      setActiveRoomId(null);
-      pushStatus(`Room ${activeRoom.roomId} deleted.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to delete room.";
-      pushStatus(message, "error");
+      pushStatus(`Clipboard unavailable. Share manually: ${shareUrl}`, "error");
     }
   };
 
   return (
-    <aside className="space-y-5">
-      <section className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}>
+    <aside className={`${panelFrameClass} min-h-[46rem] border-l-2 border-l-(--arena-accent) bg-(--arena-surface-2) p-6`}>
         <div className={panelNoiseClass} />
       <div className="relative z-1 space-y-5">
           <div>
-            <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
+            <p className="font-(--font-mono) text-[0.72rem] tracking-[0.24em] text-(--primary) uppercase">
               Quick Arena
             </p>
           </div>
 
-          <div className="inline-flex w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(241,243,252,0.06)] p-1">
+          <div className="inline-flex w-full rounded-lg border border-[rgba(241,243,252,0.12)] bg-[rgba(6,11,18,0.72)] p-1">
             <button
               type="button"
               onClick={() => setArenaMode("create")}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${
+              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.1em] uppercase transition ${
                 arenaMode === "create"
-                  ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
+                  ? "border border-[rgba(0,229,204,0.55)] bg-[rgba(0,229,204,0.15)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
               }`}
             >
-              Create
+              Create Arena
             </button>
             <button
               type="button"
               onClick={() => setArenaMode("join")}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${
+              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.1em] uppercase transition ${
                 arenaMode === "join"
-                  ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
+                  ? "border border-[rgba(0,255,255,0.32)] bg-[rgba(0,255,255,0.1)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
               }`}
             >
-              Join
+              Join Arena
             </button>
           </div>
 
           {arenaMode === "create" ? (
             <div className="space-y-3">
-              <p className="text-sm text-[rgba(241,243,252,0.58)]">
-                Create a private arena and invite a rival to duel.
-              </p>
               <button
                 className={arenaActionClass}
                 type="button"
@@ -286,51 +215,22 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
               </button>
 
               {activeRoom && (
-                <section className="space-y-4 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(5,10,16,0.74)] p-4">
+                <section className="space-y-4 rounded-lg border border-[rgba(241,243,252,0.12)] bg-[rgba(8,14,20,0.74)] p-4">
                   <header className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-(--font-mono) text-[0.62rem] tracking-[0.16em] text-(--secondary) uppercase">
+                      <p className="font-(--font-mono) text-[0.65rem] tracking-[0.18em] text-(--secondary) uppercase">
                         Arena Room Card
                       </p>
-                      <h3 className="mt-1 flex items-center gap-2 text-xl font-semibold tracking-[-0.02em]">
-                        <span>Room {activeRoom.roomId}</span>
-                        <button
-                          type="button"
-                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[rgba(241,243,252,0.22)] text-[rgba(241,243,252,0.76)] transition hover:border-[rgba(0,255,255,0.38)] hover:text-(--secondary)"
-                          onClick={() => {
-                            void handleCopyRoomCode();
-                          }}
-                          aria-label="Copy room code"
-                          title="Copy room code"
-                        >
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            className="h-3.5 w-3.5"
-                          >
-                            <rect x="9" y="9" width="10" height="10" rx="2" />
-                            <path d="M5 15V7a2 2 0 0 1 2-2h8" />
-                          </svg>
-                        </button>
+                      <h3 className="mt-1 text-xl font-semibold tracking-[-0.02em]">
+                        Room {activeRoom.roomId}
                       </h3>
-                      {roomCodeCopied && (
-                        <p className="mt-1 text-[0.66rem] font-medium tracking-[0.08em] text-(--secondary) uppercase">
-                          Copied
-                        </p>
-                      )}
                     </div>
                     <button
                       type="button"
-                      className="rounded-md border border-[rgba(241,243,252,0.22)] px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.08em] uppercase transition hover:border-[rgba(0,255,255,0.35)]"
-                      onClick={() => {
-                        void handleDeleteRoom();
-                      }}
-                      disabled={!isArenaAdmin}
+                      className="rounded-md border border-[rgba(241,243,252,0.22)] px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.1em] uppercase transition hover:border-[rgba(0,255,255,0.35)]"
+                      onClick={() => setActiveRoomId(null)}
                     >
-                      Delete Room
+                      Close
                     </button>
                   </header>
 
@@ -418,6 +318,14 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
                       </p>
                     )}
                   </div>
+
+                  <button
+                    type="button"
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-[rgba(0,255,255,0.34)] px-5 text-[0.68rem] font-semibold tracking-[0.12em] text-(--secondary) uppercase transition hover:bg-[rgba(0,255,255,0.1)]"
+                    onClick={handleShareRoom}
+                  >
+                    Share Room URL
+                  </button>
                 </section>
               )}
             </div>
@@ -426,9 +334,6 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
               <label className="font-(--font-mono) text-[0.72rem] tracking-[0.22em] text-[rgba(241,243,252,0.62)] uppercase">
                 Room Code
               </label>
-              <p className="text-sm text-[rgba(241,243,252,0.58)]">
-                Enter a room code to join an existing arena.
-              </p>
               <input
                 className={arenaInputClass}
                 type="text"
@@ -461,56 +366,49 @@ export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarPro
             </div>
           )}
 
-        </div>
-      </section>
+          <div className="pt-2">
+            <p className="font-(--font-mono) text-[0.72rem] tracking-[0.24em] text-(--secondary) uppercase">
+              Active Rooms ({arenaRoomRows.length})
+            </p>
 
-      <section className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)] p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-sm font-bold tracking-[0.12em] text-[rgba(241,243,252,0.6)] uppercase">
-            Friends Online ({onlineFriends.length})
-          </h3>
-          <Link
-            to="friends"
-            className="text-xs text-(--arena-accent) transition hover:underline"
-          >
-            See All
-          </Link>
-        </div>
+            <div className="mt-3 space-y-2">
+              {arenaRoomRows.length === 0 && (
+                <p className="rounded-2xl border border-[rgba(241,243,252,0.12)] bg-[rgba(8,14,20,0.72)] px-4 py-3 text-sm text-[rgba(241,243,252,0.7)]">
+                  No rooms yet. Create your first arena above.
+                </p>
+              )}
 
-        <div className="space-y-3">
-          {mockFriends.slice(0, 4).map((friend) => (
-            <div key={friend.id} className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-[rgba(241,243,252,0.08)] text-xs font-bold text-(--on-background)">
-                    {friend.username.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div
-                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[rgba(6,11,18,0.95)] ${
-                      friend.isOnline ? "bg-(--signal-success)" : "bg-[rgba(241,243,252,0.5)]"
-                    }`}
-                  />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-(--on-background)">{friend.username}</p>
-                  <p className="text-xs text-[rgba(241,243,252,0.52)]">
-                    {friend.isOnline ? "Online" : "Away"}
-                  </p>
-                </div>
-              </div>
+              {arenaRoomRows.map((room) => {
+                const memberCount = arenaMemberRows.filter(
+                  (member) => member.roomId === room.roomId,
+                ).length;
 
-              {friend.isOnline ? (
-                <button
-                  type="button"
-                  className="h-7 rounded-md px-2 text-xs text-[rgba(241,243,252,0.78)] transition hover:bg-[rgba(0,229,204,0.12)] hover:text-(--arena-accent)"
-                >
-                  Challenge
-                </button>
-              ) : null}
+                return (
+                  <button
+                    key={room.roomId}
+                    type="button"
+                    onClick={() => {
+                      setRoomCodeInput(room.roomId);
+                      setActiveRoomId(room.roomId);
+                      setArenaMode("create");
+                    }}
+                    className="w-full rounded-2xl border border-[rgba(241,243,252,0.12)] bg-[rgba(8,14,20,0.74)] px-4 py-3 text-left transition hover:border-[rgba(0,255,255,0.35)]"
+                  >
+                    <p className="font-(--font-mono) text-xs tracking-[0.14em] text-(--secondary) uppercase">
+                      Room {room.roomId}
+                    </p>
+                    <p className="mt-2 text-sm text-[rgba(241,243,252,0.8)]">
+                      Creator {room.creatorName}
+                    </p>
+                    <p className="mt-1 text-xs text-[rgba(241,243,252,0.62)]">
+                      Members {memberCount} • Status {room.matchState.toUpperCase()}
+                    </p>
+                  </button>
+                );
+              })}
             </div>
-          ))}
+          </div>
         </div>
-      </section>
-    </aside>
+      </aside>
   );
 }
