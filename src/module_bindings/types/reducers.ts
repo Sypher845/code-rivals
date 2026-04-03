@@ -6,11 +6,19 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import CreateArenaRoomReducer from "../create_arena_room_reducer";
+import JoinArenaRoomReducer from "../join_arena_room_reducer";
+import KickArenaMemberReducer from "../kick_arena_member_reducer";
 import LogInReducer from "../log_in_reducer";
 import LogOutReducer from "../log_out_reducer";
 import SignUpReducer from "../sign_up_reducer";
+import StartArenaMatchReducer from "../start_arena_match_reducer";
 
+export type CreateArenaRoomParams = __Infer<typeof CreateArenaRoomReducer>;
+export type JoinArenaRoomParams = __Infer<typeof JoinArenaRoomReducer>;
+export type KickArenaMemberParams = __Infer<typeof KickArenaMemberReducer>;
 export type LogInParams = __Infer<typeof LogInReducer>;
 export type LogOutParams = __Infer<typeof LogOutReducer>;
 export type SignUpParams = __Infer<typeof SignUpReducer>;
+export type StartArenaMatchParams = __Infer<typeof StartArenaMatchReducer>;
 

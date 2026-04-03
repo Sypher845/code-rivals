@@ -13,7 +13,6 @@ import { reducers, tables } from "./module_bindings";
 import { ArenaPage } from "./pages/ArenaPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
-import { PowerupSelectionPage } from "./pages/PowerupSelectionPage";
 import { SignupPage } from "./pages/SignupPage";
 
 export type LoginFormState = {
@@ -100,26 +99,6 @@ function UserArenaRoute({
       username={username}
     />
   );
-}
-
-type UserPowerupRouteProps = {
-  expectedSlug: string;
-  username: string;
-};
-
-function UserPowerupRoute({ expectedSlug, username }: UserPowerupRouteProps) {
-  const params = useParams();
-  const requestedSlug = params.slug;
-
-  if (!requestedSlug) {
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
-  }
-
-  if (requestedSlug !== expectedSlug) {
-    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
-  }
-
-  return <PowerupSelectionPage userSlug={expectedSlug} username={username} />;
 }
 
 function App() {
@@ -328,19 +307,6 @@ function App() {
         }
       />
       <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
-      <Route
-        path="/user/:slug/powerups"
-        element={
-          session && currentUserSlug ? (
-            <UserPowerupRoute
-              expectedSlug={currentUserSlug}
-              username={session.username}
-            />
-          ) : (
-            <Navigate replace to="/login" />
-          )
-        }
-      />
       <Route
         path="/user/:slug/*"
         element={
