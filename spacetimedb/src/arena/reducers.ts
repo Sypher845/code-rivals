@@ -57,7 +57,7 @@ function shuffleDeterministic<T>(items: readonly T[], initialSeed: bigint) {
 
 function rollMatchPowers(roomId: string, timestampMicros: bigint) {
   const seed = makeSeed(roomId, timestampMicros);
-  return shuffleDeterministic(POWER_CARD_FILENAMES, seed).slice(0, 6);
+  return shuffleDeterministic(POWER_CARD_FILENAMES, seed).slice(0, 3);
 }
 
 function requireSession(ctx: ArenaReducerCtx) {

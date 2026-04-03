@@ -107,23 +107,20 @@ export function PowerupSelectionPage({
       });
   }, [arenaMemberRows, roomId]);
 
-  const myMemberIndex = useMemo(() => {
-    if (!identity) return -1;
-    return sortedRoomMembers.findIndex((member) =>
+  const powerups = useMemo(() => {
+    if (!room || !identity) return [];
+
+    const isMemberInRoom = sortedRoomMembers.some((member) =>
       member.memberIdentity.isEqual(identity),
     );
-  }, [identity, sortedRoomMembers]);
+    if (!isMemberInRoom) return [];
 
-  const powerups = useMemo(() => {
-    if (!room || myMemberIndex < 0) return [];
-
-    const startIndex = myMemberIndex === 0 ? 0 : 3;
-    const selectedIds = room.rolledPowers.slice(startIndex, startIndex + 3);
+    const selectedIds = room.rolledPowers.slice(0, 3);
 
     return selectedIds
       .map((powerId) => powerCardMap[powerId])
       .filter((value): value is Powerup => Boolean(value));
-  }, [room, myMemberIndex]);
+  }, [identity, room, sortedRoomMembers]);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [lockedPowerupId, setLockedPowerupId] = useState<string | null>(null);
