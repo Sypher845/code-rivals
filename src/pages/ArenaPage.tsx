@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import { Swords } from "lucide-react";
 import type { Identity } from "spacetimedb";
 import { useTable } from "spacetimedb/react";
-import coderivalsMark from "../assets/coderivals-mark.svg";
 import { tables } from "../module_bindings";
 import { ArenaTabs } from "./arena/ArenaTabs";
 import { StatsTab } from "./arena/StatsTab";
@@ -58,7 +57,6 @@ export function ArenaPage({
         <div className="flex h-14 w-full items-center justify-between gap-6 px-5 sm:px-8 xl:px-12 2xl:px-16">
           <Link to="/" className="inline-flex items-center gap-3">
             <img
-              src={coderivalsMark}
               alt="CodeRivals"
               className="h-7 w-7 rounded-md"
             />

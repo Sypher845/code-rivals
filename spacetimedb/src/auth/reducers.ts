@@ -10,7 +10,7 @@ import {
   normalizeUsernameKey,
   validateLoginInput,
   validateSignUpInput,
-} from "./validation.ts";
+} from "./validation";
 
 type AuthReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 
