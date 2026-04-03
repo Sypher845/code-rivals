@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
@@ -46,6 +46,7 @@ export function ArenaSidebar({
   userSlug,
 }: ArenaSidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [arenaMode, setArenaMode] = useState<"create" | "join">("create");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"neutral" | "error">("neutral");
@@ -58,6 +59,7 @@ export function ArenaSidebar({
   const createArenaRoom = useReducer(reducers.createArenaRoom);
   const deleteArenaRoom = useReducer(reducers.deleteArenaRoom);
   const joinArenaRoom = useReducer(reducers.joinArenaRoom);
+  const startArenaMatch = useReducer(reducers.startArenaMatch);
   const kickArenaMember = useReducer(reducers.kickArenaMember);
 
   const [arenaRoomRows] = useTable(tables.arenaRoom);
@@ -74,8 +76,16 @@ export function ArenaSidebar({
     return arenaMemberRows
       .filter((member) => member.roomId === activeRoom.roomId)
       .sort((left, right) => {
-        if (left.joinedAt.microsSinceUnixEpoch < right.joinedAt.microsSinceUnixEpoch) return -1;
-        if (left.joinedAt.microsSinceUnixEpoch > right.joinedAt.microsSinceUnixEpoch) return 1;
+        if (
+          left.joinedAt.microsSinceUnixEpoch <
+          right.joinedAt.microsSinceUnixEpoch
+        )
+          return -1;
+        if (
+          left.joinedAt.microsSinceUnixEpoch >
+          right.joinedAt.microsSinceUnixEpoch
+        )
+          return 1;
         return 0;
       });
   }, [activeRoom, arenaMemberRows]);
@@ -84,6 +94,11 @@ export function ArenaSidebar({
     activeRoom && identity && activeRoom.creatorIdentity.isEqual(identity),
   );
   const isLobbyReady = Boolean(activeRoom && activeRoomMembers.length >= 2);
+  const isCurrentUserInActiveRoom = Boolean(
+    identity &&
+      activeRoom &&
+      activeRoomMembers.some((member) => member.memberIdentity.isEqual(identity)),
+  );
   const onlineFriends = useMemo(
     () => mockFriends.filter((friend) => friend.isOnline),
     [],
@@ -156,7 +171,8 @@ export function ArenaSidebar({
       setArenaMode("create");
       pushStatus(`Arena ${roomId} created. Share it with your rival.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to create room.";
+      const message =
+        error instanceof Error ? error.message : "Unable to create room.";
       pushStatus(message, "error");
     }
   };
@@ -190,15 +206,51 @@ export function ArenaSidebar({
       setActiveRoomId(normalizedRoomCode);
       pushStatus(`Connected to arena ${normalizedRoomCode}.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to join this room.";
+      const message =
+        error instanceof Error ? error.message : "Unable to join this room.";
       pushStatus(message, "error");
     }
   };
 
-  const handleStartMatch = () => {
-    if (!activeRoom) return;
+  useEffect(() => {
+    if (!activeRoom) {
+      return;
+    }
+
+    if (!isCurrentUserInActiveRoom) {
+      return;
+    }
+
+    if (activeRoom.matchState !== "started") {
+      return;
+    }
+
+    if (location.pathname.endsWith("/powerups")) {
+      return;
+    }
+
     const query = new URLSearchParams({ room: activeRoom.roomId });
-    navigate(`/user/${encodeURIComponent(userSlug)}/powerups?${query.toString()}`);
+    navigate(
+      `/user/${encodeURIComponent(userSlug)}/powerups?${query.toString()}`,
+    );
+  }, [
+    activeRoom,
+    isCurrentUserInActiveRoom,
+    location.pathname,
+    navigate,
+    userSlug,
+  ]);
+
+  const handleStartMatch = async () => {
+    if (!activeRoom) return;
+    try {
+      await startArenaMatch({ roomId: activeRoom.roomId });
+      pushStatus(`Match started in room ${activeRoom.roomId}.`);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Unable to start this match.";
+      pushStatus(message, "error");
+    }
   };
 
   const handleKickMember = async (memberId: bigint) => {
@@ -207,7 +259,8 @@ export function ArenaSidebar({
       await kickArenaMember({ roomId: activeRoom.roomId, memberId });
       pushStatus("User removed from room.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to kick this user.";
+      const message =
+        error instanceof Error ? error.message : "Unable to kick this user.";
       pushStatus(message, "error");
     }
   };
@@ -238,7 +291,8 @@ export function ArenaSidebar({
       setActiveRoomId(null);
       pushStatus(`Room ${activeRoom.roomId} deleted.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to delete room.";
+      const message =
+        error instanceof Error ? error.message : "Unable to delete room.";
       pushStatus(message, "error");
     }
   };
