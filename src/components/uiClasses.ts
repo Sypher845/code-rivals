@@ -27,3 +27,24 @@ export const authLinkClass =
 // Glassmorphism card for stat cards, friend rows, etc.
 export const glassCardClass =
   "relative overflow-hidden rounded-xl border border-[var(--arena-border)] bg-[var(--arena-surface-1)] shadow-[0_10px_28px_rgba(0,0,0,0.22)] transition hover:bg-[var(--arena-surface-2)]";
+
+// Online status dot
+export const onlineDotClass =
+  "h-2.5 w-2.5 rounded-full bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.6)]";
+
+// Offline status dot
+export const offlineDotClass =
+  "h-2.5 w-2.5 rounded-full bg-gray-500";
+
+// Challenge button
+export const challengeButtonClass =
+  "inline-flex items-center justify-center rounded-md border border-[rgba(0,229,204,0.4)] bg-[rgba(0,229,204,0.14)] px-4 py-2 text-xs font-semibold tracking-[0.08em] text-[var(--on-background)] uppercase transition hover:bg-[rgba(0,229,204,0.24)] disabled:opacity-60";
+
+
+  // Table header cell
+export const tableHeaderClass =
+  "px-4 py-3 text-left font-[var(--font-mono)] text-[0.65rem] tracking-[0.18em] text-[rgba(241,243,252,0.58)] uppercase";
+
+// Table row cell
+export const tableCellClass =
+  "px-4 py-3 text-sm text-[var(--text-secondary)]";
