@@ -7,13 +7,13 @@ import { PowersSection } from "./landing/PowersSection";
 import { StatsSection, CTASection, Footer } from "./landing/BottomSections";
 
 type LandingPageProps = {
-  isAuthenticated: boolean;
+  isAuthenticated?: boolean;
   userSlug?: string;
   username?: string;
 };
 
 export function LandingPage({
-  isAuthenticated,
+  isAuthenticated = false,
   userSlug,
   username,
 }: LandingPageProps) {
