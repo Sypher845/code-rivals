@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
@@ -14,6 +14,7 @@ import {
 type ArenaSidebarProps = {
   identity: Identity | undefined;
   arenaReady: boolean;
+  userSlug: string;
 };
 
 function normalizeRoomCode(roomCode: string) {
@@ -39,7 +40,12 @@ function generateRoomId(existingRoomIds: Set<string>) {
   return `${Date.now().toString(36).slice(-6).toUpperCase()}`;
 }
 
-export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
+export function ArenaSidebar({
+  identity,
+  arenaReady,
+  userSlug,
+}: ArenaSidebarProps) {
+  const navigate = useNavigate();
   const [arenaMode, setArenaMode] = useState<"create" | "join">("create");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"neutral" | "error">("neutral");
@@ -52,7 +58,6 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
   const createArenaRoom = useReducer(reducers.createArenaRoom);
   const deleteArenaRoom = useReducer(reducers.deleteArenaRoom);
   const joinArenaRoom = useReducer(reducers.joinArenaRoom);
-  const startArenaMatch = useReducer(reducers.startArenaMatch);
   const kickArenaMember = useReducer(reducers.kickArenaMember);
 
   const [arenaRoomRows] = useTable(tables.arenaRoom);
@@ -79,7 +84,10 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
     activeRoom && identity && activeRoom.creatorIdentity.isEqual(identity),
   );
   const isLobbyReady = Boolean(activeRoom && activeRoomMembers.length >= 2);
-  const onlineFriends = useMemo(() => mockFriends.filter((friend) => friend.isOnline), []);
+  const onlineFriends = useMemo(
+    () => mockFriends.filter((friend) => friend.isOnline),
+    [],
+  );
 
   const pushStatus = (message: string, tone: "neutral" | "error" = "neutral") => {
     setStatusTone(tone);
@@ -169,7 +177,9 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
       return;
     }
 
-    const existingRoom = arenaRoomRows.find((room) => room.roomId === normalizedRoomCode);
+    const existingRoom = arenaRoomRows.find(
+      (room) => room.roomId === normalizedRoomCode,
+    );
     if (!existingRoom) {
       pushStatus(`Room ${normalizedRoomCode} was not found.`, "error");
       return;
@@ -185,15 +195,10 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
     }
   };
 
-  const handleStartMatch = async () => {
+  const handleStartMatch = () => {
     if (!activeRoom) return;
-    try {
-      await startArenaMatch({ roomId: activeRoom.roomId });
-      pushStatus(`Match started in room ${activeRoom.roomId}.`);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to start this match.";
-      pushStatus(message, "error");
-    }
+    const query = new URLSearchParams({ room: activeRoom.roomId });
+    navigate(`/user/${encodeURIComponent(userSlug)}/powerups?${query.toString()}`);
   };
 
   const handleKickMember = async (memberId: bigint) => {
@@ -240,9 +245,11 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
 
   return (
     <aside className="space-y-5">
-      <section className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}>
+      <section
+        className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}
+      >
         <div className={panelNoiseClass} />
-      <div className="relative z-1 space-y-5">
+        <div className="relative z-1 space-y-5">
           <div>
             <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
               Quick Arena
@@ -354,7 +361,9 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
                       <p className="font-[var(--font-mono)] text-[0.56rem] tracking-[0.14em] text-[rgba(241,243,252,0.58)] uppercase">
                         Match
                       </p>
-                      <p className="mt-1 text-xs font-semibold">{activeRoom.matchState.toUpperCase()}</p>
+                      <p className="mt-1 text-xs font-semibold">
+                        {activeRoom.matchState.toUpperCase()}
+                      </p>
                     </article>
                   </div>
 
@@ -463,7 +472,6 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
               {statusMessage}
             </div>
           )}
-
         </div>
       </section>
 
