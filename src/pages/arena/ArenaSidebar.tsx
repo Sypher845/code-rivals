@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
+import { mockFriends } from "./arena-data";
 import {
   panelFrameClass,
   panelNoiseClass,
@@ -77,6 +79,7 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
     activeRoom && identity && activeRoom.creatorIdentity.isEqual(identity),
   );
   const isLobbyReady = Boolean(activeRoom && activeRoomMembers.length >= 2);
+  const onlineFriends = useMemo(() => mockFriends.filter((friend) => friend.isOnline), []);
 
   const pushStatus = (message: string, tone: "neutral" | "error" = "neutral") => {
     setStatusTone(tone);
@@ -236,42 +239,46 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
   };
 
   return (
-    <aside className={`${panelFrameClass} min-h-[46rem] border-l-2 border-l-(--arena-accent) bg-(--arena-surface-2) p-6`}>
+    <aside className="space-y-5">
+      <section className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}>
         <div className={panelNoiseClass} />
       <div className="relative z-1 space-y-5">
           <div>
-            <p className="font-(--font-mono) text-[0.72rem] tracking-[0.24em] text-(--primary) uppercase">
+            <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
               Quick Arena
             </p>
           </div>
 
-          <div className="inline-flex w-full rounded-lg border border-[rgba(241,243,252,0.12)] bg-[rgba(6,11,18,0.72)] p-1">
+          <div className="inline-flex w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(241,243,252,0.06)] p-1">
             <button
               type="button"
               onClick={() => setArenaMode("create")}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.1em] uppercase transition ${
+              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${
                 arenaMode === "create"
-                  ? "border border-[rgba(0,229,204,0.55)] bg-[rgba(0,229,204,0.15)] text-(--on-background)"
+                  ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
               }`}
             >
-              Create Arena
+              Create
             </button>
             <button
               type="button"
               onClick={() => setArenaMode("join")}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.1em] uppercase transition ${
+              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${
                 arenaMode === "join"
-                  ? "border border-[rgba(0,255,255,0.32)] bg-[rgba(0,255,255,0.1)] text-(--on-background)"
+                  ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
               }`}
             >
-              Join Arena
+              Join
             </button>
           </div>
 
           {arenaMode === "create" ? (
             <div className="space-y-3">
+              <p className="text-sm text-[rgba(241,243,252,0.58)]">
+                Create a private arena and invite a rival to duel.
+              </p>
               <button
                 className={arenaActionClass}
                 type="button"
@@ -282,10 +289,10 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
               </button>
 
               {activeRoom && (
-                <section className="space-y-4 rounded-lg border border-[rgba(241,243,252,0.12)] bg-[rgba(8,14,20,0.74)] p-4">
+                <section className="space-y-4 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(5,10,16,0.74)] p-4">
                   <header className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-(--font-mono) text-[0.65rem] tracking-[0.18em] text-(--secondary) uppercase">
+                      <p className="font-(--font-mono) text-[0.62rem] tracking-[0.16em] text-(--secondary) uppercase">
                         Arena Room Card
                       </p>
                       <h3 className="mt-1 flex items-center gap-2 text-xl font-semibold tracking-[-0.02em]">
@@ -320,7 +327,7 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
                     </div>
                     <button
                       type="button"
-                      className="rounded-md border border-[rgba(241,243,252,0.22)] px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.1em] uppercase transition hover:border-[rgba(0,255,255,0.35)]"
+                      className="rounded-md border border-[rgba(241,243,252,0.22)] px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.08em] uppercase transition hover:border-[rgba(0,255,255,0.35)]"
                       onClick={() => {
                         void handleDeleteRoom();
                       }}
@@ -422,6 +429,9 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
               <label className="font-(--font-mono) text-[0.72rem] tracking-[0.22em] text-[rgba(241,243,252,0.62)] uppercase">
                 Room Code
               </label>
+              <p className="text-sm text-[rgba(241,243,252,0.58)]">
+                Enter a room code to join an existing arena.
+              </p>
               <input
                 className={arenaInputClass}
                 type="text"
@@ -455,6 +465,55 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
           )}
 
         </div>
-      </aside>
+      </section>
+
+      <section className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)] p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-sm font-bold tracking-[0.12em] text-[rgba(241,243,252,0.6)] uppercase">
+            Friends Online ({onlineFriends.length})
+          </h3>
+          <Link
+            to="friends"
+            className="text-xs text-(--arena-accent) transition hover:underline"
+          >
+            See All
+          </Link>
+        </div>
+
+        <div className="space-y-3">
+          {mockFriends.slice(0, 4).map((friend) => (
+            <div key={friend.id} className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-[rgba(241,243,252,0.08)] text-xs font-bold text-(--on-background)">
+                    {friend.username.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div
+                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[rgba(6,11,18,0.95)] ${
+                      friend.isOnline ? "bg-(--signal-success)" : "bg-[rgba(241,243,252,0.5)]"
+                    }`}
+                  />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-(--on-background)">{friend.username}</p>
+                  <p className="text-xs text-[rgba(241,243,252,0.52)]">
+                    {friend.isOnline ? "Online" : "Away"}
+                  </p>
+                </div>
+              </div>
+
+              {friend.isOnline ? (
+                <button
+                  type="button"
+                  className="h-7 rounded-md px-2 text-xs text-[rgba(241,243,252,0.78)] transition hover:bg-[rgba(0,229,204,0.12)] hover:text-(--arena-accent)"
+                >
+                  Challenge
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      </section>
+    </aside>
   );
 }

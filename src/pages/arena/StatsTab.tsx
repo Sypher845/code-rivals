@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
+import { ExternalLink, Play, Target, Trophy, Zap } from "lucide-react";
 import { mockStats, mockMatches } from "./arena-data";
-import { panelFrameClass, panelNoiseClass, glassCardClass, statValueClass, tableHeaderClass, tableCellClass } from "../../components/uiClasses";
+import { panelFrameClass, panelNoiseClass } from "../../components/uiClasses";
 
 function formatTimeAgo(date: Date): string {
   const now = new Date();
@@ -15,7 +16,7 @@ function formatTimeAgo(date: Date): string {
 }
 
 export function StatsTab() {
-  const { kdRatio, eloRating, league, leaguePercentile, kdTrend, eloTrend } = mockStats;
+  const { kdRatio, eloRating, kdTrend, eloTrend } = mockStats;
   const [animatedElo, setAnimatedElo] = useState(0);
 
   useEffect(() => {
@@ -37,8 +38,7 @@ export function StatsTab() {
   }, [eloRating]);
 
   const kdSeries = [1.8, 1.95, 2.0, 2.12, 2.16, 2.31, 2.45];
-  const eloSeries = [1710, 1735, 1768, 1788, 1815, 1830, eloRating];
-  const leagueSeries = [62, 66, 69, 74, 78, 82, leaguePercentile];
+  const matchesPlayed = mockMatches.length;
 
   const buildSparkline = (values: number[]) => {
     const max = Math.max(...values);
@@ -53,173 +53,180 @@ export function StatsTab() {
       .join(" ");
   };
 
+  const getLeagueTierStyle = (leagueName: string) => {
+    const lower = leagueName.toLowerCase();
+    if (lower.includes("diamond")) {
+      return "border-[oklch(0.82_0.18_175/0.35)] bg-[oklch(0.82_0.18_175/0.1)] text-[oklch(0.82_0.18_175)]";
+    }
+    if (lower.includes("platinum")) {
+      return "border-[oklch(0.75_0.08_230/0.35)] bg-[oklch(0.75_0.08_230/0.1)] text-[oklch(0.75_0.08_230)]";
+    }
+    if (lower.includes("gold")) {
+      return "border-[oklch(0.78_0.15_85/0.35)] bg-[oklch(0.78_0.15_85/0.1)] text-[oklch(0.78_0.15_85)]";
+    }
+    return "border-[rgba(241,243,252,0.22)] bg-[rgba(241,243,252,0.08)] text-[rgba(241,243,252,0.84)]";
+  };
+
   return (
     <div className="space-y-6">
-      {/* Stat Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        {/* K/D Ratio Card */}
-        <article className={`${glassCardClass} arena-stagger p-5`} style={{ animationDelay: "40ms" }}>
-          <div className={panelNoiseClass} />
-          <div className="relative z-[1]">
-            <p className="font-[var(--font-mono)] text-[0.65rem] tracking-[0.18em] text-[rgba(241,243,252,0.58)] uppercase">
+        <article
+          className="group relative min-h-[140px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)] px-5 py-4 transition-all duration-300 hover:border-[rgba(0,229,204,0.3)]"
+          style={{ animationDelay: "40ms" }}
+        >
+          <div className="flex items-start justify-between">
+            <div className="space-y-2.5">
+              <p className="text-[0.7rem] font-medium tracking-[0.14em] text-[rgba(241,243,252,0.56)] uppercase">
               K/D Ratio
-            </p>
-            <p className={`${statValueClass} arena-number-ticker mt-3 text-[var(--on-background)]`}>
-              {kdRatio.toFixed(2)}
-            </p>
-            <svg className="mt-3 h-8 w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="rgba(241,243,252,0.55)"
-                strokeWidth="3"
-                points={buildSparkline(kdSeries)}
-              />
-            </svg>
-            <div className="mt-3 flex items-center gap-1.5">
-              <span className="text-xs font-medium text-green-400">▲</span>
-              <span className="text-xs text-[rgba(241,243,252,0.62)]">
-                {kdTrend}% this week
-              </span>
+              </p>
+              <p className="text-5xl font-bold tracking-tight text-(--on-background)">{kdRatio.toFixed(2)}</p>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-(--signal-success)">▲</span>
+                <span className="text-(--signal-success)">+{kdTrend}%</span>
+                <span className="text-[rgba(241,243,252,0.52)]">this week</span>
+              </div>
+            </div>
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[rgba(241,243,252,0.06)] text-[rgba(241,243,252,0.42)] transition group-hover:bg-[rgba(0,229,204,0.12)] group-hover:text-(--arena-accent)">
+              <Target className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_92%_8%,rgba(0,229,204,0.08),transparent_45%)] opacity-0 transition-opacity group-hover:opacity-100" />
+        </article>
+
+        <article
+          className="group relative min-h-[140px] overflow-hidden rounded-xl border border-[rgba(0,229,204,0.35)] bg-[rgba(0,229,204,0.08)] px-5 py-4 transition-all duration-300 hover:border-[rgba(0,229,204,0.55)]"
+          style={{ animationDelay: "100ms" }}
+        >
+          <div className="flex items-start justify-between">
+            <div className="space-y-2.5">
+              <p className="text-[0.7rem] font-medium tracking-[0.14em] text-[rgba(241,243,252,0.56)] uppercase">
+                ELO Rating
+              </p>
+              <p className="text-5xl font-bold tracking-tight text-(--arena-accent)">{animatedElo.toLocaleString()}</p>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-(--signal-success)">▲</span>
+                <span className="text-(--signal-success)">+{eloTrend}</span>
+                <span className="text-[rgba(241,243,252,0.52)]">this week</span>
+              </div>
+            </div>
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[rgba(0,229,204,0.12)] text-(--arena-accent)">
+              <Trophy className="h-5 w-5" />
             </div>
           </div>
         </article>
 
-        {/* ELO Rating Card */}
-        <article className={`${glassCardClass} arena-stagger p-5`} style={{ animationDelay: "100ms" }}>
-          <div className={panelNoiseClass} />
-          <div className="relative z-[1]">
-            <p className="font-[var(--font-mono)] text-[0.65rem] tracking-[0.18em] text-[rgba(241,243,252,0.58)] uppercase">
-              ELO Rating
-            </p>
-            <p className={`${statValueClass} arena-number-ticker mt-3 text-[var(--arena-accent)]`}>
-              {animatedElo.toLocaleString()}
-            </p>
-            <svg className="mt-3 h-8 w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="rgba(0,229,204,0.85)"
-                strokeWidth="3"
-                points={buildSparkline(eloSeries)}
-              />
-            </svg>
-            <div className="mt-3 flex items-center gap-1.5">
-              <span className="text-xs font-medium text-green-400">▲</span>
-              <span className="text-xs text-[rgba(241,243,252,0.62)]">
-                +{eloTrend} this week
-              </span>
+        <article
+          className="group relative min-h-[140px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)] px-5 py-4 transition-all duration-300 hover:border-[rgba(0,229,204,0.3)]"
+          style={{ animationDelay: "160ms" }}
+        >
+          <div className="flex items-start justify-between">
+            <div className="space-y-2.5">
+              <p className="text-[0.7rem] font-medium tracking-[0.14em] text-[rgba(241,243,252,0.56)] uppercase">
+                Matches Played
+              </p>
+              <p className="text-5xl font-bold tracking-tight text-(--on-background)">{matchesPlayed}</p>
+              <div className="flex items-center gap-1.5 text-xs">
+                <span className="text-(--signal-success)">▲</span>
+                <span className="text-(--signal-success)">+8%</span>
+                <span className="text-[rgba(241,243,252,0.52)]">this week</span>
+              </div>
             </div>
-          </div>
-        </article>
-
-        {/* League Card */}
-        <article className={`${glassCardClass} arena-stagger p-5`} style={{ animationDelay: "160ms" }}>
-          <div className={panelNoiseClass} />
-          <div className="relative z-[1]">
-            <p className="font-[var(--font-mono)] text-[0.65rem] tracking-[0.18em] text-[rgba(241,243,252,0.58)] uppercase">
-              League
-            </p>
-            <p className={`${statValueClass} mt-3 text-[var(--tertiary)]`}>
-              {league}
-            </p>
-            <svg className="mt-3 h-8 w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <polyline
-                fill="none"
-                stroke="rgba(77,143,255,0.85)"
-                strokeWidth="3"
-                points={buildSparkline(leagueSeries)}
-              />
-            </svg>
-            <div className="mt-2 h-1.5 w-full rounded-full bg-[rgba(255,255,255,0.08)]">
-              <div
-                className="h-full rounded-full bg-[var(--arena-accent)]"
-                style={{ width: `${leaguePercentile}%` }}
-              />
-            </div>
-            <div className="mt-3 flex items-center gap-1.5">
-              <span className="text-xs text-[rgba(241,243,252,0.62)]">
-                Top {100 - leaguePercentile}%
-              </span>
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[rgba(241,243,252,0.06)] text-[rgba(241,243,252,0.42)] transition group-hover:bg-[rgba(0,229,204,0.12)] group-hover:text-(--arena-accent)">
+              <Zap className="h-5 w-5" />
             </div>
           </div>
         </article>
       </div>
 
-      {/* Match History Table */}
       <section className={`${panelFrameClass} arena-stagger p-5`} style={{ animationDelay: "220ms" }}>
         <div className={panelNoiseClass} />
-        <div className="relative z-[1]">
-          <p className="font-[var(--font-mono)] text-[0.72rem] tracking-[0.24em] text-[var(--primary)] uppercase mb-4">
-            Recent Matches
-          </p>
+        <div className="relative z-[1] space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-bold tracking-[0.14em] text-[rgba(241,243,252,0.6)] uppercase">
+              Recent Battles
+            </p>
+            <button
+              type="button"
+              className="text-xs text-(--arena-accent) transition hover:underline"
+            >
+              View All
+            </button>
+          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[rgba(241,243,252,0.08)]">
-                  <th className={tableHeaderClass}>Opponent</th>
-                  <th className={tableHeaderClass}>Winner</th>
-                  <th className={tableHeaderClass}>Points Scored</th>
-                  <th className={tableHeaderClass}>Delta Rating</th>
-                  <th className={tableHeaderClass}>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockMatches.map((match) => (
-                  <tr
-                    key={match.id}
-                    className={`border-b border-[rgba(241,243,252,0.04)] border-l-2 transition hover:bg-[rgba(255,255,255,0.02)] ${
-                      match.winner === "user"
-                        ? "border-l-[rgba(74,222,128,0.65)]"
-                        : "border-l-transparent"
-                    }`}
-                  >
-                    <td className={tableCellClass}>
-                      <div>
-                        <p className="text-sm font-semibold text-[var(--on-background)]">
-                          {match.opponentName}
-                        </p>
-                        <p className="text-xs text-[rgba(241,243,252,0.5)]">
-                          {match.opponentElo} · {match.opponentLeague}
-                        </p>
+          <div className="space-y-3">
+            {mockMatches.map((match) => {
+              const isVictory = match.winner === "user";
+              return (
+                <article
+                  key={match.id}
+                  className={`group relative overflow-hidden rounded-xl border bg-[rgba(6,11,18,0.72)] p-4 transition hover:border-[rgba(0,229,204,0.28)] ${
+                    isVictory
+                      ? "border-l-2 border-l-(--signal-success) border-[rgba(255,255,255,0.08)]"
+                      : "border-l-2 border-l-(--signal-danger) border-[rgba(255,255,255,0.08)]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`grid h-12 w-12 place-items-center rounded-lg text-lg font-bold ${
+                          isVictory
+                            ? "bg-[rgba(74,222,128,0.12)] text-(--signal-success)"
+                            : "bg-[rgba(255,112,112,0.12)] text-(--signal-danger)"
+                        }`}
+                      >
+                        {match.opponentName.slice(0, 2).toUpperCase()}
                       </div>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                          match.winner === "user"
-                            ? "bg-[rgba(74,222,128,0.12)] text-green-400"
-                            : "bg-[rgba(255,112,112,0.12)] text-[var(--signal-danger)]"
-                        }`}
-                      >
-                        {match.winner === "user" ? "You" : match.opponentName}
-                      </span>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span className="font-semibold text-[var(--on-background)]">
-                        {match.pointsScored}/20
-                      </span>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span
-                        className={`font-semibold ${
-                          match.deltaRating > 0
-                            ? "text-green-400"
-                            : "text-[var(--signal-danger)]"
-                        }`}
-                      >
-                        {match.deltaRating > 0 ? "↑ +" : "↓ "}
-                        {match.deltaRating}
-                      </span>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span className="text-xs text-[rgba(241,243,252,0.5)]">
-                        {formatTimeAgo(match.timestamp)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`text-xs font-bold tracking-[0.1em] uppercase ${
+                              isVictory ? "text-(--signal-success)" : "text-(--signal-danger)"
+                            }`}
+                          >
+                            {isVictory ? "Victory" : "Defeat"}
+                          </span>
+                          <span className="text-sm text-[rgba(241,243,252,0.5)]">vs</span>
+                          <span className="text-sm font-semibold text-(--on-background)">{match.opponentName}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.08em] uppercase ${getLeagueTierStyle(match.opponentLeague)}`}>
+                            {match.opponentLeague}
+                          </span>
+                          <span className="text-xs text-[rgba(241,243,252,0.56)]">{match.pointsScored}/20 pts</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <p className={`text-lg font-bold ${match.deltaRating > 0 ? "text-(--signal-success)" : "text-(--signal-danger)"}`}>
+                          {match.deltaRating > 0 ? "+" : ""}
+                          {match.deltaRating}
+                        </p>
+                        <p className="text-xs text-[rgba(241,243,252,0.52)]">{formatTimeAgo(match.timestamp)}</p>
+                      </div>
+
+                      <div className="hidden gap-1 opacity-0 transition-opacity group-hover:flex group-hover:opacity-100 sm:flex sm:opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                        <button
+                          type="button"
+                          className="grid h-8 w-8 place-items-center rounded-md border border-[rgba(255,255,255,0.12)] text-[rgba(241,243,252,0.68)] transition hover:text-(--on-background)"
+                        >
+                          <Play className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          className="grid h-8 w-8 place-items-center rounded-md border border-[rgba(255,255,255,0.12)] text-[rgba(241,243,252,0.68)] transition hover:text-(--on-background)"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
