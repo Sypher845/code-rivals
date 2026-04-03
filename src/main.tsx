@@ -7,8 +7,12 @@ import { SpacetimeDBProvider } from 'spacetimedb/react';
 import { DbConnection, ErrorContext } from './module_bindings/index.ts';
 import { BrowserRouter } from 'react-router-dom';
 
-const HOST = import.meta.env.VITE_SPACETIMEDB_HOST ?? 'ws://localhost:3000';
-const DB_NAME = import.meta.env.VITE_SPACETIMEDB_DB_NAME ?? 'quickstart-chat';
+const HOST =
+  import.meta.env.VITE_SPACETIMEDB_HOST ??
+  'ws://localhost:3000';
+const DB_NAME =
+  import.meta.env.VITE_SPACETIMEDB_DB_NAME ??
+  'code-rivals-hrs2l';
 const TOKEN_KEY = `${HOST}/${DB_NAME}/auth_token`;
 
 const onConnect = (conn: DbConnection, identity: Identity, token: string) => {
