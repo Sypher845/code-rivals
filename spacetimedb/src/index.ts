@@ -1,9 +1,11 @@
 export { default } from "./schema";
 export {
   create_arena_room,
+  delete_arena_room,
   join_arena_room,
   kick_arena_member,
   start_arena_match,
+  timeout_waiting_room,
 } from "./arena/reducers";
 export {
   log_in,

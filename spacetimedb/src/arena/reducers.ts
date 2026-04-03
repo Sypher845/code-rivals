@@ -1,3 +1,4 @@
+import { ScheduleAt } from "spacetimedb";
 import {
   SenderError,
   t,
@@ -5,6 +6,10 @@ import {
   type ReducerCtx,
 } from "spacetimedb/server";
 import spacetimedb from "../schema";
+import {
+  arena_room_timeout_job,
+  register_timeout_waiting_room_export,
+} from "./tables";
 
 type ArenaReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 
@@ -34,6 +39,26 @@ function listRoomMembers(ctx: ArenaReducerCtx, roomId: string) {
   );
 }
 
+function listRoomTimeoutJobs(ctx: ArenaReducerCtx, roomId: string) {
+  return [...ctx.db.arenaRoomTimeoutJob.iter()].filter(
+    (job) => job.roomId === roomId,
+  );
+}
+
+function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
+  const roomMembers = listRoomMembers(ctx, roomId);
+  for (const member of roomMembers) {
+    ctx.db.arenaRoomMember.memberId.delete(member.memberId);
+  }
+
+  const timeoutJobs = listRoomTimeoutJobs(ctx, roomId);
+  for (const timeoutJob of timeoutJobs) {
+    ctx.db.arenaRoomTimeoutJob.scheduledId.delete(timeoutJob.scheduledId);
+  }
+
+  ctx.db.arenaRoom.roomId.delete(roomId);
+}
+
 export const create_arena_room = spacetimedb.reducer(
   { roomId: t.string() },
   (ctx, { roomId }) => {
@@ -53,6 +78,14 @@ export const create_arena_room = spacetimedb.reducer(
       startedAt: undefined,
     });
 
+    const timeoutAtMicros =
+      ctx.timestamp.microsSinceUnixEpoch + 900_000_000n;
+    ctx.db.arenaRoomTimeoutJob.insert({
+      scheduledId: 0n,
+      scheduledAt: ScheduleAt.time(timeoutAtMicros),
+      roomId: normalizedRoomId,
+    });
+
     ctx.db.arenaRoomMember.insert({
       memberId: 0n,
       roomId: normalizedRoomId,
@@ -67,6 +100,53 @@ export const create_arena_room = spacetimedb.reducer(
     );
   },
 );
+
+export const delete_arena_room = spacetimedb.reducer(
+  { roomId: t.string() },
+  (ctx, { roomId }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+    if (!room) {
+      throw new SenderError("Room not found.");
+    }
+
+    if (!room.creatorIdentity.isEqual(ctx.sender)) {
+      throw new SenderError("Only the room creator can delete this room.");
+    }
+
+    deleteRoomAndMembers(ctx, normalizedRoomId);
+    console.log(`[Arena] room deleted room_id=${normalizedRoomId} by creator`);
+  },
+);
+
+export const timeout_waiting_room = spacetimedb.reducer(
+  { arg: arena_room_timeout_job.rowType },
+  (ctx, { arg }) => {
+    const room = ctx.db.arenaRoom.roomId.find(arg.roomId);
+    if (!room) {
+      return;
+    }
+
+    if (room.matchState !== "waiting") {
+      return;
+    }
+
+    deleteRoomAndMembers(ctx, room.roomId);
+
+    ctx.db.arenaRoomNotice.insert({
+      noticeId: 0n,
+      roomId: room.roomId,
+      noticeType: "timeout_deleted",
+      message: `Room ${room.roomId} was deleted after waiting 15 minutes.`,
+      createdAt: ctx.timestamp,
+    });
+
+    console.log(`[Arena] room timed out room_id=${room.roomId}`);
+  },
+);
+
+register_timeout_waiting_room_export(timeout_waiting_room);
 
 export const join_arena_room = spacetimedb.reducer(
   { roomId: t.string() },
