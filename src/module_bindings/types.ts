@@ -15,6 +15,7 @@ export const ArenaRoom = __t.object("ArenaRoom", {
   creatorIdentity: __t.identity(),
   creatorName: __t.string(),
   matchState: __t.string(),
+  rolledPowers: __t.array(__t.string()),
   createdAt: __t.timestamp(),
   startedAt: __t.option(__t.timestamp()),
 });

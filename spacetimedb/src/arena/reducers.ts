@@ -13,6 +13,53 @@ import {
 
 type ArenaReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 
+const POWER_CARD_FILENAMES = [
+  "FlashbangCard",
+  "KeySwapCard",
+  "LineJumperCard",
+  "MirrorShieldCard",
+  "NoMistakesCard",
+  "NoRetreat",
+  "TimeHeistCard",
+  "TimeKumCard",
+  "VisuallyImpairedCard",
+] as const;
+
+const U64_MASK = (1n << 64n) - 1n;
+
+function makeSeed(roomId: string, timestampMicros: bigint) {
+  let seed = timestampMicros & U64_MASK;
+  for (const char of roomId) {
+    seed = (seed * 131n + BigInt(char.charCodeAt(0))) & U64_MASK;
+  }
+  return seed === 0n ? 1n : seed;
+}
+
+function nextSeed(seed: bigint) {
+  return (seed * 6364136223846793005n + 1442695040888963407n) & U64_MASK;
+}
+
+function shuffleDeterministic<T>(items: readonly T[], initialSeed: bigint) {
+  const shuffled = [...items];
+  let seed = initialSeed;
+
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    seed = nextSeed(seed);
+    const swapIndex = Number(seed % BigInt(index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [
+      shuffled[swapIndex],
+      shuffled[index],
+    ];
+  }
+
+  return shuffled;
+}
+
+function rollMatchPowers(roomId: string, timestampMicros: bigint) {
+  const seed = makeSeed(roomId, timestampMicros);
+  return shuffleDeterministic(POWER_CARD_FILENAMES, seed).slice(0, 6);
+}
+
 function requireSession(ctx: ArenaReducerCtx) {
   const session = ctx.db.authSession.sessionIdentity.find(ctx.sender);
   if (!session) {
@@ -74,6 +121,7 @@ export const create_arena_room = spacetimedb.reducer(
       creatorIdentity: ctx.sender,
       creatorName: session.username,
       matchState: "waiting",
+      rolledPowers: [],
       createdAt: ctx.timestamp,
       startedAt: undefined,
     });
@@ -214,9 +262,15 @@ export const start_arena_match = spacetimedb.reducer(
       return;
     }
 
+    const rolledPowers = rollMatchPowers(
+      normalizedRoomId,
+      ctx.timestamp.microsSinceUnixEpoch,
+    );
+
     ctx.db.arenaRoom.roomId.update({
       ...room,
       matchState: "started",
+      rolledPowers,
       startedAt: ctx.timestamp,
     });
 

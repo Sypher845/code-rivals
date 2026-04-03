@@ -16,6 +16,7 @@ export const arena_room = table(
     creatorIdentity: t.identity(),
     creatorName: t.string(),
     matchState: t.string(),
+    rolledPowers: t.array(t.string()),
     createdAt: t.timestamp(),
     startedAt: t.timestamp().optional(),
   },

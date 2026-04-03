@@ -15,6 +15,7 @@ export default __t.row({
   creatorIdentity: __t.identity().name("creator_identity"),
   creatorName: __t.string().name("creator_name"),
   matchState: __t.string().name("match_state"),
+  rolledPowers: __t.array(__t.string()).name("rolled_powers"),
   createdAt: __t.timestamp().name("created_at"),
   startedAt: __t.option(__t.timestamp()).name("started_at"),
 });

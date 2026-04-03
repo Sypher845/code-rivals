@@ -1,5 +1,6 @@
-import { type ComponentType, useEffect, useRef, useState } from "react";
+import { type ComponentType, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { FlashbangCard } from "../assets/power_card/FlashbangCard";
 import { KeySwapCard } from "../assets/power_card/KeySwapCard";
 import { LineJumperCard } from "../assets/power_card/LineJumperCard";
@@ -9,6 +10,7 @@ import { SkullCard as NoRetreatCard } from "../assets/power_card/NoRetreat";
 import { TimeHeistCard } from "../assets/power_card/TimeHeistCard";
 import { TimeKumCard } from "../assets/power_card/TimeKumCard";
 import { VisuallyImpairedCard } from "../assets/power_card/VisuallyImpairedCard";
+import { tables } from "../module_bindings";
 
 type PowerupSelectionPageProps = {
   userSlug: string;
@@ -26,44 +28,44 @@ type Powerup = {
   component: PowerCardComponent;
 };
 
-const powerups: Powerup[] = [
-  {
-    id: "key-swap",
-    component: KeySwapCard,
-  },
-  {
-    id: "flashbang",
+const powerCardMap: Record<string, Powerup> = {
+  FlashbangCard: {
+    id: "FlashbangCard",
     component: FlashbangCard,
   },
-  {
-    id: "line-jumper",
+  KeySwapCard: {
+    id: "KeySwapCard",
+    component: KeySwapCard,
+  },
+  LineJumperCard: {
+    id: "LineJumperCard",
     component: LineJumperCard,
   },
-  {
-    id: "mirror-shield",
+  MirrorShieldCard: {
+    id: "MirrorShieldCard",
     component: MirrorShieldCard,
   },
-  {
-    id: "no-mistakes",
+  NoMistakesCard: {
+    id: "NoMistakesCard",
     component: NoMistakesCard,
   },
-  {
-    id: "no-retreat",
+  NoRetreat: {
+    id: "NoRetreat",
     component: NoRetreatCard,
   },
-  {
-    id: "time-heist",
+  TimeHeistCard: {
+    id: "TimeHeistCard",
     component: TimeHeistCard,
   },
-  {
-    id: "time-kum",
+  TimeKumCard: {
+    id: "TimeKumCard",
     component: TimeKumCard,
   },
-  {
-    id: "visually-impaired",
+  VisuallyImpairedCard: {
+    id: "VisuallyImpairedCard",
     component: VisuallyImpairedCard,
   },
-];
+};
 
 function mod(index: number, total: number) {
   if (total === 0) return 0;
@@ -74,11 +76,56 @@ export function PowerupSelectionPage({
   userSlug,
   username,
 }: PowerupSelectionPageProps) {
+  const { identity } = useSpacetimeDB();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const roomId = searchParams.get("room");
+  const roomId = searchParams.get("room")?.trim().toUpperCase() ?? null;
 
-  const [activeIndex, setActiveIndex] = useState(1);
+  const [arenaRoomRows, arenaRoomsReady] = useTable(tables.arenaRoom);
+  const [arenaMemberRows, arenaMembersReady] = useTable(tables.arenaRoomMember);
+
+  const room = useMemo(() => {
+    if (!roomId) return null;
+    return arenaRoomRows.find((row) => row.roomId === roomId) ?? null;
+  }, [arenaRoomRows, roomId]);
+
+  const sortedRoomMembers = useMemo(() => {
+    if (!roomId) return [];
+
+    return arenaMemberRows
+      .filter((member) => member.roomId === roomId)
+      .sort((left, right) => {
+        if (left.joinedAt.microsSinceUnixEpoch < right.joinedAt.microsSinceUnixEpoch) {
+          return -1;
+        }
+        if (left.joinedAt.microsSinceUnixEpoch > right.joinedAt.microsSinceUnixEpoch) {
+          return 1;
+        }
+        return left.memberIdentity
+          .toHexString()
+          .localeCompare(right.memberIdentity.toHexString());
+      });
+  }, [arenaMemberRows, roomId]);
+
+  const myMemberIndex = useMemo(() => {
+    if (!identity) return -1;
+    return sortedRoomMembers.findIndex((member) =>
+      member.memberIdentity.isEqual(identity),
+    );
+  }, [identity, sortedRoomMembers]);
+
+  const powerups = useMemo(() => {
+    if (!room || myMemberIndex < 0) return [];
+
+    const startIndex = myMemberIndex === 0 ? 0 : 3;
+    const selectedIds = room.rolledPowers.slice(startIndex, startIndex + 3);
+
+    return selectedIds
+      .map((powerId) => powerCardMap[powerId])
+      .filter((value): value is Powerup => Boolean(value));
+  }, [room, myMemberIndex]);
+
+  const [activeIndex, setActiveIndex] = useState(0);
   const [lockedPowerupId, setLockedPowerupId] = useState<string | null>(null);
   const railRef = useRef<HTMLDivElement | null>(null);
   const powerupRefs = useRef<Array<HTMLButtonElement | null>>([]);
@@ -87,19 +134,30 @@ export function PowerupSelectionPage({
   const activePowerup = powerups[activeIndex];
   const isLocked = lockedPowerupId !== null;
 
+  useEffect(() => {
+    if (powerups.length === 0) {
+      setActiveIndex(0);
+      setLockedPowerupId(null);
+      return;
+    }
+
+    setActiveIndex((current) => mod(current, powerups.length));
+  }, [powerups.length]);
+
   const toggleLockSelection = () => {
+    if (!activePowerup) return;
     setLockedPowerupId((currentLockedId) =>
       currentLockedId === null ? activePowerup.id : null,
     );
   };
 
   const cycle = (delta: number) => {
-    if (isLocked) return;
+    if (isLocked || powerups.length === 0) return;
     setActiveIndex((current) => mod(current + delta, powerups.length));
   };
 
   const selectIndex = (index: number) => {
-    if (isLocked) return;
+    if (isLocked || powerups.length === 0) return;
     setActiveIndex(mod(index, powerups.length));
   };
 
@@ -127,7 +185,7 @@ export function PowerupSelectionPage({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activePowerup.id, isLocked]);
+  }, [activePowerup?.id, isLocked, powerups.length]);
 
   useEffect(() => {
     const rail = railRef.current;
@@ -224,6 +282,17 @@ export function PowerupSelectionPage({
           <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-10 bg-gradient-to-r from-[#070b12] to-transparent sm:w-18" />
           <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[#070b12] to-transparent sm:w-18" />
 
+          {(!arenaRoomsReady || !arenaMembersReady) && (
+            <p className="mb-4 text-center text-xs tracking-[0.1em] text-[rgba(241,243,252,0.66)] uppercase">
+              Syncing room powers...
+            </p>
+          )}
+          {arenaRoomsReady && arenaMembersReady && powerups.length === 0 && (
+            <p className="mb-4 text-center text-xs tracking-[0.1em] text-[rgba(241,243,252,0.66)] uppercase">
+              Waiting for rolled powers from backend.
+            </p>
+          )}
+
           <div
             ref={railRef}
             className={`hide-scrollbar flex items-end gap-4 px-1 pb-2 sm:gap-6 ${isLocked ? "overflow-x-hidden" : "overflow-x-auto"}`}
@@ -277,6 +346,7 @@ export function PowerupSelectionPage({
               type="button"
               className="inline-flex min-h-12 min-w-[17rem] items-center justify-center rounded-xl border border-[rgba(224,141,255,0.65)] bg-[linear-gradient(180deg,#d583ff,#c26cff)] px-7 font-(--font-mono) text-sm tracking-[0.18em] text-[#1d1225] uppercase shadow-[0_0_20px_rgba(197,108,255,0.45)] disabled:cursor-not-allowed disabled:opacity-65"
               onClick={toggleLockSelection}
+              disabled={powerups.length === 0}
             >
               {isLocked ? "Unlock Selection" : "Lock Selection"}
             </button>
