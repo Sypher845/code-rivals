@@ -1,5 +1,5 @@
 import { schema } from "spacetimedb/server";
-import { auth_account, auth_session } from "./auth/tables";
+import { auth_account, auth_session } from "./auth/tables.ts";
 
 const spacetimedb = schema({
   authAccount: auth_account,

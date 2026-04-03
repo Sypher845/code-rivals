@@ -4,13 +4,13 @@ import {
   type InferSchema,
   type ReducerCtx,
 } from "spacetimedb/server";
-import spacetimedb from "../schema.auth";
+import spacetimedb from "../schema";
 import {
   digestPassword,
   normalizeUsernameKey,
   validateLoginInput,
   validateSignUpInput,
-} from "./validation";
+} from "./validation.ts";
 
 type AuthReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 

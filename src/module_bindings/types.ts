@@ -10,17 +10,25 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
-export const Message = __t.object("Message", {
-  sender: __t.identity(),
-  sent: __t.timestamp(),
-  text: __t.string(),
+export const AuthAccount = __t.object("AuthAccount", {
+  id: __t.u64(),
+  userSlug: __t.string(),
+  username: __t.string(),
+  usernameKey: __t.string(),
+  email: __t.string(),
+  passwordDigest: __t.string(),
+  createdAt: __t.timestamp(),
+  updatedAt: __t.timestamp(),
 });
-export type Message = __Infer<typeof Message>;
+export type AuthAccount = __Infer<typeof AuthAccount>;
 
-export const User = __t.object("User", {
-  identity: __t.identity(),
-  name: __t.option(__t.string()),
-  online: __t.bool(),
+export const AuthSession = __t.object("AuthSession", {
+  sessionIdentity: __t.identity(),
+  userSlug: __t.string(),
+  username: __t.string(),
+  connected: __t.bool(),
+  authenticatedAt: __t.timestamp(),
+  lastSeenAt: __t.timestamp(),
 });
-export type User = __Infer<typeof User>;
+export type AuthSession = __Infer<typeof AuthSession>;
 
