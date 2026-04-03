@@ -10,6 +10,26 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const ArenaRoom = __t.object("ArenaRoom", {
+  roomId: __t.string(),
+  creatorIdentity: __t.identity(),
+  creatorName: __t.string(),
+  matchState: __t.string(),
+  createdAt: __t.timestamp(),
+  startedAt: __t.option(__t.timestamp()),
+});
+export type ArenaRoom = __Infer<typeof ArenaRoom>;
+
+export const ArenaRoomMember = __t.object("ArenaRoomMember", {
+  memberId: __t.u64(),
+  roomId: __t.string(),
+  memberIdentity: __t.identity(),
+  memberName: __t.string(),
+  membershipKey: __t.string(),
+  joinedAt: __t.timestamp(),
+});
+export type ArenaRoomMember = __Infer<typeof ArenaRoomMember>;
+
 export const AuthAccount = __t.object("AuthAccount", {
   id: __t.u64(),
   userSlug: __t.string(),
