@@ -1,110 +1,254 @@
+import { Filter, Minus, Search, TrendingDown, TrendingUp } from "lucide-react";
 import { mockLeaderboard } from "./arena-data";
-import { panelFrameClass, panelNoiseClass, tableHeaderClass, tableCellClass } from "../../components/uiClasses";
 
-const rankColors = [
-  "text-yellow-300",  // 1st
-  "text-slate-200",   // 2nd
-  "text-amber-500",   // 3rd
-];
+function getLeagueTier(league: string) {
+  const [tier = "Diamond", division = "II"] = league.split(" ");
+  return { tier, division };
+}
 
-const rankBgColors = [
-  "bg-[rgba(250,204,21,0.12)] shadow-[inset_0_0_0_1px_rgba(250,204,21,0.28),0_0_40px_rgba(250,204,21,0.08)]",  // 1st
-  "bg-[rgba(209,213,219,0.08)]",  // 2nd
-  "bg-[rgba(217,119,6,0.08)]",    // 3rd
-];
+function getTrendFromEntry(rank: number, winRate: number) {
+  if (rank <= 4) return Math.max(8, Math.round((winRate - 60) * 2));
+  if (rank >= 9) return -Math.max(4, Math.round((60 - winRate) * 2));
+  return 0;
+}
 
-const medals = ["🥇", "🥈", "🥉"];
+function PodiumCard({
+  rank,
+  username,
+  elo,
+  winRate,
+  league,
+  isCurrentUser,
+  standHeight,
+}: {
+  rank: number;
+  username: string;
+  elo: number;
+  winRate: number;
+  league: string;
+  isCurrentUser?: boolean;
+  standHeight: string;
+}) {
+  const medals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
+  const avatarTone =
+    rank === 1
+      ? "bg-[rgba(250,204,21,0.2)] text-yellow-300"
+      : rank === 2
+        ? "bg-[rgba(209,213,219,0.16)] text-slate-200"
+        : "bg-[rgba(245,158,11,0.18)] text-amber-500";
+  const standTone =
+    rank === 1
+      ? "border-t-yellow-300/50 from-[rgba(250,204,21,0.3)] to-[rgba(250,204,21,0.1)]"
+      : rank === 2
+        ? "border-t-slate-300/40 from-[rgba(209,213,219,0.24)] to-[rgba(209,213,219,0.08)]"
+        : "border-t-amber-500/50 from-[rgba(245,158,11,0.24)] to-[rgba(245,158,11,0.08)]";
+
+  return (
+    <article className="group flex flex-col items-center">
+      <div
+        className={`mb-3 w-32 rounded-xl border bg-[rgba(6,11,18,0.72)] p-4 text-center transition sm:w-40 ${
+          isCurrentUser ? "border-(--arena-accent)/50 bg-[rgba(0,229,204,0.08)]" : "border-[rgba(255,255,255,0.08)]"
+        }`}
+      >
+        <div className="mb-2 text-3xl">{medals[rank]}</div>
+        <div className={`mx-auto mb-2 grid h-14 w-14 place-items-center rounded-xl text-lg font-bold ${avatarTone}`}>
+          {username.slice(0, 2).toUpperCase()}
+        </div>
+        <p className={`truncate text-sm font-semibold ${isCurrentUser ? "text-(--arena-accent)" : "text-(--on-background)"}`}>
+          {username}
+        </p>
+        <p className="text-lg font-bold text-(--arena-accent)">{elo.toLocaleString()}</p>
+        <p className="text-xs text-[rgba(241,243,252,0.56)]">{winRate}% WR</p>
+        <div className="mt-2 inline-flex items-center rounded-full border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)] px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-(--primary) uppercase">
+          {league}
+        </div>
+      </div>
+
+      <div
+        className={`w-full rounded-t-lg border-t-2 bg-gradient-to-t ${standTone} ${standHeight} flex items-end justify-center`}
+      >
+        <span className="mb-2 text-xl font-bold text-[rgba(241,243,252,0.45)]">{rank}</span>
+      </div>
+    </article>
+  );
+}
 
 export function LeaderboardTab() {
-  return (
-    <div className="space-y-4">
-      <section className={`${panelFrameClass} arena-stagger p-5`}>
-        <div className={panelNoiseClass} />
-        <div className="relative z-1">
-          <div className="mb-4">
-            <p className="font-(--font-mono) text-[0.72rem] tracking-[0.24em] text-(--primary) uppercase">
-              Diamond League Leaderboard
-            </p>
-            <p className="mt-1 text-xs text-[rgba(241,243,252,0.5)]">
-              Global rankings for your league
-            </p>
-          </div>
+  const topThree = mockLeaderboard.filter((entry) => entry.rank <= 3).sort((a, b) => a.rank - b.rank);
+  const rest = mockLeaderboard.filter((entry) => entry.rank > 3).sort((a, b) => a.rank - b.rank);
+  const displayTopThree = topThree.length === 3 ? [topThree[1], topThree[0], topThree[2]] : [];
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[rgba(241,243,252,0.08)]">
-                  <th className={tableHeaderClass}>Rank</th>
-                  <th className={tableHeaderClass}>Player</th>
-                  <th className={tableHeaderClass}>ELO</th>
-                  <th className={tableHeaderClass}>Win Rate</th>
-                  <th className={tableHeaderClass}>League</th>
-                </tr>
-              </thead>
-              <tbody>
-                {mockLeaderboard.map((entry, index) => (
-                  <tr
-                    key={entry.rank}
-                    className={`border-b border-l-2 border-[rgba(241,243,252,0.04)] transition ${
-                      entry.isCurrentUser
-                        ? "border-l-(--arena-accent) bg-[rgba(0,229,204,0.1)]"
-                        : index < 3
-                          ? rankBgColors[index]
-                          : "border-l-transparent hover:bg-[rgba(255,255,255,0.02)]"
-                    }`}
-                  >
-                    <td className={tableCellClass}>
-                      <div className="inline-flex items-center gap-2">
-                        {index < 3 && <span className="text-base">{medals[index]}</span>}
-                        <span
-                          className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${
-                            index < 3
-                              ? rankColors[index]
-                              : "text-[rgba(241,243,252,0.6)]"
-                          }`}
-                        >
-                          {entry.rank}
-                        </span>
-                      </div>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span
-                        className={`text-sm font-semibold ${
-                          entry.isCurrentUser
-                            ? "text-(--primary)"
-                            : "text-(--on-background)"
-                        }`}
-                      >
-                        {entry.username}
-                        {entry.isCurrentUser && (
-                          <span className="ml-2 rounded-full border border-[rgba(224,141,255,0.3)] bg-[rgba(224,141,255,0.1)] px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.08em]">
-                            You
-                          </span>
-                        )}
-                      </span>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span className="font-semibold text-(--on-background)">
-                        {entry.elo.toLocaleString()}
-                      </span>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span className="text-sm text-[rgba(241,243,252,0.7)]">
-                        {entry.winRate}%
-                      </span>
-                    </td>
-                    <td className={tableCellClass}>
-                      <span className="inline-flex items-center rounded-full border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)] px-2.5 py-1 text-xs font-medium text-(--primary)">
-                        {entry.league}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+  return (
+    <section className="space-y-6">
+      <div className="text-center">
+        <h2 className="text-3xl font-bold sm:text-4xl">
+          <span className="text-(--arena-accent)">Diamond League</span> Rankings
+        </h2>
+        <p className="mt-2 text-sm text-[rgba(241,243,252,0.58)]">
+          Global rankings for your league. Climb the ladder and prove your worth.
+        </p>
+      </div>
+
+      {displayTopThree.length === 3 ? (
+        <div className="flex items-end justify-center gap-4">
+          <PodiumCard
+            rank={displayTopThree[0].rank}
+            username={displayTopThree[0].username}
+            elo={displayTopThree[0].elo}
+            winRate={displayTopThree[0].winRate}
+            league={displayTopThree[0].league}
+            isCurrentUser={displayTopThree[0].isCurrentUser}
+            standHeight="h-28"
+          />
+          <PodiumCard
+            rank={displayTopThree[1].rank}
+            username={displayTopThree[1].username}
+            elo={displayTopThree[1].elo}
+            winRate={displayTopThree[1].winRate}
+            league={displayTopThree[1].league}
+            isCurrentUser={displayTopThree[1].isCurrentUser}
+            standHeight="h-36"
+          />
+          <PodiumCard
+            rank={displayTopThree[2].rank}
+            username={displayTopThree[2].username}
+            elo={displayTopThree[2].elo}
+            winRate={displayTopThree[2].winRate}
+            league={displayTopThree[2].league}
+            isCurrentUser={displayTopThree[2].isCurrentUser}
+            standHeight="h-24"
+          />
         </div>
-      </section>
-    </div>
+      ) : null}
+
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-3">
+          <select className="h-10 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(241,243,252,0.06)] px-3 text-sm text-(--on-background) outline-none scheme-dark">
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">Diamond</option>
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">Platinum</option>
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">Gold</option>
+          </select>
+          <select className="h-10 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(241,243,252,0.06)] px-3 text-sm text-(--on-background) outline-none scheme-dark">
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">This Season</option>
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">This Month</option>
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">This Week</option>
+          </select>
+          <select className="h-10 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(241,243,252,0.06)] px-3 text-sm text-(--on-background) outline-none scheme-dark">
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">Global</option>
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">North America</option>
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">Europe</option>
+            <option className="bg-[rgb(15,23,42)] text-[rgb(241,245,249)]">Asia</option>
+          </select>
+        </div>
+
+        <div className="flex gap-3">
+          <label className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[rgba(241,243,252,0.45)]" />
+            <input
+              type="text"
+              placeholder="Search player..."
+              className="h-10 w-52 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(241,243,252,0.06)] pl-9 pr-3 text-sm text-(--on-background) outline-none placeholder:text-[rgba(241,243,252,0.45)]"
+            />
+          </label>
+          <button
+            type="button"
+            className="grid h-10 w-10 place-items-center rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(241,243,252,0.06)] text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
+          >
+            <Filter className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)]">
+        <div className="grid grid-cols-[60px_1fr_100px_80px_120px_80px] gap-4 border-b border-[rgba(255,255,255,0.08)] bg-[rgba(241,243,252,0.05)] px-4 py-3 text-[0.68rem] font-semibold tracking-[0.12em] text-[rgba(241,243,252,0.58)] uppercase">
+          <div>#</div>
+          <div>Player</div>
+          <div>ELO</div>
+          <div>Win %</div>
+          <div>League</div>
+          <div className="text-right">Trend</div>
+        </div>
+
+        <div className="divide-y divide-[rgba(255,255,255,0.06)]">
+          {rest.map((entry) => {
+            const trend = getTrendFromEntry(entry.rank, entry.winRate);
+            const trendColor = trend > 0 ? "text-(--signal-success)" : trend < 0 ? "text-(--signal-danger)" : "text-[rgba(241,243,252,0.52)]";
+            const league = getLeagueTier(entry.league);
+
+            return (
+              <div
+                key={entry.rank}
+                className={`grid grid-cols-[60px_1fr_100px_80px_120px_80px] gap-4 px-4 py-3 transition hover:bg-[rgba(241,243,252,0.03)] ${
+                  entry.isCurrentUser
+                    ? "border-l-2 border-l-(--arena-accent) bg-[rgba(0,229,204,0.08)]"
+                    : "border-l-2 border-l-transparent"
+                }`}
+              >
+                <div className="flex items-center">
+                  <span className={`font-(--font-mono) text-lg ${entry.isCurrentUser ? "text-(--arena-accent)" : "text-[rgba(241,243,252,0.78)]"}`}>
+                    {entry.rank}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className={`grid h-9 w-9 place-items-center rounded-lg bg-[rgba(241,243,252,0.08)] text-sm font-bold ${entry.isCurrentUser ? "text-(--arena-accent)" : "text-(--on-background)"}`}>
+                    {entry.username.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-medium ${entry.isCurrentUser ? "text-(--arena-accent)" : "text-(--on-background)"}`}>
+                      {entry.username}
+                    </span>
+                    {entry.isCurrentUser ? (
+                      <span className="rounded bg-[rgba(0,229,204,0.18)] px-1.5 py-0.5 text-[10px] font-bold text-(--arena-accent)">
+                        YOU
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex items-center">
+                  <span className="font-(--font-mono) text-sm text-(--on-background)">
+                    {entry.elo.toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="flex items-center">
+                  <span className="text-sm text-[rgba(241,243,252,0.68)]">{entry.winRate}%</span>
+                </div>
+
+                <div className="flex items-center">
+                  <span className="inline-flex items-center rounded-full border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)] px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-(--primary) uppercase">
+                    {league.tier} {league.division}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-end gap-1">
+                  {trend > 0 ? (
+                    <TrendingUp className="h-4 w-4 text-(--signal-success)" />
+                  ) : trend < 0 ? (
+                    <TrendingDown className="h-4 w-4 text-(--signal-danger)" />
+                  ) : (
+                    <Minus className="h-4 w-4 text-[rgba(241,243,252,0.52)]" />
+                  )}
+                  <span className={`text-sm font-medium ${trendColor}`}>
+                    {trend > 0 ? "+" : ""}
+                    {trend}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex justify-center">
+        <button
+          type="button"
+          className="rounded-lg border border-[rgba(255,255,255,0.12)] px-4 py-2 text-sm text-[rgba(241,243,252,0.72)] transition hover:border-[rgba(0,229,204,0.35)] hover:bg-[rgba(0,229,204,0.08)] hover:text-(--on-background)"
+        >
+          Load More Rankings
+        </button>
+      </div>
+    </section>
   );
 }
