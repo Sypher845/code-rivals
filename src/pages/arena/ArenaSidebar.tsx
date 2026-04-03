@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
@@ -43,14 +43,19 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
   const [statusTone, setStatusTone] = useState<"neutral" | "error">("neutral");
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [roomCodeInput, setRoomCodeInput] = useState("");
+  const [roomCodeCopied, setRoomCodeCopied] = useState(false);
+  const roomCodeCopiedTimeoutRef = useRef<number | null>(null);
+  const latestTimeoutNoticeIdRef = useRef<bigint | null>(null);
 
   const createArenaRoom = useReducer(reducers.createArenaRoom);
+  const deleteArenaRoom = useReducer(reducers.deleteArenaRoom);
   const joinArenaRoom = useReducer(reducers.joinArenaRoom);
   const startArenaMatch = useReducer(reducers.startArenaMatch);
   const kickArenaMember = useReducer(reducers.kickArenaMember);
 
   const [arenaRoomRows] = useTable(tables.arenaRoom);
   const [arenaMemberRows] = useTable(tables.arenaRoomMember);
+  const [arenaRoomNoticeRows] = useTable(tables.arenaRoomNotice);
 
   const activeRoom = useMemo(() => {
     if (!activeRoomId) return null;
@@ -77,6 +82,48 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
     setStatusTone(tone);
     setStatusMessage(message);
   };
+
+  useEffect(() => {
+    return () => {
+      if (roomCodeCopiedTimeoutRef.current !== null) {
+        window.clearTimeout(roomCodeCopiedTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeRoomId) {
+      return;
+    }
+
+    const stillExists = arenaRoomRows.some((room) => room.roomId === activeRoomId);
+    if (!stillExists) {
+      setActiveRoomId(null);
+    }
+  }, [activeRoomId, arenaRoomRows]);
+
+  useEffect(() => {
+    const timeoutNotices = arenaRoomNoticeRows.filter(
+      (notice) => notice.noticeType === "timeout_deleted",
+    );
+    if (timeoutNotices.length === 0) {
+      return;
+    }
+
+    let latestNotice = timeoutNotices[0];
+    for (const notice of timeoutNotices) {
+      if (notice.noticeId > latestNotice.noticeId) {
+        latestNotice = notice;
+      }
+    }
+
+    if (latestTimeoutNoticeIdRef.current === latestNotice.noticeId) {
+      return;
+    }
+
+    latestTimeoutNoticeIdRef.current = latestNotice.noticeId;
+    pushStatus(latestNotice.message, "error");
+  }, [arenaRoomNoticeRows]);
 
   const handleCreateArena = async () => {
     if (!identity) {
@@ -157,14 +204,34 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
     }
   };
 
-  const handleShareRoom = async () => {
+  const handleCopyRoomCode = async () => {
     if (!activeRoom) return;
-    const shareUrl = `${window.location.origin}?room=${activeRoom.roomId}`;
     try {
-      await navigator.clipboard.writeText(shareUrl);
-      pushStatus("Room URL copied to clipboard.");
+      await navigator.clipboard.writeText(activeRoom.roomId);
+      setRoomCodeCopied(true);
+      if (roomCodeCopiedTimeoutRef.current !== null) {
+        window.clearTimeout(roomCodeCopiedTimeoutRef.current);
+      }
+      roomCodeCopiedTimeoutRef.current = window.setTimeout(() => {
+        setRoomCodeCopied(false);
+      }, 1500);
     } catch {
-      pushStatus(`Clipboard unavailable. Share manually: ${shareUrl}`, "error");
+      pushStatus("Clipboard unavailable. Copy the room code manually.", "error");
+    }
+  };
+
+  const handleDeleteRoom = async () => {
+    if (!activeRoom) {
+      return;
+    }
+
+    try {
+      await deleteArenaRoom({ roomId: activeRoom.roomId });
+      setActiveRoomId(null);
+      pushStatus(`Room ${activeRoom.roomId} deleted.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to delete room.";
+      pushStatus(message, "error");
     }
   };
 
@@ -221,16 +288,45 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
                       <p className="font-(--font-mono) text-[0.65rem] tracking-[0.18em] text-(--secondary) uppercase">
                         Arena Room Card
                       </p>
-                      <h3 className="mt-1 text-xl font-semibold tracking-[-0.02em]">
-                        Room {activeRoom.roomId}
+                      <h3 className="mt-1 flex items-center gap-2 text-xl font-semibold tracking-[-0.02em]">
+                        <span>Room {activeRoom.roomId}</span>
+                        <button
+                          type="button"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[rgba(241,243,252,0.22)] text-[rgba(241,243,252,0.76)] transition hover:border-[rgba(0,255,255,0.38)] hover:text-(--secondary)"
+                          onClick={() => {
+                            void handleCopyRoomCode();
+                          }}
+                          aria-label="Copy room code"
+                          title="Copy room code"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            className="h-3.5 w-3.5"
+                          >
+                            <rect x="9" y="9" width="10" height="10" rx="2" />
+                            <path d="M5 15V7a2 2 0 0 1 2-2h8" />
+                          </svg>
+                        </button>
                       </h3>
+                      {roomCodeCopied && (
+                        <p className="mt-1 text-[0.66rem] font-medium tracking-[0.08em] text-(--secondary) uppercase">
+                          Copied
+                        </p>
+                      )}
                     </div>
                     <button
                       type="button"
                       className="rounded-md border border-[rgba(241,243,252,0.22)] px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.1em] uppercase transition hover:border-[rgba(0,255,255,0.35)]"
-                      onClick={() => setActiveRoomId(null)}
+                      onClick={() => {
+                        void handleDeleteRoom();
+                      }}
+                      disabled={!isArenaAdmin}
                     >
-                      Close
+                      Delete Room
                     </button>
                   </header>
 
@@ -318,14 +414,6 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
                       </p>
                     )}
                   </div>
-
-                  <button
-                    type="button"
-                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-[rgba(0,255,255,0.34)] px-5 text-[0.68rem] font-semibold tracking-[0.12em] text-(--secondary) uppercase transition hover:bg-[rgba(0,255,255,0.1)]"
-                    onClick={handleShareRoom}
-                  >
-                    Share Room URL
-                  </button>
                 </section>
               )}
             </div>
@@ -366,48 +454,6 @@ export function ArenaSidebar({ identity, arenaReady }: ArenaSidebarProps) {
             </div>
           )}
 
-          <div className="pt-2">
-            <p className="font-(--font-mono) text-[0.72rem] tracking-[0.24em] text-(--secondary) uppercase">
-              Active Rooms ({arenaRoomRows.length})
-            </p>
-
-            <div className="mt-3 space-y-2">
-              {arenaRoomRows.length === 0 && (
-                <p className="rounded-2xl border border-[rgba(241,243,252,0.12)] bg-[rgba(8,14,20,0.72)] px-4 py-3 text-sm text-[rgba(241,243,252,0.7)]">
-                  No rooms yet. Create your first arena above.
-                </p>
-              )}
-
-              {arenaRoomRows.map((room) => {
-                const memberCount = arenaMemberRows.filter(
-                  (member) => member.roomId === room.roomId,
-                ).length;
-
-                return (
-                  <button
-                    key={room.roomId}
-                    type="button"
-                    onClick={() => {
-                      setRoomCodeInput(room.roomId);
-                      setActiveRoomId(room.roomId);
-                      setArenaMode("create");
-                    }}
-                    className="w-full rounded-2xl border border-[rgba(241,243,252,0.12)] bg-[rgba(8,14,20,0.74)] px-4 py-3 text-left transition hover:border-[rgba(0,255,255,0.35)]"
-                  >
-                    <p className="font-(--font-mono) text-xs tracking-[0.14em] text-(--secondary) uppercase">
-                      Room {room.roomId}
-                    </p>
-                    <p className="mt-2 text-sm text-[rgba(241,243,252,0.8)]">
-                      Creator {room.creatorName}
-                    </p>
-                    <p className="mt-1 text-xs text-[rgba(241,243,252,0.62)]">
-                      Members {memberCount} • Status {room.matchState.toUpperCase()}
-                    </p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </aside>
   );
