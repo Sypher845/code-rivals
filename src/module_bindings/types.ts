@@ -10,11 +10,22 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const ArenaPowerupLock = __t.object("ArenaPowerupLock", {
+  selectionKey: __t.string(),
+  roomId: __t.string(),
+  playerIdentity: __t.identity(),
+  powerupId: __t.string(),
+  lockedAt: __t.timestamp(),
+});
+export type ArenaPowerupLock = __Infer<typeof ArenaPowerupLock>;
+
 export const ArenaRoom = __t.object("ArenaRoom", {
   roomId: __t.string(),
   creatorIdentity: __t.identity(),
   creatorName: __t.string(),
   matchState: __t.string(),
+  draftPlayerOneIdentity: __t.option(__t.identity()),
+  draftPlayerTwoIdentity: __t.option(__t.identity()),
   rolledPowers: __t.array(__t.string()),
   createdAt: __t.timestamp(),
   startedAt: __t.option(__t.timestamp()),

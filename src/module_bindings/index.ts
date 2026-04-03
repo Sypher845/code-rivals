@@ -38,14 +38,17 @@ import CreateArenaRoomReducer from "./create_arena_room_reducer";
 import DeleteArenaRoomReducer from "./delete_arena_room_reducer";
 import JoinArenaRoomReducer from "./join_arena_room_reducer";
 import KickArenaMemberReducer from "./kick_arena_member_reducer";
+import LockArenaPowerupReducer from "./lock_arena_powerup_reducer";
 import LogInReducer from "./log_in_reducer";
 import LogOutReducer from "./log_out_reducer";
 import SignUpReducer from "./sign_up_reducer";
 import StartArenaMatchReducer from "./start_arena_match_reducer";
+import UnlockArenaPowerupReducer from "./unlock_arena_powerup_reducer";
 
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import ArenaPowerupLockRow from "./arena_powerup_lock_table";
 import ArenaRoomRow from "./arena_room_table";
 import ArenaRoomMemberRow from "./arena_room_member_table";
 import ArenaRoomNoticeRow from "./arena_room_notice_table";
@@ -55,6 +58,20 @@ import AuthSessionRow from "./auth_session_table";
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  arenaPowerupLock: __table({
+    name: 'arena_powerup_lock',
+    indexes: [
+      { accessor: 'arena_powerup_lock_room_id', name: 'arena_powerup_lock_room_id_idx_btree', algorithm: 'btree', columns: [
+        'roomId',
+      ] },
+      { accessor: 'selectionKey', name: 'arena_powerup_lock_selection_key_idx_btree', algorithm: 'btree', columns: [
+        'selectionKey',
+      ] },
+    ],
+    constraints: [
+      { name: 'arena_powerup_lock_selection_key_key', constraint: 'unique', columns: ['selectionKey'] },
+    ],
+  }, ArenaPowerupLockRow),
   arenaRoom: __table({
     name: 'arena_room',
     indexes: [
@@ -111,10 +128,12 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_arena_room", DeleteArenaRoomReducer),
   __reducerSchema("join_arena_room", JoinArenaRoomReducer),
   __reducerSchema("kick_arena_member", KickArenaMemberReducer),
+  __reducerSchema("lock_arena_powerup", LockArenaPowerupReducer),
   __reducerSchema("log_in", LogInReducer),
   __reducerSchema("log_out", LogOutReducer),
   __reducerSchema("sign_up", SignUpReducer),
   __reducerSchema("start_arena_match", StartArenaMatchReducer),
+  __reducerSchema("unlock_arena_powerup", UnlockArenaPowerupReducer),
 );
 
 /** The schema information for all procedures in this module. This is defined the same way as the procedures would have been defined in the server. */

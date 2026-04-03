@@ -7,57 +7,57 @@ import {
 } from "spacetimedb/server";
 import spacetimedb from "../schema";
 import {
+  arena_powerup_lock,
   arena_room_timeout_job,
   register_timeout_waiting_room_export,
 } from "./tables";
 
 type ArenaReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 
-const POWER_CARD_FILENAMES = [
+const POWER_CARD_NAMES = [
   "FlashbangCard",
   "KeySwapCard",
   "LineJumperCard",
   "MirrorShieldCard",
   "NoMistakesCard",
-  "NoRetreat",
+  "SkullCard",
   "TimeHeistCard",
   "TimeKumCard",
   "VisuallyImpairedCard",
 ] as const;
 
-const U64_MASK = (1n << 64n) - 1n;
-
-function makeSeed(roomId: string, timestampMicros: bigint) {
-  let seed = timestampMicros & U64_MASK;
-  for (const char of roomId) {
-    seed = (seed * 131n + BigInt(char.charCodeAt(0))) & U64_MASK;
+function hashToUint32(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
   }
-  return seed === 0n ? 1n : seed;
+  return hash >>> 0;
 }
 
-function nextSeed(seed: bigint) {
-  return (seed * 6364136223846793005n + 1442695040888963407n) & U64_MASK;
+function nextUint32(state: number) {
+  return (Math.imul(state, 1664525) + 1013904223) >>> 0;
 }
 
-function shuffleDeterministic<T>(items: readonly T[], initialSeed: bigint) {
-  const shuffled = [...items];
-  let seed = initialSeed;
+function buildRolledPowers(
+  roomId: string,
+  playerOneIdentityHex: string,
+  playerTwoIdentityHex: string,
+  timestampMicros: bigint,
+) {
+  const seedMaterial = `${roomId}:${playerOneIdentityHex}:${playerTwoIdentityHex}:${timestampMicros.toString()}`;
+  let state = hashToUint32(seedMaterial);
 
+  const shuffled = [...POWER_CARD_NAMES];
   for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    seed = nextSeed(seed);
-    const swapIndex = Number(seed % BigInt(index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [
-      shuffled[swapIndex],
-      shuffled[index],
-    ];
+    state = nextUint32(state);
+    const swapIndex = state % (index + 1);
+    const currentValue = shuffled[index];
+    shuffled[index] = shuffled[swapIndex];
+    shuffled[swapIndex] = currentValue;
   }
 
-  return shuffled;
-}
-
-function rollMatchPowers(roomId: string, timestampMicros: bigint) {
-  const seed = makeSeed(roomId, timestampMicros);
-  return shuffleDeterministic(POWER_CARD_FILENAMES, seed).slice(0, 3);
+  return shuffled.slice(0, 3);
 }
 
 function requireSession(ctx: ArenaReducerCtx) {
@@ -80,10 +80,18 @@ function buildMembershipKey(roomId: string, memberIdentityHex: string) {
   return `${roomId}:${memberIdentityHex}`;
 }
 
+function buildPowerupSelectionKey(roomId: string, playerIdentityHex: string) {
+  return `${roomId}:${playerIdentityHex}`;
+}
+
 function listRoomMembers(ctx: ArenaReducerCtx, roomId: string) {
   return [...ctx.db.arenaRoomMember.iter()].filter(
     (member) => member.roomId === roomId,
   );
+}
+
+function listPowerupLocks(ctx: ArenaReducerCtx, roomId: string) {
+  return [...ctx.db.arenaPowerupLock.arena_powerup_lock_room_id.filter(roomId)];
 }
 
 function listRoomTimeoutJobs(ctx: ArenaReducerCtx, roomId: string) {
@@ -96,6 +104,11 @@ function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
   const roomMembers = listRoomMembers(ctx, roomId);
   for (const member of roomMembers) {
     ctx.db.arenaRoomMember.memberId.delete(member.memberId);
+  }
+
+  const powerupLocks = listPowerupLocks(ctx, roomId);
+  for (const powerupLock of powerupLocks) {
+    ctx.db.arenaPowerupLock.selectionKey.delete(powerupLock.selectionKey);
   }
 
   const timeoutJobs = listRoomTimeoutJobs(ctx, roomId);
@@ -121,6 +134,8 @@ export const create_arena_room = spacetimedb.reducer(
       creatorIdentity: ctx.sender,
       creatorName: session.username,
       matchState: "waiting",
+      draftPlayerOneIdentity: undefined,
+      draftPlayerTwoIdentity: undefined,
       rolledPowers: [],
       createdAt: ctx.timestamp,
       startedAt: undefined,
@@ -258,23 +273,113 @@ export const start_arena_match = spacetimedb.reducer(
       throw new SenderError("At least two users are required to start.");
     }
 
+    const playerOne =
+      roomMembers.find((member) => member.memberIdentity.isEqual(room.creatorIdentity)) ??
+      roomMembers[0];
+    const playerTwo = roomMembers.find(
+      (member) => !member.memberIdentity.isEqual(playerOne.memberIdentity),
+    );
+    if (!playerTwo) {
+      throw new SenderError("Unable to resolve both players for this room.");
+    }
+
     if (room.matchState === "started") {
       return;
     }
 
-    const rolledPowers = rollMatchPowers(
-      normalizedRoomId,
+    const rolledPowers = buildRolledPowers(
+      room.roomId,
+      playerOne.memberIdentity.toHexString(),
+      playerTwo.memberIdentity.toHexString(),
       ctx.timestamp.microsSinceUnixEpoch,
     );
 
     ctx.db.arenaRoom.roomId.update({
       ...room,
       matchState: "started",
+      draftPlayerOneIdentity: playerOne.memberIdentity,
+      draftPlayerTwoIdentity: playerTwo.memberIdentity,
       rolledPowers,
       startedAt: ctx.timestamp,
     });
 
     console.log(`[Arena] match started room_id=${normalizedRoomId}`);
+  },
+);
+
+export const lock_arena_powerup = spacetimedb.reducer(
+  {
+    roomId: t.string(),
+    powerupId: t.string(),
+  },
+  (ctx, { roomId, powerupId }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+    if (!room) {
+      throw new SenderError("Room not found.");
+    }
+
+    if (room.matchState !== "started") {
+      throw new SenderError("Match is not ready for powerup locking.");
+    }
+
+    const isDraftPlayerOne = room.draftPlayerOneIdentity?.isEqual(ctx.sender) ?? false;
+    const isDraftPlayerTwo = room.draftPlayerTwoIdentity?.isEqual(ctx.sender) ?? false;
+    if (!isDraftPlayerOne && !isDraftPlayerTwo) {
+      throw new SenderError("Only assigned players can lock powerups in this room.");
+    }
+
+    const availablePowerups = room.rolledPowers.slice(0, 3);
+    if (!availablePowerups.includes(powerupId)) {
+      throw new SenderError("That powerup is not part of your draft hand.");
+    }
+
+    const selectionKey = buildPowerupSelectionKey(
+      normalizedRoomId,
+      ctx.sender.toHexString(),
+    );
+    const existingLock = ctx.db.arenaPowerupLock.selectionKey.find(selectionKey);
+
+    if (existingLock) {
+      ctx.db.arenaPowerupLock.selectionKey.update({
+        ...existingLock,
+        powerupId,
+        lockedAt: ctx.timestamp,
+      });
+      return;
+    }
+
+    ctx.db.arenaPowerupLock.insert({
+      selectionKey,
+      roomId: normalizedRoomId,
+      playerIdentity: ctx.sender,
+      powerupId,
+      lockedAt: ctx.timestamp,
+    });
+  },
+);
+
+export const unlock_arena_powerup = spacetimedb.reducer(
+  { roomId: t.string() },
+  (ctx, { roomId }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+    if (!room) {
+      throw new SenderError("Room not found.");
+    }
+
+    const selectionKey = buildPowerupSelectionKey(
+      normalizedRoomId,
+      ctx.sender.toHexString(),
+    );
+    const existingLock = ctx.db.arenaPowerupLock.selectionKey.find(selectionKey);
+    if (!existingLock) {
+      return;
+    }
+
+    ctx.db.arenaPowerupLock.selectionKey.delete(selectionKey);
   },
 );
 

@@ -16,6 +16,8 @@ export const arena_room = table(
     creatorIdentity: t.identity(),
     creatorName: t.string(),
     matchState: t.string(),
+    draftPlayerOneIdentity: t.identity().optional(),
+    draftPlayerTwoIdentity: t.identity().optional(),
     rolledPowers: t.array(t.string()),
     createdAt: t.timestamp(),
     startedAt: t.timestamp().optional(),
@@ -34,6 +36,28 @@ export const arena_room_member = table(
     memberName: t.string(),
     membershipKey: t.string().unique(),
     joinedAt: t.timestamp(),
+  },
+);
+
+export const arena_powerup_lock = table(
+  {
+    name: "arena_powerup_lock",
+    public: true,
+    indexes: [
+      {
+        accessor: "arena_powerup_lock_room_id",
+        name: "arena_powerup_lock_room_id",
+        algorithm: "btree",
+        columns: ["roomId"],
+      },
+    ],
+  },
+  {
+    selectionKey: t.string().primaryKey(),
+    roomId: t.string(),
+    playerIdentity: t.identity(),
+    powerupId: t.string(),
+    lockedAt: t.timestamp(),
   },
 );
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { Identity } from "spacetimedb";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
 import { mockFriends } from "./arena-data";
@@ -40,11 +41,7 @@ function generateRoomId(existingRoomIds: Set<string>) {
   return `${Date.now().toString(36).slice(-6).toUpperCase()}`;
 }
 
-export function ArenaSidebar({
-  identity,
-  arenaReady,
-  userSlug,
-}: ArenaSidebarProps) {
+export function ArenaSidebar({ identity, arenaReady, userSlug }: ArenaSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [arenaMode, setArenaMode] = useState<"create" | "join">("create");
@@ -76,16 +73,8 @@ export function ArenaSidebar({
     return arenaMemberRows
       .filter((member) => member.roomId === activeRoom.roomId)
       .sort((left, right) => {
-        if (
-          left.joinedAt.microsSinceUnixEpoch <
-          right.joinedAt.microsSinceUnixEpoch
-        )
-          return -1;
-        if (
-          left.joinedAt.microsSinceUnixEpoch >
-          right.joinedAt.microsSinceUnixEpoch
-        )
-          return 1;
+        if (left.joinedAt.microsSinceUnixEpoch < right.joinedAt.microsSinceUnixEpoch) return -1;
+        if (left.joinedAt.microsSinceUnixEpoch > right.joinedAt.microsSinceUnixEpoch) return 1;
         return 0;
       });
   }, [activeRoom, arenaMemberRows]);
@@ -99,10 +88,7 @@ export function ArenaSidebar({
       activeRoom &&
       activeRoomMembers.some((member) => member.memberIdentity.isEqual(identity)),
   );
-  const onlineFriends = useMemo(
-    () => mockFriends.filter((friend) => friend.isOnline),
-    [],
-  );
+  const onlineFriends = useMemo(() => mockFriends.filter((friend) => friend.isOnline), []);
 
   const pushStatus = (message: string, tone: "neutral" | "error" = "neutral") => {
     setStatusTone(tone);
@@ -171,8 +157,7 @@ export function ArenaSidebar({
       setArenaMode("create");
       pushStatus(`Arena ${roomId} created. Share it with your rival.`);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to create room.";
+      const message = error instanceof Error ? error.message : "Unable to create room.";
       pushStatus(message, "error");
     }
   };
@@ -193,9 +178,7 @@ export function ArenaSidebar({
       return;
     }
 
-    const existingRoom = arenaRoomRows.find(
-      (room) => room.roomId === normalizedRoomCode,
-    );
+    const existingRoom = arenaRoomRows.find((room) => room.roomId === normalizedRoomCode);
     if (!existingRoom) {
       pushStatus(`Room ${normalizedRoomCode} was not found.`, "error");
       return;
@@ -206,8 +189,7 @@ export function ArenaSidebar({
       setActiveRoomId(normalizedRoomCode);
       pushStatus(`Connected to arena ${normalizedRoomCode}.`);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to join this room.";
+      const message = error instanceof Error ? error.message : "Unable to join this room.";
       pushStatus(message, "error");
     }
   };
@@ -225,14 +207,15 @@ export function ArenaSidebar({
       return;
     }
 
-    if (location.pathname.endsWith("/powerups")) {
+    if (
+      location.pathname.includes("/powerups") ||
+      location.pathname.includes("/match")
+    ) {
       return;
     }
 
     const query = new URLSearchParams({ room: activeRoom.roomId });
-    navigate(
-      `/user/${encodeURIComponent(userSlug)}/powerups?${query.toString()}`,
-    );
+    navigate(`/user/${encodeURIComponent(userSlug)}/powerups?${query.toString()}`);
   }, [
     activeRoom,
     isCurrentUserInActiveRoom,
@@ -247,8 +230,7 @@ export function ArenaSidebar({
       await startArenaMatch({ roomId: activeRoom.roomId });
       pushStatus(`Match started in room ${activeRoom.roomId}.`);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to start this match.";
+      const message = error instanceof Error ? error.message : "Unable to start this match.";
       pushStatus(message, "error");
     }
   };
@@ -259,8 +241,7 @@ export function ArenaSidebar({
       await kickArenaMember({ roomId: activeRoom.roomId, memberId });
       pushStatus("User removed from room.");
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to kick this user.";
+      const message = error instanceof Error ? error.message : "Unable to kick this user.";
       pushStatus(message, "error");
     }
   };
@@ -291,19 +272,16 @@ export function ArenaSidebar({
       setActiveRoomId(null);
       pushStatus(`Room ${activeRoom.roomId} deleted.`);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Unable to delete room.";
+      const message = error instanceof Error ? error.message : "Unable to delete room.";
       pushStatus(message, "error");
     }
   };
 
   return (
     <aside className="space-y-5">
-      <section
-        className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}
-      >
+      <section className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}>
         <div className={panelNoiseClass} />
-        <div className="relative z-1 space-y-5">
+      <div className="relative z-1 space-y-5">
           <div>
             <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
               Quick Arena
@@ -415,9 +393,7 @@ export function ArenaSidebar({
                       <p className="font-[var(--font-mono)] text-[0.56rem] tracking-[0.14em] text-[rgba(241,243,252,0.58)] uppercase">
                         Match
                       </p>
-                      <p className="mt-1 text-xs font-semibold">
-                        {activeRoom.matchState.toUpperCase()}
-                      </p>
+                      <p className="mt-1 text-xs font-semibold">{activeRoom.matchState.toUpperCase()}</p>
                     </article>
                   </div>
 
@@ -526,6 +502,7 @@ export function ArenaSidebar({
               {statusMessage}
             </div>
           )}
+
         </div>
       </section>
 

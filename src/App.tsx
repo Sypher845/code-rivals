@@ -13,6 +13,8 @@ import { reducers, tables } from "./module_bindings";
 import { ArenaPage } from "./pages/ArenaPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { MatchLaunchPage } from "./pages/MatchLaunchPage";
+import { PowerupReadyPage } from "./pages/PowerupReadyPage";
 import { PowerupSelectionPage } from "./pages/PowerSelectionPage";
 import { SignupPage } from "./pages/SignupPage";
 
@@ -104,10 +106,11 @@ function UserArenaRoute({
 
 type UserPowerupRouteProps = {
   expectedSlug: string;
+  identity: Identity | undefined;
   username: string;
 };
 
-function UserPowerupRoute({ expectedSlug, username }: UserPowerupRouteProps) {
+function UserPowerupRoute({ expectedSlug, identity, username }: UserPowerupRouteProps) {
   const params = useParams();
   const requestedSlug = params.slug;
 
@@ -119,7 +122,63 @@ function UserPowerupRoute({ expectedSlug, username }: UserPowerupRouteProps) {
     return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
   }
 
-  return <PowerupSelectionPage userSlug={expectedSlug} username={username} />;
+  return (
+    <PowerupSelectionPage
+      userSlug={expectedSlug}
+      username={username}
+      identity={identity}
+    />
+  );
+}
+
+function UserPowerupReadyRoute({
+  expectedSlug,
+  identity,
+  username,
+}: UserPowerupRouteProps) {
+  const params = useParams();
+  const requestedSlug = params.slug;
+
+  if (!requestedSlug) {
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  if (requestedSlug !== expectedSlug) {
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  return (
+    <PowerupReadyPage
+      userSlug={expectedSlug}
+      username={username}
+      identity={identity}
+    />
+  );
+}
+
+function UserMatchRoute({
+  expectedSlug,
+  identity,
+  username,
+}: UserPowerupRouteProps) {
+  const params = useParams();
+  const requestedSlug = params.slug;
+
+  if (!requestedSlug) {
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  if (requestedSlug !== expectedSlug) {
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  return (
+    <MatchLaunchPage
+      userSlug={expectedSlug}
+      username={username}
+      identity={identity}
+    />
+  );
 }
 
 function App() {
@@ -329,11 +388,40 @@ function App() {
       />
       <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
       <Route
+        path="/user/:slug/powerups/ready"
+        element={
+          session && currentUserSlug ? (
+            <UserPowerupReadyRoute
+              expectedSlug={currentUserSlug}
+              identity={identity}
+              username={session.username}
+            />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
+      <Route
         path="/user/:slug/powerups"
         element={
           session && currentUserSlug ? (
             <UserPowerupRoute
               expectedSlug={currentUserSlug}
+              identity={identity}
+              username={session.username}
+            />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
+      <Route
+        path="/user/:slug/match"
+        element={
+          session && currentUserSlug ? (
+            <UserMatchRoute
+              expectedSlug={currentUserSlug}
+              identity={identity}
               username={session.username}
             />
           ) : (
@@ -372,12 +460,7 @@ function App() {
       />
       <Route
         path="*"
-        element={
-          <Navigate
-            replace
-            to={session && currentUserSlug ? sessionArenaPath : "/"}
-          />
-        }
+        element={<Navigate replace to={session && currentUserSlug ? sessionArenaPath : "/"} />}
       />
     </Routes>
   );
