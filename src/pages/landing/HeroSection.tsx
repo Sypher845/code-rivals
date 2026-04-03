@@ -128,27 +128,12 @@ export function HeroSection({
       : "/login";
 
   const primaryCtaLabel = isAuthenticated ? "Open my arena" : "Start a duel";
-  const secondaryCtaLabel = isAuthenticated
-    ? `Continue as ${username ?? "pilot"}`
-    : "Watch live";
 
   return (
     <section className="relative overflow-hidden px-5 pb-24 pt-32 sm:px-8 xl:px-10">
       <div className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[32rem] max-w-[70rem] bg-[radial-gradient(ellipse_at_top,rgba(224,141,255,0.1),transparent_68%)]" />
 
       <div className="mx-auto max-w-7xl">
-        <a
-          href="#features"
-          data-landing-reveal="hero"
-          className="landing-reveal inline-flex items-center gap-2 rounded-full border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-3 py-1.5 text-xs text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:text-[var(--on-background)]"
-        >
-          <span className="rounded-full border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.12)] px-2 py-0.5 text-[0.65rem] font-medium text-[var(--primary)] uppercase tracking-[0.08em]">
-            New
-          </span>
-          <span>SpacetimeDB rooms, zero refresh drift</span>
-          <ArrowRight className="h-3.5 w-3.5 text-[var(--text-tertiary)]" />
-        </a>
-
         <div className="mt-8 grid gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,30rem)] lg:items-start xl:gap-16">
           <div className="max-w-2xl">
             <h1
@@ -174,17 +159,10 @@ export function HeroSection({
             >
               <Link
                 to={isAuthenticated ? userArenaPath : "/signup"}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-transparent bg-[var(--on-background)] px-5 text-sm font-medium text-[var(--background)] transition hover:-translate-y-px hover:opacity-90 hover:shadow-[0_12px_22px_rgba(0,0,0,0.36)]"
+                className="inline-flex min-h-12 min-w-40 items-center justify-center gap-2 rounded-lg border border-transparent bg-[var(--on-background)] px-5 text-md font-medium text-[var(--background)] transition hover:-translate-y-px hover:opacity-90 hover:shadow-[0_12px_22px_rgba(0,0,0,0.36)]"
               >
-                <Swords className="h-4 w-4" />
+                <Swords className="h-5 w-5" />
                 <span>{primaryCtaLabel}</span>
-              </Link>
-              <Link
-                to={isAuthenticated ? userArenaPath : "/login"}
-                className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-5 text-sm text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)] hover:text-[var(--on-background)]"
-              >
-                <Play className="h-4 w-4" />
-                <span>{secondaryCtaLabel}</span>
               </Link>
             </div>
           </div>
