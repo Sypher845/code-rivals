@@ -13,7 +13,7 @@ import { reducers, tables } from "./module_bindings";
 import { ArenaPage } from "./pages/ArenaPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
-import { PowerupSelectionPage } from "./pages/PowerupSelectionPage";
+import { PowerupSelectionPage } from "./pages/PowerSelectionPage";
 import { SignupPage } from "./pages/SignupPage";
 
 export type LoginFormState = {
