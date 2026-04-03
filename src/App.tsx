@@ -1,10 +1,20 @@
-import { useState, type FormEvent } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import type { Identity } from "spacetimedb";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import { useReducer, useSpacetimeDB, useTable } from "spacetimedb/react";
 import { reducers, tables } from "./module_bindings";
-import { LoginPage } from "./pages/LoginPage";
-import { SignupPage } from "./pages/SignupPage";
+import { ArenaPage } from "./pages/ArenaPage";
 import { LandingPage } from "./pages/LandingPage";
+import { LoginPage } from "./pages/LoginPage";
+import { PowerupSelectionPage } from "./pages/PowerupSelectionPage";
+import { SignupPage } from "./pages/SignupPage";
 
 export type LoginFormState = {
   email: string;
@@ -30,6 +40,88 @@ const defaultSignUpForm: SignUpFormState = {
   confirmPassword: "",
 };
 
+function buildUserArenaPath(userSlug: string) {
+  return `/user/${encodeURIComponent(userSlug)}`;
+}
+
+function isAuthPath(pathname: string) {
+  return (
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/sign-up"
+  );
+}
+
+type UserArenaRouteProps = {
+  expectedSlug: string;
+  identity: Identity | undefined;
+  isLoggingOut: boolean;
+  onLogOut: () => void;
+  shortIdentity: string;
+  username: string;
+};
+
+function UserArenaRoute({
+  expectedSlug,
+  identity,
+  isLoggingOut,
+  onLogOut,
+  shortIdentity,
+  username,
+}: UserArenaRouteProps) {
+  const params = useParams();
+  const requestedSlug = params.slug;
+
+  if (!requestedSlug) {
+    console.warn(
+      "[Auth] missing slug in path, redirecting to canonical user route",
+      {
+        expectedSlug,
+      },
+    );
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  if (requestedSlug !== expectedSlug) {
+    console.warn("[Auth] slug mismatch, rewriting URL to authenticated slug", {
+      requestedSlug,
+      expectedSlug,
+    });
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  return (
+    <ArenaPage
+      identity={identity}
+      isLoggingOut={isLoggingOut}
+      onLogOut={onLogOut}
+      shortIdentity={shortIdentity}
+      userSlug={expectedSlug}
+      username={username}
+    />
+  );
+}
+
+type UserPowerupRouteProps = {
+  expectedSlug: string;
+  username: string;
+};
+
+function UserPowerupRoute({ expectedSlug, username }: UserPowerupRouteProps) {
+  const params = useParams();
+  const requestedSlug = params.slug;
+
+  if (!requestedSlug) {
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  if (requestedSlug !== expectedSlug) {
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  return <PowerupSelectionPage userSlug={expectedSlug} username={username} />;
+}
+
 function App() {
   const [loginForm, setLoginForm] = useState(defaultLoginForm);
   const [signUpForm, setSignUpForm] = useState(defaultSignUpForm);
@@ -39,6 +131,7 @@ function App() {
   >(null);
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { identity, isActive: connected, connectionError } = useSpacetimeDB();
 
   const signUp = useReducer(reducers.signUp);
@@ -49,6 +142,10 @@ function App() {
   const session = sessionRows.find((row) =>
     identity ? row.sessionIdentity.isEqual(identity) : false,
   );
+  const currentUserSlug = session?.userSlug;
+  const sessionArenaPath = currentUserSlug
+    ? buildUserArenaPath(currentUserSlug)
+    : "/login";
 
   const shortIdentity = identity?.toHexString().slice(0, 12) ?? "syncing";
   const isBusy = submitting !== null;
@@ -65,6 +162,52 @@ function App() {
           ? "Loading auth session table..."
           : "No linked account yet. Use Sign up or Log in.");
 
+  useEffect(() => {
+    console.debug("[Auth] subscription snapshot", {
+      connected,
+      hasIdentity: Boolean(identity),
+      sessionReady,
+      hasSession: Boolean(session),
+      currentPath: location.pathname,
+      sessionSlug: currentUserSlug,
+    });
+  }, [
+    connected,
+    currentUserSlug,
+    identity,
+    location.pathname,
+    session,
+    sessionReady,
+  ]);
+
+  useEffect(() => {
+    if (!session || !sessionReady || !currentUserSlug) {
+      return;
+    }
+
+    if (!isAuthPath(location.pathname) && location.pathname !== "/slug") {
+      return;
+    }
+
+    const targetPath = buildUserArenaPath(currentUserSlug);
+    if (location.pathname === targetPath) {
+      return;
+    }
+
+    console.info("[Auth] redirecting to user slug page", {
+      from: location.pathname,
+      to: targetPath,
+      slug: currentUserSlug,
+    });
+    navigate(targetPath, { replace: true });
+  }, [
+    currentUserSlug,
+    location.pathname,
+    navigate,
+    session,
+    sessionReady,
+  ]);
+
   const handleTabChange = (tab: "login" | "signup") => {
     navigate(tab === "signup" ? "/signup" : "/login");
     setStatusMessage(null);
@@ -78,12 +221,13 @@ function App() {
     try {
       await signUp(signUpForm);
       setSignUpForm(defaultSignUpForm);
-      setStatusMessage("Account created successfully.");
-      navigate("/", { replace: true });
+      setStatusMessage("Account created. Syncing your user page...");
+      console.info("[Auth] sign-up reducer succeeded; waiting for session slug.");
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Authentication failed.",
       );
+      console.error("[Auth] sign-up reducer failed", error);
     } finally {
       setSubmitting(null);
     }
@@ -97,12 +241,13 @@ function App() {
     try {
       await logIn(loginForm);
       setLoginForm(defaultLoginForm);
-      setStatusMessage("Login successful.");
-      navigate("/", { replace: true });
+      setStatusMessage("Login successful. Syncing your user page...");
+      console.info("[Auth] log-in reducer succeeded; waiting for session slug.");
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Authentication failed.",
       );
+      console.error("[Auth] log-in reducer failed", error);
     } finally {
       setSubmitting(null);
     }
@@ -114,11 +259,13 @@ function App() {
 
     try {
       await logOut();
-      navigate("/", { replace: true });
+      navigate("/");
+      console.info("[Auth] session closed and redirected to landing.");
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Unable to close the session.",
       );
+      console.error("[Auth] log-out reducer failed", error);
     } finally {
       setSubmitting(null);
     }
@@ -131,7 +278,7 @@ function App() {
         element={
           <LandingPage
             isAuthenticated={Boolean(session)}
-            userSlug={session?.userSlug}
+            userSlug={currentUserSlug}
             username={session?.username}
           />
         }
@@ -139,8 +286,8 @@ function App() {
       <Route
         path="/login"
         element={
-          session ? (
-            <Navigate replace to="/" />
+          session && currentUserSlug ? (
+            <Navigate replace to={sessionArenaPath} />
           ) : (
             <LoginPage
               canSubmit={canSubmit}
@@ -161,8 +308,8 @@ function App() {
       <Route
         path="/signup"
         element={
-          session ? (
-            <Navigate replace to="/" />
+          session && currentUserSlug ? (
+            <Navigate replace to={sessionArenaPath} />
           ) : (
             <SignupPage
               canSubmit={canSubmit}
@@ -180,60 +327,54 @@ function App() {
           )
         }
       />
+      <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
       <Route
-        path="/logout"
+        path="/user/:slug/powerups"
         element={
-          session ? (
-            <LogoutPage
-              isBusy={submitting === "logout"}
-              onLogOut={() => {
-                void handleLogOut();
-              }}
+          session && currentUserSlug ? (
+            <UserPowerupRoute
+              expectedSlug={currentUserSlug}
               username={session.username}
             />
           ) : (
-            <Navigate replace to="/" />
+            <Navigate replace to="/login" />
           )
         }
       />
-      <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
-      <Route path="*" element={<Navigate replace to="/" />} />
+      <Route
+        path="/user/:slug/*"
+        element={
+          session && currentUserSlug ? (
+            <UserArenaRoute
+              expectedSlug={currentUserSlug}
+              identity={identity}
+              isLoggingOut={submitting === "logout"}
+              onLogOut={() => {
+                void handleLogOut();
+              }}
+              shortIdentity={shortIdentity}
+              username={session.username}
+            />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
+      <Route
+        path="/slug"
+        element={
+          session && currentUserSlug ? (
+            <Navigate replace to={sessionArenaPath} />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
+      <Route
+        path="*"
+        element={<Navigate replace to={session && currentUserSlug ? sessionArenaPath : "/"} />}
+      />
     </Routes>
-  );
-}
-
-function LogoutPage({
-  isBusy,
-  onLogOut,
-  username,
-}: {
-  isBusy: boolean;
-  onLogOut: () => void;
-  username: string;
-}) {
-  return (
-    <main className="grid min-h-screen place-items-center px-6">
-      <div className="w-full max-w-xl rounded-3xl border border-[var(--arena-border)] bg-[var(--arena-surface-1)] p-8 shadow-[0_24px_64px_rgba(0,0,0,0.34)]">
-        <p className="font-[var(--font-mono)] text-[0.78rem] tracking-[0.2em] text-[var(--secondary)] uppercase">
-          Session Ready
-        </p>
-        <h1 className="mt-4 text-4xl font-bold tracking-[-0.05em] uppercase">
-          Welcome, {username}
-        </h1>
-        <p className="mt-4 text-[var(--text-secondary)]">
-          You are signed in. Head back to the landing page or close this
-          session.
-        </p>
-        <button
-          className="mt-6 min-h-[3.2rem] rounded-xl border border-[rgba(224,141,255,0.32)] bg-[rgba(29,18,39,0.52)] px-5 font-[var(--font-mono)] text-sm tracking-[0.08em] text-[var(--on-background)] uppercase transition hover:bg-[rgba(45,22,41,0.72)] disabled:cursor-not-allowed disabled:opacity-60"
-          type="button"
-          disabled={isBusy}
-          onClick={onLogOut}
-        >
-          {isBusy ? "Logging out..." : "Log out"}
-        </button>
-      </div>
-    </main>
   );
 }
 
