@@ -72,7 +72,8 @@ export function ArenaPage({
   };
 
   const showQuickArena =
-    !location.pathname.endsWith("/friends") && !location.pathname.endsWith("/leaderboard");
+    !location.pathname.endsWith("/friends") &&
+    !location.pathname.endsWith("/leaderboard");
   const showHeroCard = showQuickArena;
 
   return (
@@ -83,11 +84,17 @@ export function ArenaPage({
         <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
           <Link to="/" className="inline-flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-lg border border-[rgba(0,229,204,0.3)] bg-[rgba(0,229,204,0.08)]">
-              <img src={coderivalsMark} alt="CodeRivals" className="h-5 w-5 rounded-sm" />
+              <img
+                src={coderivalsMark}
+                alt="CodeRivals"
+                className="h-5 w-5 rounded-sm"
+              />
             </div>
             <span className="inline-flex items-end gap-1 text-sm font-semibold tracking-[0.1em] uppercase">
               <span className="font-(--font-heading)">Code</span>
-              <span className="relative font-(--font-heading) text-(--arena-accent)">Rivals</span>
+              <span className="relative font-(--font-heading) text-(--arena-accent)">
+                Rivals
+              </span>
             </span>
           </Link>
 
@@ -95,7 +102,8 @@ export function ArenaPage({
             <Link
               to={`/user/${userSlug}`}
               className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                !location.pathname.endsWith("/friends") && !location.pathname.endsWith("/leaderboard")
+                !location.pathname.endsWith("/friends") &&
+                !location.pathname.endsWith("/leaderboard")
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
               }`}
@@ -180,7 +188,8 @@ export function ArenaPage({
                     /user/{userSlug}
                   </p>
                   <h1 className="mt-1 font-(--font-heading) text-4xl tracking-[0.01em] text-(--on-background)">
-                    Ready for battle, <span className="text-(--arena-accent)">{username}</span>?
+                    Ready for battle,{" "}
+                    <span className="text-(--arena-accent)">{username}</span>?
                   </h1>
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <span className="inline-flex items-center rounded-full border border-[rgba(0,229,204,0.38)] bg-[rgba(0,229,204,0.12)] px-3 py-1 text-[0.74rem] font-semibold tracking-[0.08em] text-(--arena-accent) uppercase">
@@ -191,7 +200,9 @@ export function ArenaPage({
                       1,847 ELO
                     </span>
                     <span className="text-[rgba(241,243,252,0.4)]">|</span>
-                    <span className="text-sm text-[rgba(241,243,252,0.56)]">Top 15%</span>
+                    <span className="text-sm text-[rgba(241,243,252,0.56)]">
+                      Top 15%
+                    </span>
                   </div>
                 </div>
               </div>
@@ -201,12 +212,18 @@ export function ArenaPage({
 
             <div className="relative mt-6 grid grid-cols-2 gap-0 border-t border-[rgba(255,255,255,0.08)] pt-4 sm:max-w-md">
               <div className="px-2 text-center">
-                <p className="text-4xl font-bold text-(--signal-success)">{myActiveRoomsCount}</p>
-                <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">Current Streak</p>
+                <p className="text-4xl font-bold text-(--signal-success)">
+                  {myActiveRoomsCount}
+                </p>
+                <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">
+                  Current Streak
+                </p>
               </div>
               <div className="border-l border-[rgba(255,255,255,0.08)] px-2 text-center">
                 <p className="text-4xl font-bold text-(--on-background)">63%</p>
-                <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">Win Rate</p>
+                <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">
+                  Win Rate
+                </p>
               </div>
             </div>
           </section>
@@ -223,7 +240,11 @@ export function ArenaPage({
 
           {showQuickArena ? (
             <div className="w-full xl:sticky xl:top-20 xl:max-w-[400px] xl:justify-self-end xl:self-start">
-              <ArenaSidebar identity={identity} arenaReady={arenaReady} />
+              <ArenaSidebar
+                identity={identity}
+                arenaReady={arenaReady}
+                userSlug={userSlug}
+              />
             </div>
           ) : null}
         </div>

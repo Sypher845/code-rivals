@@ -13,6 +13,7 @@ import { reducers, tables } from "./module_bindings";
 import { ArenaPage } from "./pages/ArenaPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
+import { PowerupSelectionPage } from "./pages/PowerupSelectionPage";
 import { SignupPage } from "./pages/SignupPage";
 
 export type LoginFormState = {
@@ -72,10 +73,20 @@ function UserArenaRoute({
   const requestedSlug = params.slug;
 
   if (!requestedSlug) {
+    console.warn(
+      "[Auth] missing slug in path, redirecting to canonical user route",
+      {
+        expectedSlug,
+      },
+    );
     return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
   }
 
   if (requestedSlug !== expectedSlug) {
+    console.warn("[Auth] slug mismatch, rewriting URL to authenticated slug", {
+      requestedSlug,
+      expectedSlug,
+    });
     return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
   }
 
@@ -89,6 +100,26 @@ function UserArenaRoute({
       username={username}
     />
   );
+}
+
+type UserPowerupRouteProps = {
+  expectedSlug: string;
+  username: string;
+};
+
+function UserPowerupRoute({ expectedSlug, username }: UserPowerupRouteProps) {
+  const params = useParams();
+  const requestedSlug = params.slug;
+
+  if (!requestedSlug) {
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  if (requestedSlug !== expectedSlug) {
+    return <Navigate replace to={buildUserArenaPath(expectedSlug)} />;
+  }
+
+  return <PowerupSelectionPage userSlug={expectedSlug} username={username} />;
 }
 
 function App() {
@@ -132,6 +163,24 @@ function App() {
           : "No linked account yet. Use Sign up or Log in.");
 
   useEffect(() => {
+    console.debug("[Auth] subscription snapshot", {
+      connected,
+      hasIdentity: Boolean(identity),
+      sessionReady,
+      hasSession: Boolean(session),
+      currentPath: location.pathname,
+      sessionSlug: currentUserSlug,
+    });
+  }, [
+    connected,
+    currentUserSlug,
+    identity,
+    location.pathname,
+    session,
+    sessionReady,
+  ]);
+
+  useEffect(() => {
     if (!session || !sessionReady || !currentUserSlug) {
       return;
     }
@@ -145,8 +194,19 @@ function App() {
       return;
     }
 
+    console.info("[Auth] redirecting to user slug page", {
+      from: location.pathname,
+      to: targetPath,
+      slug: currentUserSlug,
+    });
     navigate(targetPath, { replace: true });
-  }, [currentUserSlug, location.pathname, navigate, session, sessionReady]);
+  }, [
+    currentUserSlug,
+    location.pathname,
+    navigate,
+    session,
+    sessionReady,
+  ]);
 
   const handleTabChange = (tab: "login" | "signup") => {
     navigate(tab === "signup" ? "/signup" : "/login");
@@ -162,10 +222,12 @@ function App() {
       await signUp(signUpForm);
       setSignUpForm(defaultSignUpForm);
       setStatusMessage("Account created. Syncing your user page...");
+      console.info("[Auth] sign-up reducer succeeded; waiting for session slug.");
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Authentication failed.",
       );
+      console.error("[Auth] sign-up reducer failed", error);
     } finally {
       setSubmitting(null);
     }
@@ -180,10 +242,12 @@ function App() {
       await logIn(loginForm);
       setLoginForm(defaultLoginForm);
       setStatusMessage("Login successful. Syncing your user page...");
+      console.info("[Auth] log-in reducer succeeded; waiting for session slug.");
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Authentication failed.",
       );
+      console.error("[Auth] log-in reducer failed", error);
     } finally {
       setSubmitting(null);
     }
@@ -196,10 +260,12 @@ function App() {
     try {
       await logOut();
       navigate("/");
+      console.info("[Auth] session closed and redirected to landing.");
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Unable to close the session.",
       );
+      console.error("[Auth] log-out reducer failed", error);
     } finally {
       setSubmitting(null);
     }
@@ -262,6 +328,19 @@ function App() {
         }
       />
       <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
+      <Route
+        path="/user/:slug/powerups"
+        element={
+          session && currentUserSlug ? (
+            <UserPowerupRoute
+              expectedSlug={currentUserSlug}
+              username={session.username}
+            />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
       <Route
         path="/user/:slug/*"
         element={
