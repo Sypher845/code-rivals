@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -69,14 +69,12 @@ export function PowerupSelectionPage({
   }, [roomPowerCardNames]);
 
   const [activeIndex, setActiveIndex] = useState(0);
+  const [direction, setDirection] = useState(0); // -1 = left, 1 = right
   const [lockedPowerupId, setLockedPowerupId] = useState<string | null>(null);
   const [lockStatusMessage, setLockStatusMessage] = useState<string | null>(null);
   const [lockSubmitting, setLockSubmitting] = useState(false);
-  const railRef = useRef<HTMLDivElement | null>(null);
-  const powerupRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   useEffect(() => {
-    powerupRefs.current = [];
     setLockedPowerupId(null);
     setActiveIndex((currentIndex) => mod(currentIndex, powerups.length));
   }, [powerups.length]);
@@ -152,15 +150,19 @@ export function PowerupSelectionPage({
     }
   };
 
-  const cycle = (delta: number) => {
+  const cycle = useCallback((delta: number) => {
     if (isLocked || powerups.length === 0) return;
+    setDirection(delta);
     setActiveIndex((current) => mod(current + delta, powerups.length));
-  };
+  }, [isLocked, powerups.length]);
 
-  const selectIndex = (index: number) => {
+  const selectIndex = useCallback((index: number) => {
     if (isLocked || powerups.length === 0) return;
-    setActiveIndex(mod(index, powerups.length));
-  };
+    const wrappedIndex = mod(index, powerups.length);
+    const delta = wrappedIndex - activeIndex;
+    setDirection(delta >= 0 ? 1 : -1);
+    setActiveIndex(wrappedIndex);
+  }, [isLocked, powerups.length, activeIndex]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -186,19 +188,7 @@ export function PowerupSelectionPage({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activePowerup?.id, isLocked, powerups.length]);
-
-  useEffect(() => {
-    const rail = railRef.current;
-    const selectedPowerup = powerupRefs.current[activeIndex];
-    if (!rail || !selectedPowerup) return;
-
-    selectedPowerup.scrollIntoView({
-      behavior: "smooth",
-      block: "nearest",
-      inline: "center",
-    });
-  }, [activeIndex]);
+  }, [activePowerup?.id, isLocked, powerups.length, cycle]);
 
   useEffect(() => {
     if (!normalizedRoomId || !activeRoom) {
@@ -231,6 +221,31 @@ export function PowerupSelectionPage({
         : powerups.length === 0
           ? "Your cards are not assigned yet. Wait for match start or verify room membership."
           : null;
+
+  /* ── carousel layout helpers ── */
+  const getVisibleCards = () => {
+    if (powerups.length === 0) return [];
+    const total = powerups.length;
+    const positions: Array<{ powerup: PowerupDescriptor; index: number; offset: number }> = [];
+
+    // Show up to 2 cards on each side for a 5-card view, or fewer if not enough cards
+    const range = Math.min(Math.floor(total / 2), 2);
+
+    for (let delta = -range; delta <= range; delta++) {
+      const idx = mod(activeIndex + delta, total);
+      // Avoid duplicates when total is small
+      if (positions.find((p) => p.index === idx)) continue;
+      positions.push({
+        powerup: powerups[idx],
+        index: idx,
+        offset: delta,
+      });
+    }
+
+    return positions;
+  };
+
+  const visibleCards = getVisibleCards();
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-(--arena-page-bg) px-4 py-8 text-(--on-background) sm:px-8">
@@ -265,99 +280,158 @@ export function PowerupSelectionPage({
             <p className="text-sm text-[rgba(241,243,252,0.82)]">{missingRoomMessage}</p>
           </section>
         ) : (
-          <section className="relative left-1/2 z-20 mt-6 min-h-[24.5rem] w-screen -translate-x-1/2 px-4 sm:mt-8 sm:min-h-[32rem] sm:px-8">
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-20 w-10 bg-gradient-to-r from-[#070b12] to-transparent sm:w-18" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-20 w-10 bg-gradient-to-l from-[#070b12] to-transparent sm:w-18" />
+          <section className="relative mt-6 sm:mt-8">
+            {/* Carousel container */}
+            <div className="relative flex min-h-[24.5rem] items-center justify-center sm:min-h-[32rem]">
+              {/* Edge fades */}
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-30 w-16 bg-gradient-to-r from-[var(--arena-page-bg,#070b12)] to-transparent sm:w-24" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-30 w-16 bg-gradient-to-l from-[var(--arena-page-bg,#070b12)] to-transparent sm:w-24" />
 
-            <div
-              ref={railRef}
-              className={`hide-scrollbar flex items-start gap-4 px-1 pb-2 sm:gap-6 ${isLocked ? "overflow-x-hidden" : "overflow-x-auto"}`}
-            >
-              <div className="w-[calc(50%-9.6rem)] shrink-0 sm:w-[calc(50%-13.2rem)]" aria-hidden="true" />
-              {powerups.map((powerup, index) => {
-                const active = index === activeIndex;
-                const lockedCard = lockedPowerupId === powerup.id;
-                const CardComponent = powerup.Card;
+              {/* Left arrow */}
+              <button
+                type="button"
+                onClick={() => cycle(-1)}
+                disabled={isLocked}
+                className="absolute left-2 z-40 grid h-12 w-12 place-items-center rounded-full border border-[rgba(241,243,252,0.15)] bg-[rgba(10,14,20,0.7)] text-[var(--on-background)] backdrop-blur-sm transition hover:border-[rgba(224,141,255,0.4)] hover:bg-[rgba(224,141,255,0.1)] hover:text-[var(--primary)] disabled:opacity-30 sm:left-6 sm:h-14 sm:w-14"
+                aria-label="Previous card"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 4l-6 6 6 6" />
+                </svg>
+              </button>
 
-                return (
-                  <motion.button
-                    key={powerup.id}
-                    ref={(element) => {
-                      powerupRefs.current[index] = element;
-                    }}
-                    type="button"
-                    onClick={() => selectIndex(index)}
-                    initial={false}
-                    animate={{
-                      scale: active ? 1 : 0.9,
-                      opacity: active ? 1 : 0.45,
-                      y: active ? 0 : 8,
-                      filter: active ? "blur(0px)" : "blur(1.2px)",
-                    }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 260,
-                      damping: 28,
-                      mass: 0.9,
-                    }}
-                    className={`${panelFrameClass} relative shrink-0 rounded-3xl border p-4 text-center outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
-                      active
-                        ? "w-[19.2rem] sm:w-[26.4rem]"
-                        : "w-[15.6rem] border-[rgba(146,168,210,0.22)] bg-[rgba(11,17,28,0.58)] sm:w-[21.6rem]"
-                    } ${
-                      active && lockedCard
-                        ? "border-[rgba(167,176,191,0.65)] bg-[rgba(22,25,33,0.9)] opacity-90"
-                        : ""
-                    } ${
-                      active && !lockedCard
-                        ? "border-[rgba(233,242,255,0.6)] bg-[rgba(8,22,30,0.9)] opacity-100"
-                        : ""
-                    }`}
-                    aria-pressed={active}
-                    disabled={isLocked && !lockedCard}
-                  >
-                    {active && (
-                      <span
-                        className={`pointer-events-none absolute inset-0 z-20 rounded-3xl border-2 ${
-                          lockedCard
-                            ? "border-[rgba(167,176,191,0.8)]"
-                            : "border-[rgba(233,242,255,0.95)]"
-                        }`}
-                        aria-hidden="true"
-                      />
-                    )}
-                    <div className="relative z-1 flex h-full flex-col items-center gap-3">
-                      <motion.div
-                        initial={false}
-                        animate={{
-                          scale: active ? 1 : 0.86,
-                        }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 280,
-                          damping: 26,
-                        }}
-                      >
-                        <CardComponent
-                          size={active ? 384 : 288}
-                          className={lockedCard ? "saturate-50" : ""}
-                        />
-                      </motion.div>
-                    </div>
-                  </motion.button>
-                );
-              })}
-              <div className="w-[calc(50%-9.6rem)] shrink-0 sm:w-[calc(50%-13.2rem)]" aria-hidden="true" />
+              {/* Right arrow */}
+              <button
+                type="button"
+                onClick={() => cycle(1)}
+                disabled={isLocked}
+                className="absolute right-2 z-40 grid h-12 w-12 place-items-center rounded-full border border-[rgba(241,243,252,0.15)] bg-[rgba(10,14,20,0.7)] text-[var(--on-background)] backdrop-blur-sm transition hover:border-[rgba(224,141,255,0.4)] hover:bg-[rgba(224,141,255,0.1)] hover:text-[var(--primary)] disabled:opacity-30 sm:right-6 sm:h-14 sm:w-14"
+                aria-label="Next card"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M8 4l6 6-6 6" />
+                </svg>
+              </button>
+
+              {/* Cards */}
+              <div className="relative flex h-[24.5rem] w-full items-center justify-center sm:h-[32rem]">
+                {visibleCards.map(({ powerup, index, offset }) => {
+                  const active = offset === 0;
+                  const lockedCard = lockedPowerupId === powerup.id;
+                  const CardComponent = powerup.Card;
+
+                  // spacing per slot
+                  const slotWidth = 320; // px between card centers
+                  const xOffset = offset * slotWidth;
+                  const scale = active ? 1 : 0.75;
+                  const opacity = active ? 1 : 0.35;
+                  const zIndex = active ? 20 : 10 - Math.abs(offset);
+                  const blur = active ? 0 : 2;
+
+                  return (
+                    <motion.button
+                      key={powerup.id}
+                      type="button"
+                      onClick={() => selectIndex(index)}
+                      layout
+                      animate={{
+                        x: xOffset,
+                        scale,
+                        opacity,
+                        filter: `blur(${blur}px)`,
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 30,
+                        mass: 0.8,
+                      }}
+                      style={{ zIndex, position: "absolute" }}
+                      className={`${panelFrameClass} shrink-0 rounded-3xl p-4 text-center outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
+                        active
+                          ? "w-[19.2rem] sm:w-[26.4rem]"
+                          : "w-[15.6rem] bg-[rgba(11,17,28,0.58)] sm:w-[21.6rem]"
+                      } ${
+                        active && lockedCard
+                          ? "bg-[rgba(22,25,33,0.9)]"
+                          : ""
+                      } ${
+                        active && !lockedCard
+                          ? "bg-[rgba(8,22,30,0.9)]"
+                          : ""
+                      }`}
+                      aria-pressed={active}
+                      disabled={isLocked && !lockedCard}
+                    >
+
+                      <div className="relative z-[1] flex h-full flex-col items-center gap-3">
+                        <motion.div
+                          animate={{ scale: active ? 1 : 0.86 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 280,
+                            damping: 26,
+                          }}
+                        >
+                          <CardComponent
+                            size={active ? 384 : 288}
+                            className={lockedCard ? "saturate-50" : ""}
+                          />
+                        </motion.div>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </div>
             </div>
 
+            {/* Description text with crossfade */}
             <div className="mt-4 px-4 sm:mt-6">
-              <div className="mx-auto flex justify-center">
-                {activePowerup && (
-                  <p className="max-w-[34rem] text-center text-sm leading-relaxed text-[rgba(241,243,252,0.6)] sm:text-[0.98rem]">
-                    {activePowerup.description}
-                  </p>
-                )}
+              <div className="mx-auto flex min-h-[3rem] justify-center">
+                <AnimatePresence mode="wait">
+                  {activePowerup && (
+                    <motion.p
+                      key={activePowerup.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="max-w-[34rem] text-center text-sm leading-relaxed text-[rgba(241,243,252,0.6)] sm:text-[0.98rem]"
+                    >
+                      {activePowerup.description}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
+            </div>
+
+            {/* Dot indicators */}
+            <div className="mt-3 flex items-center justify-center gap-2">
+              {powerups.map((powerup, i) => (
+                <button
+                  key={powerup.id}
+                  type="button"
+                  onClick={() => selectIndex(i)}
+                  disabled={isLocked}
+                  className="relative h-2.5 w-2.5 rounded-full"
+                  aria-label={`Select card ${i + 1}`}
+                >
+                  <span
+                    className={`absolute inset-0 rounded-full transition-all duration-300 ${
+                      i === activeIndex
+                        ? "scale-100 bg-[var(--primary)] shadow-[0_0_8px_rgba(224,141,255,0.5)]"
+                        : "scale-75 bg-[rgba(241,243,252,0.2)]"
+                    }`}
+                  />
+                  {i === activeIndex && (
+                    <motion.span
+                      layoutId="dot-indicator"
+                      className="absolute -inset-0.5 rounded-full border border-[rgba(224,141,255,0.4)]"
+                      transition={{ type: "spring", stiffness: 380, damping: 26 }}
+                    />
+                  )}
+                </button>
+              ))}
             </div>
           </section>
         )}
