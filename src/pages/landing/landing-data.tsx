@@ -147,7 +147,7 @@ export const powers: Power[] = [
   {
     name: "Time Kum",
     description:
-      "Steals time from opponent's clock. Their panic is your advantage.",
+      "Starts active immediately and cuts 1, 2, and 3 minutes from the opponent across rounds 1, 2, and 3.",
     tag: "Time",
     tagClassName:
       "border-[rgba(255,168,77,0.18)] bg-[rgba(255,168,77,0.1)] text-[var(--signal-warning)]",

@@ -8,6 +8,10 @@ import {
 } from "lucide-react";
 import { POWER_CARD_REGISTRY } from "../powerups/powerupRegistry";
 
+function powerupRequiresManualActivation(powerupId: string) {
+  return powerupId !== "TimeKumCard";
+}
+
 /* ═══════════════════════════ MATCH TIMER ═════════════════════════════ */
 
 function MatchTimer({ secondsRemaining }: { secondsRemaining: number }) {
@@ -218,7 +222,7 @@ export function TopBar({
       {/* RIGHT — Power card + Run/Submit */}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
         {/* Power card sabotage button */}
-        {mySelectedPowerupId ? (
+        {mySelectedPowerupId && powerupRequiresManualActivation(mySelectedPowerupId) ? (
           <SabotageButton
             cardName={mySelectedPowerupId}
             isSabotaged={sabotageUsed}

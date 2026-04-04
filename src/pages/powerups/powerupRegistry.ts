@@ -53,7 +53,8 @@ export const POWER_CARD_REGISTRY: Record<string, Omit<PowerupDescriptor, "id">> 
   },
   TimeKumCard: {
     Card: TimeKumCard,
-    description: "Steals time from opponent's clock. Their panic is your advantage.",
+    description:
+      "Starts active from the first second of the round. The opponent loses 1 minute in round 1, 2 minutes in round 2, and 3 minutes in round 3.",
   },
   VisuallyImpairedCard: {
     Card: VisuallyImpairedCard,

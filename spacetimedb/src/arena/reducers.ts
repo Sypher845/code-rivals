@@ -27,6 +27,9 @@ const TOTAL_ROUNDS = 3n;
 const ROUND_ONE_DURATION_MICROS = 5n * 60n * 1_000_000n;
 const ROUND_TWO_DURATION_MICROS = 10n * 60n * 1_000_000n;
 const ROUND_THREE_DURATION_MICROS = 15n * 60n * 1_000_000n;
+const TIME_KUM_ROUND_ONE_PENALTY_SECONDS = 60n;
+const TIME_KUM_ROUND_TWO_PENALTY_SECONDS = 120n;
+const TIME_KUM_ROUND_THREE_PENALTY_SECONDS = 180n;
 
 const POWER_CARD_NAMES = [
   "FlashbangCard",
@@ -95,17 +98,55 @@ function getRoundMaxPoints(roundNumber: bigint) {
   return 200n + getRoundDurationSeconds(roundNumber) / 2n;
 }
 
+function getTimeKumPenaltySeconds(roundNumber: bigint) {
+  if (roundNumber === 1n) {
+    return TIME_KUM_ROUND_ONE_PENALTY_SECONDS;
+  }
+
+  if (roundNumber === 2n) {
+    return TIME_KUM_ROUND_TWO_PENALTY_SECONDS;
+  }
+
+  return TIME_KUM_ROUND_THREE_PENALTY_SECONDS;
+}
+
+function getEffectiveRoundDurationSeconds(
+  ctx: ArenaReducerCtx,
+  roomId: string,
+  roundNumber: bigint,
+  playerIdentity: ArenaReducerCtx["sender"],
+) {
+  const baseRoundDurationSeconds = getRoundDurationSeconds(roundNumber);
+  const opponentState = listPowerupLocks(ctx, roomId).find(
+    (lock) => !lock.playerIdentity.isEqual(playerIdentity),
+  );
+
+  if (opponentState?.powerupId !== "TimeKumCard") {
+    return baseRoundDurationSeconds;
+  }
+
+  const penaltySeconds = getTimeKumPenaltySeconds(roundNumber);
+  return baseRoundDurationSeconds > penaltySeconds
+    ? baseRoundDurationSeconds - penaltySeconds
+    : 0n;
+}
+
 function calculateRoundPoints(
   roundNumber: bigint,
   submittedTimeTakenSeconds: bigint,
   submittedTestcasesPassed: bigint,
   submittedTotalTestcases: bigint,
+  roundDurationSecondsOverride?: bigint,
 ) {
   if (submittedTotalTestcases <= 0n || submittedTestcasesPassed <= 0n) {
     return 0n;
   }
 
-  const roundDurationSeconds = getRoundDurationSeconds(roundNumber);
+  const roundDurationSeconds =
+    roundDurationSecondsOverride ?? getRoundDurationSeconds(roundNumber);
+  if (roundDurationSeconds <= 0n) {
+    return 0n;
+  }
   const clampedTimeTakenSeconds =
     submittedTimeTakenSeconds < 0n
       ? 0n
@@ -781,11 +822,30 @@ export const submit_round_result = spacetimedb.reducer(
       return;
     }
 
+    const effectiveRoundDurationSeconds = getEffectiveRoundDurationSeconds(
+      ctx,
+      normalizedRoomId,
+      room.currentRound,
+      ctx.sender,
+    );
+    const elapsedRoundSeconds = room.roundStartTime
+      ? (ctx.timestamp.microsSinceUnixEpoch -
+          room.roundStartTime.microsSinceUnixEpoch) /
+        1_000_000n
+      : 0n;
+    const submittedAfterDeadline =
+      elapsedRoundSeconds > effectiveRoundDurationSeconds;
+    const finalTimeTakenSeconds = submittedAfterDeadline
+      ? effectiveRoundDurationSeconds
+      : timeTakenSeconds;
+    const finalTestcasesPassed = submittedAfterDeadline ? 0n : testcasesPassed;
+
     const calculatedPointsEarned = calculateRoundPoints(
       room.currentRound,
-      timeTakenSeconds,
-      testcasesPassed,
+      finalTimeTakenSeconds,
+      finalTestcasesPassed,
       totalTestcases,
+      effectiveRoundDurationSeconds,
     );
 
     ctx.db.arenaRoundResult.insert({
@@ -798,8 +858,8 @@ export const submit_round_result = spacetimedb.reducer(
       playerIdentity: ctx.sender,
       roundNumber: room.currentRound,
       powerUsed: playerState.powerupId,
-      timeTakenSeconds,
-      testcasesPassed,
+      timeTakenSeconds: finalTimeTakenSeconds,
+      testcasesPassed: finalTestcasesPassed,
       totalTestcases,
       pointsEarned: calculatedPointsEarned,
       createdAt: ctx.timestamp,

@@ -11,6 +11,8 @@ import { reducers, tables } from "../module_bindings";
 import type { ArenaSabotageEvent } from "../module_bindings/types";
 import {
   formatPowerupName,
+  getPassiveTimePenaltySeconds,
+  powerupRequiresManualActivation,
   resolvePowerupEffect,
   type ResolvedPowerupEffect,
 } from "../utils/arenaPowerEffects";
@@ -186,19 +188,15 @@ export function CodingWindowPage() {
       ) ?? null
     );
   }, [matchSummaryRows, normalizedRoomId, username]);
-  const fallbackSecondsRemaining = getRoundDurationSeconds(activeRoundNumber);
+  const baseRoundDurationSeconds = getRoundDurationSeconds(activeRoundNumber);
   const roundStartMs = activeRoom?.roundStartTime
     ? Number(activeRoom.roundStartTime.microsSinceUnixEpoch / 1000n)
     : null;
-  const roundDeadlineMs = activeRoom?.roundEndTime
+  const sharedRoundDeadlineMs = activeRoom?.roundEndTime
     ? Number(activeRoom.roundEndTime.microsSinceUnixEpoch / 1000n)
     : roundStartMs !== null && activeRoom?.matchState === "playing"
-      ? roundStartMs + fallbackSecondsRemaining * 1000
+      ? roundStartMs + baseRoundDurationSeconds * 1000
       : null;
-  const secondsRemaining =
-    roundDeadlineMs === null
-      ? fallbackSecondsRemaining
-      : Math.max(0, Math.ceil((roundDeadlineMs - nowMs) / 1000));
   const roomPhase = activeRoom?.matchState ?? null;
   const roomMembers = useMemo(() => {
     if (!normalizedRoomId) {
@@ -228,6 +226,31 @@ export function CodingWindowPage() {
 
     return roomLocks.find((lock) => !lock.playerIdentity.isEqual(identity)) ?? null;
   }, [identity, roomLocks]);
+  const passiveTimePenaltySeconds =
+    opponentRoundState?.hasLockedPower && opponentRoundState.powerupId
+      ? getPassiveTimePenaltySeconds(
+          opponentRoundState.powerupId,
+          activeRoundNumber,
+        )
+      : 0;
+  const effectiveRoundDurationSeconds = Math.max(
+    0,
+    baseRoundDurationSeconds - passiveTimePenaltySeconds,
+  );
+  const personalRoundDeadlineMs =
+    roundStartMs !== null && activeRoom?.matchState === "playing"
+      ? roundStartMs + effectiveRoundDurationSeconds * 1000
+      : null;
+  const roundDeadlineMs =
+    sharedRoundDeadlineMs === null
+      ? personalRoundDeadlineMs
+      : personalRoundDeadlineMs === null
+        ? sharedRoundDeadlineMs
+        : Math.min(sharedRoundDeadlineMs, personalRoundDeadlineMs);
+  const secondsRemaining =
+    roundDeadlineMs === null
+      ? effectiveRoundDurationSeconds
+      : Math.max(0, Math.ceil((roundDeadlineMs - nowMs) / 1000));
   const opponentMember = useMemo(() => {
     if (!identity) {
       return null;
@@ -241,6 +264,9 @@ export function CodingWindowPage() {
     myRoundState?.hasLockedPower && myRoundState.powerupId
       ? myRoundState.powerupId
       : null;
+  const selectedPowerupRequiresManualActivation = mySelectedPowerupId
+    ? powerupRequiresManualActivation(mySelectedPowerupId)
+    : false;
   const currentRoundKey =
     normalizedRoomId === null ? null : `${normalizedRoomId}:${activeRoundNumber}`;
   const sabotageUsed =
@@ -450,7 +476,7 @@ export function CodingWindowPage() {
         setStatusMessage("Timer expired. Submitting your round result...");
         await submitRoundResult({
           roomId: normalizedRoomId,
-          timeTakenSeconds: BigInt(fallbackSecondsRemaining),
+          timeTakenSeconds: BigInt(effectiveRoundDurationSeconds),
           testcasesPassed: 0n,
           totalTestcases,
           pointsEarned: 0n,
@@ -464,7 +490,7 @@ export function CodingWindowPage() {
       }
     })();
   }, [
-    fallbackSecondsRemaining,
+    effectiveRoundDurationSeconds,
     normalizedRoomId,
     secondsRemaining,
     submitDisabled,
@@ -529,6 +555,13 @@ export function CodingWindowPage() {
       return;
     }
 
+    if (!selectedPowerupRequiresManualActivation) {
+      setStatusMessage(
+        `${formatPowerupName(mySelectedPowerupId)} activates automatically from round start.`,
+      );
+      return;
+    }
+
     if (sabotageUsed) {
       return;
     }
@@ -551,6 +584,7 @@ export function CodingWindowPage() {
     mySelectedPowerupId,
     normalizedRoomId,
     roomPhase,
+    selectedPowerupRequiresManualActivation,
     sabotageUsed,
     triggerArenaSabotage,
   ]);
@@ -566,7 +600,7 @@ export function CodingWindowPage() {
       await submitRoundResult({
         roomId: normalizedRoomId,
         timeTakenSeconds: BigInt(
-          Math.max(0, fallbackSecondsRemaining - secondsRemaining),
+          Math.max(0, effectiveRoundDurationSeconds - secondsRemaining),
         ),
         testcasesPassed: totalTestcases,
         totalTestcases,
@@ -581,7 +615,7 @@ export function CodingWindowPage() {
       setIsSubmitting(false);
     }
   }, [
-    fallbackSecondsRemaining,
+    effectiveRoundDurationSeconds,
     normalizedRoomId,
     secondsRemaining,
     submitDisabled,
@@ -598,6 +632,9 @@ export function CodingWindowPage() {
       : myRoundState?.hasSubmitted
         ? "Submission synced. Redirecting when the room advances."
         : statusMessage ??
+          (passiveTimePenaltySeconds > 0
+            ? `Time Kum is active. ${Math.floor(passiveTimePenaltySeconds / 60)} minute${passiveTimePenaltySeconds === 60 ? "" : "s"} removed from your timer.`
+            : null) ??
           (latestIncomingSabotage
             ? `Incoming sabotage queued: ${formatPowerupName(latestIncomingSabotage.powerupId)}.`
             : null);
@@ -624,7 +661,9 @@ export function CodingWindowPage() {
         onSubmit={handleSubmit}
         roundNumber={activeRoundNumber}
         secondsRemaining={secondsRemaining}
-        sabotageUsed={sabotageUsed}
+        sabotageUsed={
+          selectedPowerupRequiresManualActivation ? sabotageUsed : true
+        }
         statusMessage={topBarStatusMessage}
         submitLabel={myRoundState?.hasSubmitted ? "Submitted" : "Submit"}
       />
