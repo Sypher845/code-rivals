@@ -5,7 +5,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, LogOut, Moon } from "lucide-react";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
-import coderivalsMark from "../assets/coderivals-mark.svg";
 import { reducers, tables } from "../module_bindings";
 import { getLeagueFromElo } from "../lib/ranking";
 import { StatsTab } from "./arena/StatsTab";
@@ -240,13 +239,11 @@ export function ArenaPage({
       <header className="sticky top-0 z-40 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,10,0.88)] backdrop-blur-xl">
         <div className="relative mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
           <Link to="/" className="inline-flex items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-lg border border-[rgba(0,229,204,0.3)] bg-[rgba(0,229,204,0.08)]">
-              <img
-                src={coderivalsMark}
-                alt="CodeRivals"
-                className="h-5 w-5 rounded-sm"
-              />
-            </div>
+            <img
+              src="/logo.svg"
+              alt="CodeRivals"
+              className="h-10 w-10 rounded-sm"
+            />
             <span className="inline-flex items-end gap-1 text-[0.95rem] font-semibold tracking-[0.1em] uppercase">
               <span className="font-(--font-heading)">Code</span>
               <span className="relative font-(--font-heading) text-(--arena-accent)">

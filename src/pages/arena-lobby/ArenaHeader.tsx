@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import coderivalsMark from "../../assets/coderivals-mark.svg";
 
 type ArenaHeaderProps = {
   isLoggingOut: boolean;
@@ -14,7 +13,7 @@ export function ArenaHeader({
     <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 pb-6">
       <Link to="/" className="inline-flex items-center gap-3">
         <img
-          src={coderivalsMark}
+          src="/logo.svg"
           alt="CodeRivals"
           className="h-10 w-10 rounded-xl"
         />
