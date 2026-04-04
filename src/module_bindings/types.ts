@@ -10,6 +10,14 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const ArenaMatchContinue = __t.object("ArenaMatchContinue", {
+  continueKey: __t.string(),
+  roomId: __t.string(),
+  playerIdentity: __t.identity(),
+  continuedAt: __t.timestamp(),
+});
+export type ArenaMatchContinue = __Infer<typeof ArenaMatchContinue>;
+
 export const ArenaMatchSummary = __t.object("ArenaMatchSummary", {
   summaryKey: __t.string(),
   roomId: __t.string(),
@@ -169,6 +177,16 @@ export const PlayerProfile = __t.object("PlayerProfile", {
   updatedAt: __t.timestamp(),
 });
 export type PlayerProfile = __Infer<typeof PlayerProfile>;
+
+export const RivalEntry = __t.object("RivalEntry", {
+  rivalKey: __t.string(),
+  ownerIdentity: __t.identity(),
+  rivalIdentity: __t.identity(),
+  rivalUsername: __t.string(),
+  createdAt: __t.timestamp(),
+  lastMatchedAt: __t.timestamp(),
+});
+export type RivalEntry = __Infer<typeof RivalEntry>;
 
 export const UserNotification = __t.object("UserNotification", {
   notificationId: __t.string(),

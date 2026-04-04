@@ -129,6 +129,27 @@ export const arena_match_summary = table(
   },
 );
 
+export const arena_match_continue = table(
+  {
+    name: "arena_match_continue",
+    public: true,
+    indexes: [
+      {
+        accessor: "arena_match_continue_room_id",
+        name: "arena_match_continue_room_id",
+        algorithm: "btree",
+        columns: ["roomId"],
+      },
+    ],
+  },
+  {
+    continueKey: t.string().primaryKey(),
+    roomId: t.string(),
+    playerIdentity: t.identity(),
+    continuedAt: t.timestamp(),
+  },
+);
+
 export const arena_room_timeout_job = table(
   {
     name: "arena_room_timeout_job",

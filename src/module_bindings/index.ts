@@ -61,6 +61,7 @@ import UnlockArenaPowerupReducer from "./unlock_arena_powerup_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import ArenaMatchContinueRow from "./arena_match_continue_table";
 import ArenaMatchSummaryRow from "./arena_match_summary_table";
 import ArenaPowerupLockRow from "./arena_powerup_lock_table";
 import ArenaRoomRow from "./arena_room_table";
@@ -73,12 +74,27 @@ import FriendshipRow from "./friendship_table";
 import GameInviteRow from "./game_invite_table";
 import PlayerPresenceRow from "./player_presence_table";
 import PlayerProfileRow from "./player_profile_table";
+import RivalEntryRow from "./rival_entry_table";
 import UserNotificationRow from "./user_notification_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  arenaMatchContinue: __table({
+    name: 'arena_match_continue',
+    indexes: [
+      { accessor: 'continueKey', name: 'arena_match_continue_continue_key_idx_btree', algorithm: 'btree', columns: [
+        'continueKey',
+      ] },
+      { accessor: 'arena_match_continue_room_id', name: 'arena_match_continue_room_id_idx_btree', algorithm: 'btree', columns: [
+        'roomId',
+      ] },
+    ],
+    constraints: [
+      { name: 'arena_match_continue_continue_key_key', constraint: 'unique', columns: ['continueKey'] },
+    ],
+  }, ArenaMatchContinueRow),
   arenaMatchSummary: __table({
     name: 'arena_match_summary',
     indexes: [
@@ -254,6 +270,23 @@ const tablesSchema = __schema({
       { name: 'player_profile_username_key_key', constraint: 'unique', columns: ['usernameKey'] },
     ],
   }, PlayerProfileRow),
+  rivalEntry: __table({
+    name: 'rival_entry',
+    indexes: [
+      { accessor: 'rival_entry_owner_identity', name: 'rival_entry_owner_identity_idx_btree', algorithm: 'btree', columns: [
+        'ownerIdentity',
+      ] },
+      { accessor: 'rival_entry_rival_identity', name: 'rival_entry_rival_identity_idx_btree', algorithm: 'btree', columns: [
+        'rivalIdentity',
+      ] },
+      { accessor: 'rivalKey', name: 'rival_entry_rival_key_idx_btree', algorithm: 'btree', columns: [
+        'rivalKey',
+      ] },
+    ],
+    constraints: [
+      { name: 'rival_entry_rival_key_key', constraint: 'unique', columns: ['rivalKey'] },
+    ],
+  }, RivalEntryRow),
   userNotification: __table({
     name: 'user_notification',
     indexes: [

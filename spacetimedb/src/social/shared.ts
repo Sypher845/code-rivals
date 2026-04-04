@@ -52,6 +52,10 @@ export function buildFriendshipKey(leftIdentity: Identity, rightIdentity: Identi
   return leftHex < rightHex ? `${leftHex}:${rightHex}` : `${rightHex}:${leftHex}`;
 }
 
+export function buildRivalKey(ownerIdentity: Identity, rivalIdentity: Identity) {
+  return `${ownerIdentity.toHexString()}:${rivalIdentity.toHexString()}`;
+}
+
 export function buildRequestId(ctx: SharedReducerCtx, fromIdentity: Identity, toIdentity: Identity) {
   return `fr_${hashToUint32(`${fromIdentity.toHexString()}:${toIdentity.toHexString()}:${ctx.timestamp.microsSinceUnixEpoch.toString()}`).toString(16)}`;
 }
@@ -216,6 +220,54 @@ export function markNotificationsReadByFriendRequest(
 
 export function areFriends(ctx: SharedReducerCtx, leftIdentity: Identity, rightIdentity: Identity) {
   return Boolean(ctx.db.friendship.friendshipKey.find(buildFriendshipKey(leftIdentity, rightIdentity)));
+}
+
+export function upsertRivalEntry(
+  ctx: SharedReducerCtx,
+  ownerIdentity: Identity,
+  rivalIdentity: Identity,
+  rivalUsername: string,
+) {
+  if (ownerIdentity.isEqual(rivalIdentity) || areFriends(ctx, ownerIdentity, rivalIdentity)) {
+    return;
+  }
+
+  const rivalKey = buildRivalKey(ownerIdentity, rivalIdentity);
+  const existingRival = ctx.db.rivalEntry.rivalKey.find(rivalKey);
+  if (existingRival) {
+    ctx.db.rivalEntry.rivalKey.update({
+      ...existingRival,
+      rivalUsername,
+      lastMatchedAt: ctx.timestamp,
+    });
+    return;
+  }
+
+  ctx.db.rivalEntry.insert({
+    rivalKey,
+    ownerIdentity,
+    rivalIdentity,
+    rivalUsername,
+    createdAt: ctx.timestamp,
+    lastMatchedAt: ctx.timestamp,
+  });
+}
+
+export function removeRivalPair(
+  ctx: SharedReducerCtx,
+  leftIdentity: Identity,
+  rightIdentity: Identity,
+) {
+  const leftKey = buildRivalKey(leftIdentity, rightIdentity);
+  const rightKey = buildRivalKey(rightIdentity, leftIdentity);
+
+  if (ctx.db.rivalEntry.rivalKey.find(leftKey)) {
+    ctx.db.rivalEntry.rivalKey.delete(leftKey);
+  }
+
+  if (ctx.db.rivalEntry.rivalKey.find(rightKey)) {
+    ctx.db.rivalEntry.rivalKey.delete(rightKey);
+  }
 }
 
 export function cleanupInviteRoom(

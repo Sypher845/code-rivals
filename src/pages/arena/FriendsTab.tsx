@@ -86,6 +86,7 @@ export function FriendsTab({ identity, username }: FriendsTabProps) {
   const [playerPresenceRows] = useTable(tables.playerPresence);
   const [gameInviteRows] = useTable(tables.gameInvite);
   const [notificationRows] = useTable(tables.userNotification);
+  const [rivalEntryRows] = useTable(tables.rivalEntry);
   const [sessionRows] = useTable(tables.authSession);
 
   const sendFriendRequest = useReducer(reducers.sendFriendRequest);
@@ -244,6 +245,59 @@ export function FriendsTab({ identity, username }: FriendsTabProps) {
       ),
     [friendships, normalizedQuery],
   );
+
+  const friendshipKeys = useMemo(() => {
+    return new Set(friendships.map((friend) => friend.friendKey));
+  }, [friendships]);
+
+  const incomingFriendRequestBySenderKey = useMemo(() => {
+    const map = new Map<string, (typeof incomingFriendRequests)[number]>();
+    for (const request of incomingFriendRequests) {
+      map.set(identityKey(request.fromIdentity), request);
+    }
+    return map;
+  }, [incomingFriendRequests]);
+
+  const outgoingFriendRequestByRecipientKey = useMemo(() => {
+    const map = new Map<string, (typeof outgoingFriendRequests)[number]>();
+    for (const request of outgoingFriendRequests) {
+      map.set(identityKey(request.toIdentity), request);
+    }
+    return map;
+  }, [outgoingFriendRequests]);
+
+  const rivals = useMemo(() => {
+    if (!identity) return [];
+
+    return rivalEntryRows
+      .filter((row) => row.ownerIdentity.isEqual(identity))
+      .map((row) => {
+        const rivalKey = identityKey(row.rivalIdentity);
+        const presence = presenceByIdentity.get(rivalKey);
+        return {
+          rivalKey: row.rivalKey,
+          rivalIdentity: row.rivalIdentity,
+          rivalIdentityKey: rivalKey,
+          username: presence?.username ?? row.rivalUsername,
+          presence,
+          lastMatchedAt: row.lastMatchedAt,
+        };
+      })
+      .filter((rival) => !friendshipKeys.has(rival.rivalIdentityKey))
+      .filter(
+        (rival) =>
+          normalizedQuery.length === 0 ||
+          rival.username.toLowerCase().includes(normalizedQuery),
+      )
+      .sort((left, right) => left.username.localeCompare(right.username));
+  }, [
+    friendshipKeys,
+    identity,
+    normalizedQuery,
+    playerPresenceRows,
+    presenceByIdentity,
+    rivalEntryRows,
+  ]);
 
   const runAction = async (key: string, action: () => Promise<void>, onSuccess?: () => void) => {
     setSubmitting(key);
@@ -530,6 +584,110 @@ export function FriendsTab({ identity, username }: FriendsTabProps) {
                 </button>
               </article>
             ))}
+          </div>
+        </section>
+      ) : null}
+
+      {rivals.length > 0 ? (
+        <section className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)] p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-(--on-background)">Rivals</h3>
+              <p className="mt-1 text-sm text-[rgba(241,243,252,0.52)]">
+                Players you have battled recently. Add them as friends or keep them as targets.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {rivals.map((rival) => {
+              const incomingRequest = incomingFriendRequestBySenderKey.get(
+                rival.rivalIdentityKey,
+              );
+              const outgoingRequest = outgoingFriendRequestByRecipientKey.get(
+                rival.rivalIdentityKey,
+              );
+
+              return (
+                <article
+                  key={rival.rivalKey}
+                  className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] p-4"
+                >
+                  <div className="mb-4 flex items-start gap-3">
+                    <div className={`grid h-12 w-12 place-items-center rounded-xl text-sm font-bold ${getAvatarTone(rival.username)}`}>
+                      {getInitials(rival.username)}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-(--on-background)">
+                        {rival.username}
+                      </h4>
+                      <p className="text-xs text-[rgba(241,243,252,0.52)]">
+                        {formatPresence(
+                          rival.presence?.activity ?? "offline",
+                          rival.presence?.connected ?? false,
+                          rival.presence?.currentRoomId,
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {incomingRequest ? (
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void runAction(`accept-rival:${incomingRequest.requestId}`, async () => {
+                            await acceptFriendRequest({ requestId: incomingRequest.requestId });
+                          }, () => setStatusMessage(`You and ${rival.username} are now friends.`));
+                        }}
+                        className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border border-[rgba(0,229,204,0.35)] px-3 text-xs font-semibold uppercase"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Accept
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void runAction(`decline-rival:${incomingRequest.requestId}`, async () => {
+                            await declineFriendRequest({ requestId: incomingRequest.requestId });
+                          });
+                        }}
+                        className="inline-flex h-9 items-center justify-center gap-2 rounded-lg border border-[rgba(255,255,255,0.14)] px-3 text-xs font-semibold uppercase"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Decline
+                      </button>
+                    </div>
+                  ) : outgoingRequest ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void runAction(`cancel-rival-request:${outgoingRequest.requestId}`, async () => {
+                          await cancelFriendRequest({ requestId: outgoingRequest.requestId });
+                        });
+                      }}
+                      className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-[rgba(255,255,255,0.14)] px-3 text-xs font-semibold uppercase text-[rgba(241,243,252,0.72)]"
+                    >
+                      Cancel Friend Request
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={submitting === `rival-request:${rival.rivalIdentityKey}`}
+                      onClick={() => {
+                        void runAction(`rival-request:${rival.rivalIdentityKey}`, async () => {
+                          await sendFriendRequest({ username: rival.username });
+                        }, () => setStatusMessage(`Friend request sent to ${rival.username}.`));
+                      }}
+                      className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-lg border border-[rgba(224,141,255,0.35)] bg-[rgba(224,141,255,0.08)] px-3 text-xs font-semibold uppercase text-(--on-background)"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Send Friend Request
+                    </button>
+                  )}
+                </article>
+              );
+            })}
           </div>
         </section>
       ) : null}

@@ -62,6 +62,35 @@ export const friendship = table(
   },
 );
 
+export const rival_entry = table(
+  {
+    name: "rival_entry",
+    public: true,
+    indexes: [
+      {
+        accessor: "rival_entry_owner_identity",
+        name: "rival_entry_owner_identity",
+        algorithm: "btree",
+        columns: ["ownerIdentity"],
+      },
+      {
+        accessor: "rival_entry_rival_identity",
+        name: "rival_entry_rival_identity",
+        algorithm: "btree",
+        columns: ["rivalIdentity"],
+      },
+    ],
+  },
+  {
+    rivalKey: t.string().primaryKey(),
+    ownerIdentity: t.identity(),
+    rivalIdentity: t.identity(),
+    rivalUsername: t.string(),
+    createdAt: t.timestamp(),
+    lastMatchedAt: t.timestamp(),
+  },
+);
+
 export const player_presence = table(
   {
     name: "player_presence",

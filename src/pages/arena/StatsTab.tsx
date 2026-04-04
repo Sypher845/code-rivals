@@ -125,10 +125,14 @@ export function StatsTab() {
         <div className={panelNoiseClass} />
         <div className="relative z-[1] space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold tracking-[0.14em] text-[rgba(241,243,252,0.6)] uppercase">Recent Battles</p>
+            <p className="text-sm font-bold tracking-[0.14em] text-[rgba(241,243,252,0.6)] uppercase">Match History</p>
           </div>
           <div className="space-y-3">
-            {recentMatches.map((match) => {
+            {recentMatches.length === 0 ? (
+              <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.56)] px-4 py-8 text-center text-sm text-[rgba(241,243,252,0.56)]">
+                Your finished arena matches will show up here.
+              </div>
+            ) : recentMatches.map((match) => {
               const isVictory = match.winner === "user";
               return (
                 <article key={match.summaryKey} className={`group relative overflow-hidden rounded-xl border bg-[rgba(6,11,18,0.72)] p-4 transition hover:border-[rgba(0,229,204,0.28)] ${isVictory ? "border-l-2 border-l-(--signal-success) border-[rgba(255,255,255,0.08)]" : "border-l-2 border-l-(--signal-danger) border-[rgba(255,255,255,0.08)]"}`}>

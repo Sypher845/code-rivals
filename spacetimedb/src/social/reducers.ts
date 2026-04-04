@@ -17,6 +17,7 @@ import {
   markNotificationsReadByFriendRequest,
   markNotificationsReadByInvite,
   pushNotification,
+  removeRivalPair,
   setPresenceActivity,
 } from "./shared";
 
@@ -163,6 +164,8 @@ export const accept_friend_request = spacetimedb.reducer(
         createdAt: ctx.timestamp,
       });
     }
+
+    removeRivalPair(ctx, request.fromIdentity, request.toIdentity);
 
     markNotificationsReadByFriendRequest(ctx, ctx.sender, requestId);
 

@@ -14,6 +14,7 @@ import {
   expirePendingInviteByRoomId,
   getDisplayUsername,
   setPresenceActivity,
+  upsertRivalEntry,
 } from "../social/shared";
 import {
   arena_powerup_lock,
@@ -226,6 +227,10 @@ function buildMatchSummaryKey(roomId: string, usernameKey: string) {
   return `${roomId}:${usernameKey}`;
 }
 
+function buildMatchContinueKey(roomId: string, playerIdentityHex: string) {
+  return `${roomId}:${playerIdentityHex}`;
+}
+
 function upsertPlayerRoundState(
   ctx: ArenaReducerCtx,
   roomId: string,
@@ -282,9 +287,11 @@ function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
     ctx.db.arenaRoomTimeoutJob.scheduledId.delete(timeoutJob.scheduledId);
   }
 
-  const matchSummaries = listMatchSummaries(ctx, roomId);
-  for (const matchSummary of matchSummaries) {
-    ctx.db.arenaMatchSummary.summaryKey.delete(matchSummary.summaryKey);
+  const matchContinueRows = [
+    ...ctx.db.arenaMatchContinue.arena_match_continue_room_id.filter(roomId),
+  ];
+  for (const matchContinueRow of matchContinueRows) {
+    ctx.db.arenaMatchContinue.continueKey.delete(matchContinueRow.continueKey);
   }
 
   ctx.db.arenaRoom.roomId.delete(roomId);
@@ -891,6 +898,19 @@ export const submit_round_result = spacetimedb.reducer(
             playerLeagueAfter: getLeagueFromElo(playerTwoNextElo),
             createdAt: ctx.timestamp,
           });
+
+          upsertRivalEntry(
+            ctx,
+            playerOne.memberIdentity,
+            playerTwo.memberIdentity,
+            playerTwo.memberName,
+          );
+          upsertRivalEntry(
+            ctx,
+            playerTwo.memberIdentity,
+            playerOne.memberIdentity,
+            playerOne.memberName,
+          );
         }
       }
 
@@ -935,6 +955,58 @@ export const submit_round_result = spacetimedb.reducer(
     });
     setPresenceActivity(ctx, playerOneIdentity, PLAYER_ACTIVITY.in_lobby, normalizedRoomId);
     setPresenceActivity(ctx, playerTwoIdentity, PLAYER_ACTIVITY.in_lobby, normalizedRoomId);
+  },
+);
+
+export const continue_after_arena_match = spacetimedb.reducer(
+  { roomId: t.string() },
+  (ctx, { roomId }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+
+    if (!room) {
+      return;
+    }
+
+    if (room.matchState !== "finished") {
+      throw new SenderError("Match results are not ready yet.");
+    }
+
+    const membershipKey = buildMembershipKey(
+      normalizedRoomId,
+      ctx.sender.toHexString(),
+    );
+    const roomMember = ctx.db.arenaRoomMember.membershipKey.find(membershipKey);
+    if (!roomMember) {
+      throw new SenderError("You are not a member of this room.");
+    }
+
+    const continueKey = buildMatchContinueKey(
+      normalizedRoomId,
+      ctx.sender.toHexString(),
+    );
+    if (!ctx.db.arenaMatchContinue.continueKey.find(continueKey)) {
+      ctx.db.arenaMatchContinue.insert({
+        continueKey,
+        roomId: normalizedRoomId,
+        playerIdentity: ctx.sender,
+        continuedAt: ctx.timestamp,
+      });
+    }
+
+    const roomMembers = listRoomMembers(ctx, normalizedRoomId);
+    const continueRows = [
+      ...ctx.db.arenaMatchContinue.arena_match_continue_room_id.filter(
+        normalizedRoomId,
+      ),
+    ];
+
+    if (continueRows.length < roomMembers.length) {
+      return;
+    }
+
+    deleteRoomAndMembers(ctx, normalizedRoomId);
   },
 );
 

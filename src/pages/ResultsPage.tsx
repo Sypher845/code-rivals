@@ -13,7 +13,7 @@ import {
   panelFrameClass,
   panelNoiseClass,
 } from "../components/uiClasses";
-import { getLeagueInfoFromElo } from "../lib/ranking";
+import { getAdjacentLeaguesForElo } from "../lib/ranking";
 import { reducers, tables } from "../module_bindings";
 
 type RoundResult = {
@@ -81,10 +81,13 @@ function getLeagueProgress(
   previousRating: number,
   nextRating: number,
 ): LeagueProgressConfig {
-  const previousLeagueInfo = getLeagueInfoFromElo(previousRating);
-  const nextLeagueInfo = getLeagueInfoFromElo(nextRating);
-  const currentLeagueMinElo = nextLeagueInfo.minElo;
-  const currentLeagueMaxElo = nextLeagueInfo.maxElo;
+  const {
+    previousLeague: previousLeagueInfo,
+    currentLeague,
+    nextLeague: nextLeagueInfo,
+  } = getAdjacentLeaguesForElo(nextRating);
+  const currentLeagueMinElo = currentLeague.minElo;
+  const currentLeagueMaxElo = currentLeague.maxElo;
   const range = Math.max(1, currentLeagueMaxElo - currentLeagueMinElo);
   const progressPercent = Math.max(
     4,
@@ -119,14 +122,14 @@ export function ResultsPage() {
   const { username = "player", roomSegment } = useParams();
   const roomId = roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? "";
   const [isContinuing, setIsContinuing] = useState(false);
-  const deleteArenaRoom = useReducer(reducers.deleteArenaRoom);
+  const continueAfterArenaMatch = useReducer(reducers.continueAfterArenaMatch);
 
   const [sessionRows] = useTable(tables.authSession);
   const [playerProfileRows] = useTable(tables.playerProfile);
   const [matchSummaryRows] = useTable(tables.arenaMatchSummary);
+  const [matchContinueRows] = useTable(tables.arenaMatchContinue);
   const [roundResultRows] = useTable(tables.arenaRoundResult);
   const [roomMemberRows] = useTable(tables.arenaRoomMember);
-  const [arenaRoomRows] = useTable(tables.arenaRoom);
 
   const session = sessionRows.find((row) =>
     identity ? row.sessionIdentity.isEqual(identity) : false,
@@ -141,9 +144,14 @@ export function ResultsPage() {
   const playerProfile = playerProfileRows.find(
     (row) => row.username === playerName,
   );
-  const arenaRoom = arenaRoomRows.find((row) => row.roomId === roomId);
   const opponentProfile = playerProfileRows.find(
     (row) => row.username === opponentName,
+  );
+  const roomContinueRows = matchContinueRows.filter((row) => row.roomId === roomId);
+  const continuedCount = roomContinueRows.length;
+  const totalPlayers = roomMembers.length;
+  const hasCurrentPlayerContinued = roomContinueRows.some((row) =>
+    identity ? row.playerIdentity.isEqual(identity) : false,
   );
 
   const playerSummary = matchSummaryRows.find(
@@ -306,8 +314,6 @@ export function ResultsPage() {
       <span className="text-(--secondary)">terminal smoking</span>.
     </>
   );
-  const isRoomCreator = arenaRoom?.creatorName === playerName;
-
   async function handleContinue() {
     if (isContinuing) {
       return;
@@ -316,9 +322,7 @@ export function ResultsPage() {
     try {
       setIsContinuing(true);
 
-      if (isRoomCreator && arenaRoom) {
-        await deleteArenaRoom({ roomId });
-      }
+      await continueAfterArenaMatch({ roomId });
 
       navigate(`/${encodeURIComponent(playerName)}`);
     } finally {
@@ -750,6 +754,11 @@ export function ResultsPage() {
               Share Log
             </button>
           </div>
+          <p className="mt-4 font-(--font-mono) text-[0.7rem] tracking-[0.14em] text-[rgba(241,243,252,0.48)] uppercase">
+            {hasCurrentPlayerContinued
+              ? `${continuedCount}/${Math.max(totalPlayers, 1)} players confirmed results`
+              : "Room closes after both players press continue"}
+          </p>
         </section>
       </div>
     </div>
