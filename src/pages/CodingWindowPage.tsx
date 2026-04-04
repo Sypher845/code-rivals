@@ -134,6 +134,7 @@ export function CodingWindowPage() {
   const [hasRun, setHasRun] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [arenaRoomRows] = useTable(tables.arenaRoom);
+  const [arenaRoomMemberRows] = useTable(tables.arenaRoomMember);
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
   const submitRoundResult = useReducer(reducers.submitRoundResult);
 
@@ -162,18 +163,48 @@ export function CodingWindowPage() {
       ? fallbackSecondsRemaining
       : Math.max(0, Math.ceil((roundDeadlineMs - nowMs) / 1000));
   const roomPhase = activeRoom?.matchState ?? null;
+  const roomMembers = useMemo(() => {
+    if (!normalizedRoomId) {
+      return [];
+    }
+
+    return arenaRoomMemberRows.filter((member) => member.roomId === normalizedRoomId);
+  }, [arenaRoomMemberRows, normalizedRoomId]);
+  const roomLocks = useMemo(() => {
+    if (!normalizedRoomId) {
+      return [];
+    }
+
+    return arenaPowerupLockRows.filter((lock) => lock.roomId === normalizedRoomId);
+  }, [arenaPowerupLockRows, normalizedRoomId]);
   const myRoundState = useMemo(() => {
-    if (!identity || !normalizedRoomId) {
+    if (!identity) {
+      return null;
+    }
+
+    return roomLocks.find((lock) => lock.playerIdentity.isEqual(identity)) ?? null;
+  }, [identity, roomLocks]);
+  const opponentRoundState = useMemo(() => {
+    if (!identity) {
+      return null;
+    }
+
+    return roomLocks.find((lock) => !lock.playerIdentity.isEqual(identity)) ?? null;
+  }, [identity, roomLocks]);
+  const opponentMember = useMemo(() => {
+    if (!identity) {
       return null;
     }
 
     return (
-      arenaPowerupLockRows.find(
-        (lock) =>
-          lock.roomId === normalizedRoomId && lock.playerIdentity.isEqual(identity),
-      ) ?? null
+      roomMembers.find((member) => !member.memberIdentity.isEqual(identity)) ?? null
     );
-  }, [arenaPowerupLockRows, identity, normalizedRoomId]);
+  }, [identity, roomMembers]);
+  const mySelectedPowerupId =
+    myRoundState?.hasLockedPower && myRoundState.powerupId
+      ? myRoundState.powerupId
+      : null;
+  const sabotageUsed = false;
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
   const submitDisabled =
@@ -375,10 +406,16 @@ export function CodingWindowPage() {
       <TopBar
         canSubmit={!submitDisabled}
         isSubmitting={isSubmitting}
+        mySelectedPowerupId={mySelectedPowerupId}
         onRun={handleRun}
+        opponentCardUsed={null}
+        opponentHasSubmitted={Boolean(opponentRoundState?.hasSubmitted)}
+        opponentIsTyping={Boolean(opponentRoundState?.isTyping)}
+        opponentName={opponentMember?.memberName ?? "Rival"}
         onSubmit={handleSubmit}
         roundNumber={activeRoundNumber}
         secondsRemaining={secondsRemaining}
+        sabotageUsed={sabotageUsed}
         statusMessage={topBarStatusMessage}
         submitLabel={myRoundState?.hasSubmitted ? "Submitted" : "Submit"}
       />

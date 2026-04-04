@@ -1,15 +1,12 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Play,
   Send,
   Check,
   Timer,
   Keyboard,
-  Shield,
 } from "lucide-react";
 import { POWER_CARD_REGISTRY } from "../powerups/powerupRegistry";
-import { POWER_CARD, OPPONENT } from "./constants";
 
 /* ═══════════════════════════ MATCH TIMER ═════════════════════════════ */
 
@@ -34,22 +31,34 @@ function MatchTimer({ secondsRemaining }: { secondsRemaining: number }) {
 
 /* ═══════════════════════════ OPPONENT CARD ═══════════════════════════ */
 
-function OpponentCard() {
+type OpponentSummary = {
+  cardUsed?: string | null;
+  hasSubmitted: boolean;
+  isTyping: boolean;
+  username: string;
+};
+
+function OpponentCard({
+  cardUsed,
+  hasSubmitted,
+  isTyping,
+  username,
+}: OpponentSummary) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] px-4 py-2">
       {/* avatar placeholder */}
       <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--ghost-border)] bg-[rgba(224,141,255,0.08)] text-sm font-bold text-[var(--primary)]">
-        {OPPONENT.username[0].toUpperCase()}
+        {username[0]?.toUpperCase() ?? "R"}
       </div>
 
       <div className="flex flex-col gap-0.5">
         <span className="text-sm font-semibold text-[var(--on-background)]">
-          {OPPONENT.username}
+          {username}
         </span>
 
         <div className="flex items-center gap-2.5">
           {/* typing indicator */}
-          {OPPONENT.isTyping && (
+          {isTyping && (
             <span className="inline-flex items-center gap-1 text-xs text-[var(--secondary)]">
               <Keyboard className="h-3 w-3" />
               <span className="flex gap-[2px]">
@@ -61,15 +70,14 @@ function OpponentCard() {
           )}
 
           {/* card used */}
-          {OPPONENT.cardUsed && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)] px-2 py-0.5 text-[0.7rem] font-medium text-[var(--primary)]">
-              <Shield className="h-3 w-3" />
-              {OPPONENT.cardUsed}
+          {cardUsed && (
+            <span className="inline-flex items-center rounded-full border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)] px-2 py-0.5 text-[0.7rem] font-medium text-[var(--primary)]">
+              {cardUsed}
             </span>
           )}
 
           {/* submitted status */}
-          {OPPONENT.hasSubmitted && (
+          {hasSubmitted && (
             <span className="inline-flex items-center gap-1 text-xs font-medium text-[#7cd87c]">
               <Check className="h-3 w-3" />
               Submitted
@@ -87,59 +95,65 @@ function formatCardName(key: string): string {
   return key.replace(/Card$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
-function SabotageButton({ cardName, opponentName }: { cardName: string; opponentName: string }) {
-  const [hovered, setHovered] = useState(false);
+type SabotageButtonProps = {
+  cardName: string;
+  isSabotaged: boolean;
+  onClick?: () => void;
+  opponentName: string;
+};
+
+function SabotageButton({
+  cardName,
+  isSabotaged,
+  onClick,
+  opponentName,
+}: SabotageButtonProps) {
   const descriptor = POWER_CARD_REGISTRY[cardName];
   if (!descriptor) return null;
 
   const CardComponent = descriptor.Card;
   const displayName = formatCardName(cardName);
+  const actionLabel = isSabotaged ? "Sabotaged" : "Sabotage";
+  const handleClick = () => {
+    if (isSabotaged || !onClick) {
+      return;
+    }
+
+    onClick();
+  };
 
   return (
     <motion.button
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      className="group relative inline-flex items-center gap-2.5 rounded-lg border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.06)] px-4 py-2 text-sm font-medium text-[var(--primary)] transition-colors hover:border-[rgba(224,141,255,0.45)] hover:bg-[rgba(224,141,255,0.12)] hover:shadow-[0_0_24px_rgba(224,141,255,0.18)]"
+      type="button"
+      onClick={handleClick}
+      whileHover={isSabotaged ? undefined : { scale: 1.02 }}
+      whileTap={isSabotaged ? undefined : { scale: 0.98 }}
+      className={`group relative inline-flex min-w-[22rem] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
+        isSabotaged
+          ? "cursor-default border-[rgba(124,216,124,0.24)] bg-[rgba(124,216,124,0.08)] text-[#9ae99a]"
+          : "border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.06)] text-[var(--primary)] hover:border-[rgba(224,141,255,0.45)] hover:bg-[rgba(224,141,255,0.12)] hover:shadow-[0_0_24px_rgba(224,141,255,0.18)]"
+      }`}
     >
-      {/* small power card */}
-      <motion.span
-        animate={hovered ? { rotate: [0, -6, 6, 0], scale: 1.1 } : { rotate: 0, scale: 1 }}
-        transition={{ duration: 0.4, ease: "easeInOut" }}
-        className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)] transition-colors group-hover:border-[rgba(224,141,255,0.4)] group-hover:shadow-[0_0_10px_rgba(224,141,255,0.15)]"
+      <div
+        className={`flex h-[6rem] w-[6rem] shrink-0 items-center justify-center overflow-hidden rounded-xl border p-1.5 ${
+          isSabotaged
+            ? "border-[rgba(124,216,124,0.28)] bg-[rgba(124,216,124,0.08)]"
+            : "border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)]"
+        }`}
       >
-        <CardComponent size={24} />
-      </motion.span>
+        <div className="pointer-events-none scale-[0.34]">
+          <CardComponent size={280} className="cursor-default" />
+        </div>
+      </div>
 
-      {/* text with crossfade */}
-      <span className="relative min-w-[10rem] overflow-hidden text-left" style={{ height: "1.25rem" }}>
-        <AnimatePresence mode="wait">
-          {!hovered ? (
-            <motion.span
-              key="sabotage"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: "easeInOut" }}
-              className="absolute inset-0"
-            >
-              Sabotage {opponentName}
-            </motion.span>
-          ) : (
-            <motion.span
-              key="cardname"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.18, ease: "easeInOut" }}
-              className="absolute inset-0"
-            >
-              {displayName}
-            </motion.span>
-          )}
-        </AnimatePresence>
-      </span>
+      <div className="min-w-0">
+        <p className="text-[0.68rem] font-semibold tracking-[0.18em] text-[rgba(241,243,252,0.52)] uppercase">
+          Selected Power
+        </p>
+        <p className="mt-0.5 text-sm font-semibold leading-tight">
+          {actionLabel} {opponentName} with {displayName}
+        </p>
+      </div>
     </motion.button>
   );
 }
@@ -149,10 +163,17 @@ function SabotageButton({ cardName, opponentName }: { cardName: string; opponent
 type TopBarProps = {
   canSubmit: boolean;
   isSubmitting: boolean;
+  mySelectedPowerupId: string | null;
   onRun: () => void;
+  onSabotage?: () => void;
   onSubmit: () => void;
+  opponentCardUsed?: string | null;
+  opponentHasSubmitted: boolean;
+  opponentIsTyping: boolean;
+  opponentName: string;
   roundNumber: number;
   secondsRemaining: number;
+  sabotageUsed: boolean;
   statusMessage: string | null;
   submitLabel: string;
 };
@@ -160,10 +181,17 @@ type TopBarProps = {
 export function TopBar({
   canSubmit,
   isSubmitting,
+  mySelectedPowerupId,
   onRun,
+  onSabotage,
   onSubmit,
+  opponentCardUsed,
+  opponentHasSubmitted,
+  opponentIsTyping,
+  opponentName,
   roundNumber,
   secondsRemaining,
+  sabotageUsed,
   statusMessage,
   submitLabel,
 }: TopBarProps) {
@@ -171,7 +199,12 @@ export function TopBar({
     <nav className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--ghost-border)] bg-[rgba(10,14,20,0.96)] px-6 py-3">
       {/* LEFT — Opponent status card */}
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-        <OpponentCard />
+        <OpponentCard
+          cardUsed={opponentCardUsed}
+          hasSubmitted={opponentHasSubmitted}
+          isTyping={opponentIsTyping}
+          username={opponentName}
+        />
         <div className="rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-xs uppercase tracking-[0.16em] text-[var(--text-secondary)]">
           Round {roundNumber}
         </div>
@@ -185,9 +218,14 @@ export function TopBar({
       {/* RIGHT — Power card + Run/Submit */}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
         {/* Power card sabotage button */}
-        {!POWER_CARD.used && (
-          <SabotageButton cardName={POWER_CARD.name} opponentName={OPPONENT.username} />
-        )}
+        {mySelectedPowerupId ? (
+          <SabotageButton
+            cardName={mySelectedPowerupId}
+            isSabotaged={sabotageUsed}
+            onClick={onSabotage}
+            opponentName={opponentName}
+          />
+        ) : null}
 
         {/* Run button */}
         <button
