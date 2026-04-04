@@ -610,7 +610,6 @@ int main() {
     //     vector<int> nums = parseIntArray(input[0]);
     //     int target       = parseIntValue(input[1]);
     //     printIntArray(nums);
-    //     cout << '\n' << target << '\n';
     // }
 
     return 0;
