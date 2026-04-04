@@ -94,6 +94,7 @@ type EditorPanelProps = {
   keySwapActive?: boolean;
   keySwapMap?: Record<string, string> | null;
   lineJumperActive?: boolean;
+  visuallyImpairedActive?: boolean;
   noRetreatActive?: boolean;
 };
 
@@ -102,6 +103,7 @@ export function EditorPanel({
   keySwapActive = false,
   keySwapMap = null,
   lineJumperActive = false,
+  visuallyImpairedActive = false,
   noRetreatActive = false,
 }: EditorPanelProps) {
   const [language, setLanguage] = useState("cpp");
@@ -393,7 +395,13 @@ export function EditorPanel({
       </div>
 
       {/* Monaco Editor */}
-      <div className="relative min-h-0 flex-1">
+      <div
+        className="relative min-h-0 flex-1"
+        style={{
+          transform: visuallyImpairedActive ? "scaleX(-1)" : undefined,
+          transformOrigin: "center center",
+        }}
+      >
         <Editor
           height="100%"
           language={language}

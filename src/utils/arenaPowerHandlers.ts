@@ -13,6 +13,7 @@ export type EditorSabotageEffect = {
   keySwapActive: boolean;
   keySwapMap: Record<string, string> | null;
   lineJumperActive: boolean;
+  visuallyImpairedActive: boolean;
   noRetreatActive: boolean;
   powerupId: string;
   themeId: EditorThemeId;
@@ -69,6 +70,7 @@ function applyFlashbangEffect({
       keySwapActive: false,
       keySwapMap: null,
       lineJumperActive: false,
+      visuallyImpairedActive: false,
       noRetreatActive: false,
       powerupId: effect.powerupId,
       themeId: FLASHBANG_EDITOR_THEME_ID,
@@ -92,6 +94,7 @@ function applyKeySwapEffect({
       keySwapActive: true,
       keySwapMap: buildKeySwapMap(),
       lineJumperActive: false,
+      visuallyImpairedActive: false,
       noRetreatActive: false,
       powerupId: effect.powerupId,
       themeId: DEFAULT_EDITOR_THEME_ID,
@@ -115,6 +118,31 @@ function applyLineJumperEffect({
       keySwapActive: false,
       keySwapMap: null,
       lineJumperActive: true,
+      visuallyImpairedActive: false,
+      noRetreatActive: false,
+      powerupId: effect.powerupId,
+      themeId: DEFAULT_EDITOR_THEME_ID,
+    },
+  };
+}
+
+function applyVisuallyImpairedEffect({
+  effect,
+  emittedAtMs,
+}: PowerupHandlerInput): PowerupHandlerOutput {
+  const expiresAtMs =
+    effect.durationMinutes === null
+      ? null
+      : emittedAtMs + effect.durationMinutes * 60_000;
+
+  return {
+    editorEffect: {
+      expiresAtMs,
+      flashbangActive: false,
+      keySwapActive: false,
+      keySwapMap: null,
+      lineJumperActive: false,
+      visuallyImpairedActive: true,
       noRetreatActive: false,
       powerupId: effect.powerupId,
       themeId: DEFAULT_EDITOR_THEME_ID,
@@ -138,6 +166,7 @@ function applyNoRetreatEffect({
       keySwapActive: false,
       keySwapMap: null,
       lineJumperActive: false,
+      visuallyImpairedActive: false,
       noRetreatActive: true,
       powerupId: effect.powerupId,
       themeId: DEFAULT_EDITOR_THEME_ID,
@@ -149,6 +178,7 @@ const POWERUP_HANDLER_MAP = {
   applyFlashbangEffect,
   applyKeySwapEffect,
   applyLineJumperEffect,
+  applyVisuallyImpairedEffect,
   applyNoRetreatEffect,
 } as const;
 

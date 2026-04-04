@@ -304,6 +304,8 @@ export function CodingWindowPage() {
   const keySwapActive = activeEditorSabotage?.keySwapActive ?? false;
   const keySwapMap = activeEditorSabotage?.keySwapMap ?? null;
   const lineJumperActive = activeEditorSabotage?.lineJumperActive ?? false;
+  const visuallyImpairedActive =
+    activeEditorSabotage?.visuallyImpairedActive ?? false;
   const noRetreatActive = activeEditorSabotage?.noRetreatActive ?? false;
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
@@ -740,6 +742,7 @@ export function CodingWindowPage() {
               keySwapActive={keySwapActive}
               keySwapMap={keySwapMap}
               lineJumperActive={lineJumperActive}
+              visuallyImpairedActive={visuallyImpairedActive}
               noRetreatActive={noRetreatActive}
             />
           </div>
