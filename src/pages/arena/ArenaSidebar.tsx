@@ -399,17 +399,17 @@ export function ArenaSidebar({
           {!activeLobbyRoom ? (
             <>
               <div>
-                <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
+                <p className="font-[var(--font-mono)] text-[0.78rem] font-medium tracking-[0.22em] text-(--arena-accent) uppercase">
                   Quick Arena
                 </p>
               </div>
 
-              <div className="inline-flex w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(241,243,252,0.06)] p-1">
+              <div className="inline-flex w-full rounded-xl border border-[rgba(255,255,255,0.1)] bg-[rgba(241,243,252,0.05)] p-1">
                 <button
                   type="button"
                   onClick={() => setArenaMode("create")}
-                  className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "create"
-                    ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
+                  className={`flex-1 rounded-lg px-3 py-2.5 text-[0.72rem] font-semibold tracking-[0.14em] uppercase transition ${arenaMode === "create"
+                    ? "bg-[linear-gradient(135deg,rgba(0,229,204,0.18),rgba(0,229,204,0.08))] text-(--on-background)"
                     : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
                     }`}
                 >
@@ -418,8 +418,8 @@ export function ArenaSidebar({
                 <button
                   type="button"
                   onClick={() => setArenaMode("join")}
-                  className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "join"
-                    ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
+                  className={`flex-1 rounded-lg px-3 py-2.5 text-[0.72rem] font-semibold tracking-[0.14em] uppercase transition ${arenaMode === "join"
+                    ? "bg-[linear-gradient(135deg,rgba(0,229,204,0.18),rgba(0,229,204,0.08))] text-(--on-background)"
                     : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
                     }`}
                 >
@@ -428,10 +428,7 @@ export function ArenaSidebar({
               </div>
 
               {arenaMode === "create" ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-[rgba(241,243,252,0.58)]">
-                    Create a private arena and invite a rival to duel.
-                  </p>
+                <div className="space-y-4">
                   <button
                     className={arenaActionClass}
                     type="button"
@@ -442,9 +439,9 @@ export function ArenaSidebar({
                   </button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <label className="space-y-2">
-                    <span className="text-xs tracking-[0.08em] text-[rgba(241,243,252,0.58)] uppercase">
+                    <span className="font-[var(--font-mono)] text-[0.68rem] tracking-[0.16em] text-[rgba(241,243,252,0.58)] uppercase">
                       Room Code
                     </span>
                     <input
@@ -470,7 +467,7 @@ export function ArenaSidebar({
 
           {statusMessage ? (
             <div
-              className={`rounded-lg border px-3 py-2 text-sm ${statusTone === "error"
+              className={`rounded-xl border px-3.5 py-3 text-sm leading-6 ${statusTone === "error"
                 ? "border-[rgba(255,92,122,0.28)] bg-[rgba(255,92,122,0.08)] text-[rgba(255,207,214,0.92)]"
                 : "border-[rgba(0,229,204,0.24)] bg-[rgba(0,229,204,0.08)] text-[rgba(214,255,249,0.92)]"
                 }`}
@@ -553,7 +550,7 @@ export function ArenaSidebar({
                 </article>
               </div>
 
-              <section className="rounded-xl border border-[rgba(241,243,252,0.12)] bg-[rgba(5,10,16,0.82)] p-3">
+              <section className="rounded-xl border border-[rgba(241,243,252,0.12)] p-3">
                 <p className="font-[var(--font-mono)] text-[0.62rem] tracking-[0.16em] text-[rgba(241,243,252,0.62)] uppercase">
                   Joined Users ({activeLobbyRoomMembers.length})
                 </p>
@@ -627,37 +624,50 @@ export function ArenaSidebar({
         <div className={panelNoiseClass} />
         <div className="relative z-1 space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
-              Rivals Online
-            </p>
-            <span className="rounded-full border border-[rgba(255,255,255,0.08)] px-2.5 py-1 text-[0.62rem] tracking-[0.08em] text-[rgba(241,243,252,0.5)] uppercase">
+            <div>
+              <p className="font-[var(--font-mono)] text-[0.78rem] font-medium tracking-[0.22em] text-(--arena-accent) uppercase">
+                Rivals Online
+              </p>
+            </div>
+            <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-2.5 py-1 text-[0.62rem] tracking-[0.08em] text-[rgba(241,243,252,0.5)] uppercase">
               {onlineFriends.length} online
             </span>
           </div>
 
-          <div className="space-y-2">
-            {onlineFriends.map((friend) => (
-              <div
-                key={friend.id}
-                className="flex items-center justify-between gap-3 rounded-lg border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.03)] px-3 py-2"
-              >
-                <div>
-                  <p className="text-sm font-medium text-(--on-background)">
-                    {friend.username}
-                  </p>
-                  <p className="text-[0.68rem] tracking-[0.08em] text-[rgba(241,243,252,0.5)] uppercase">
-                    {friend.league}
-                  </p>
-                </div>
-                <Link
-                  to={`/${encodeURIComponent(username)}/friends`}
-                  className="rounded-md border border-[rgba(255,255,255,0.12)] px-2.5 py-1 text-[0.68rem] tracking-[0.08em] uppercase transition hover:border-[rgba(255,255,255,0.2)]"
+          {onlineFriends.length === 0 ? (
+            <div className="rounded-[1.2rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(7,11,18,0.72),rgba(5,9,15,0.9))] px-4 py-6 text-center">
+              <p className="text-sm font-medium text-(--on-background)">
+                No rivals online right now
+              </p>
+              <p className="mt-2 text-sm leading-7 text-[rgba(241,243,252,0.5)]">
+                Keep your arena ready and this list will light up when other players connect.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {onlineFriends.map((friend) => (
+                <div
+                  key={friend.id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[rgba(255,255,255,0.06)] bg-[linear-gradient(180deg,rgba(7,11,18,0.76),rgba(5,9,15,0.9))] px-3.5 py-3"
                 >
-                  View
-                </Link>
-              </div>
-            ))}
-          </div>
+                  <div>
+                    <p className="text-sm font-medium text-(--on-background)">
+                      {friend.username}
+                    </p>
+                    <p className="text-[0.68rem] tracking-[0.08em] text-[rgba(241,243,252,0.5)] uppercase">
+                      {friend.league}
+                    </p>
+                  </div>
+                  <Link
+                    to={`/${encodeURIComponent(username)}/friends`}
+                    className="rounded-lg border border-[rgba(255,255,255,0.12)] px-3 py-1.5 text-[0.68rem] tracking-[0.08em] uppercase transition hover:border-[rgba(255,255,255,0.2)]"
+                  >
+                    View
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
     </aside>

@@ -75,68 +75,101 @@ export function StatsTab() {
     return () => window.clearInterval(timer);
   }, [eloRating]);
 
+  const winRate =
+    matchesPlayed > 0 ? Math.round((wins / matchesPlayed) * 100) : 0;
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-3">
-        <article className="group relative min-h-[140px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)] px-5 py-4 transition-all duration-300 hover:border-[rgba(0,229,204,0.3)]">
-          <div className="flex items-start justify-between">
+        <article className="group relative min-h-[164px] overflow-hidden rounded-[1.35rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(7,11,18,0.9),rgba(5,9,15,0.94))] px-5 py-5 shadow-[0_18px_38px_rgba(0,0,0,0.22)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(0,229,204,0.2)] hover:shadow-[0_24px_48px_rgba(0,0,0,0.3)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.06),transparent_24%)] opacity-80" />
+          <div className="relative z-[1] flex h-full items-start justify-between">
             <div className="space-y-2.5">
-              <p className="text-[0.7rem] font-medium tracking-[0.14em] text-[rgba(241,243,252,0.56)] uppercase">Win Streak</p>
-              <p className="text-5xl font-bold tracking-tight text-(--on-background)">{winStreak}</p>
-              <p className={`text-xs uppercase tracking-[0.14em] ${winStreak > 0 ? "text-(--signal-success)" : "text-[rgba(241,243,252,0.52)]"}`}>
+              <p className="font-[var(--font-mono)] text-[0.72rem] font-medium tracking-[0.2em] text-[rgba(241,243,252,0.52)] uppercase">Win Streak</p>
+              <p className="text-[clamp(3rem,4vw,3.5rem)] font-semibold leading-none tracking-[-0.05em] text-(--on-background)">{winStreak}</p>
+              <p className={`text-[0.72rem] uppercase tracking-[0.18em] ${winStreak > 0 ? "text-(--signal-success)" : "text-[rgba(241,243,252,0.52)]"}`}>
                 straight wins
               </p>
             </div>
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[rgba(241,243,252,0.06)] text-[rgba(241,243,252,0.42)] transition group-hover:bg-[rgba(0,229,204,0.12)] group-hover:text-(--arena-accent)"><Target className="h-5 w-5" /></div>
+            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[rgba(241,243,252,0.42)] transition group-hover:border-[rgba(0,229,204,0.2)] group-hover:bg-[rgba(0,229,204,0.12)] group-hover:text-(--arena-accent)"><Target className="h-5 w-5" /></div>
           </div>
         </article>
-        <article className="group relative min-h-[140px] overflow-hidden rounded-xl border border-[rgba(0,229,204,0.35)] bg-[rgba(0,229,204,0.08)] px-5 py-4 transition-all duration-300 hover:border-[rgba(0,229,204,0.55)]">
-          <div className="flex items-start justify-between">
+        <article className="group relative min-h-[164px] overflow-hidden rounded-[1.35rem] border border-[rgba(0,229,204,0.32)] bg-[linear-gradient(135deg,rgba(0,229,204,0.12),rgba(4,32,36,0.92))] px-5 py-5 shadow-[0_18px_42px_rgba(0,0,0,0.24)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(0,229,204,0.48)] hover:shadow-[0_24px_54px_rgba(0,0,0,0.32)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,255,255,0.16),transparent_28%)]" />
+          <div className="relative z-[1] flex h-full items-start justify-between">
             <div className="space-y-2.5">
-              <p className="text-[0.7rem] font-medium tracking-[0.14em] text-[rgba(241,243,252,0.56)] uppercase">ELO Rating</p>
-              <p className="text-5xl font-bold tracking-tight text-(--arena-accent)">{animatedElo.toLocaleString()}</p>
-              <div className="flex items-center gap-1.5 text-xs">
+              <p className="font-[var(--font-mono)] text-[0.72rem] font-medium tracking-[0.2em] text-[rgba(214,255,249,0.7)] uppercase">ELO Rating</p>
+              <p className="text-[clamp(3rem,4vw,3.5rem)] font-semibold leading-none tracking-[-0.05em] text-(--arena-accent)">{animatedElo.toLocaleString()}</p>
+              <div className="flex items-center gap-1.5 text-[0.82rem]">
                 {eloTrend !== 0 ? (
                   <span className={eloTrend > 0 ? "text-(--signal-success)" : "text-(--signal-danger)"}>
                     {eloTrend > 0 ? "+" : ""}
                     {eloTrend}
                   </span>
                 ) : null}
-                <span className="text-[rgba(241,243,252,0.52)]">{league}</span>
+                <span className="text-[rgba(241,243,252,0.66)]">{league}</span>
               </div>
             </div>
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[rgba(0,229,204,0.12)] text-(--arena-accent)"><Trophy className="h-5 w-5" /></div>
+            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-[rgba(0,229,204,0.16)] bg-[rgba(0,229,204,0.12)] text-(--arena-accent)"><Trophy className="h-5 w-5" /></div>
           </div>
         </article>
-        <article className="group relative min-h-[140px] overflow-hidden rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.72)] px-5 py-4 transition-all duration-300 hover:border-[rgba(0,229,204,0.3)]">
-          <div className="flex items-start justify-between">
+        <article className="group relative min-h-[164px] overflow-hidden rounded-[1.35rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(7,11,18,0.9),rgba(5,9,15,0.94))] px-5 py-5 shadow-[0_18px_38px_rgba(0,0,0,0.22)] transition-all duration-300 hover:-translate-y-1 hover:border-[rgba(0,229,204,0.2)] hover:shadow-[0_24px_48px_rgba(0,0,0,0.3)]">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(126,87,255,0.08),transparent_22%)] opacity-90" />
+          <div className="relative z-[1] flex h-full items-start justify-between">
             <div className="space-y-2.5">
-              <p className="text-[0.7rem] font-medium tracking-[0.14em] text-[rgba(241,243,252,0.56)] uppercase">Matches Played</p>
-              <p className="text-5xl font-bold tracking-tight text-(--on-background)">{matchesPlayed}</p>
+              <p className="font-[var(--font-mono)] text-[0.72rem] font-medium tracking-[0.2em] text-[rgba(241,243,252,0.52)] uppercase">Matches Played</p>
+              <p className="text-[clamp(3rem,4vw,3.5rem)] font-semibold leading-none tracking-[-0.05em] text-(--on-background)">{matchesPlayed}</p>
+              <div className="flex items-center gap-2 text-[0.82rem] text-[rgba(241,243,252,0.62)]">
+                <span>{wins}W</span>
+                <span className="text-[rgba(241,243,252,0.24)]">/</span>
+                <span>{losses}L</span>
+                <span className="ml-1 rounded-full border border-[rgba(255,255,255,0.08)] px-2 py-0.5 font-[var(--font-mono)] text-[0.62rem] tracking-[0.14em] uppercase text-[rgba(241,243,252,0.54)]">
+                  {winRate}% WR
+                </span>
+              </div>
             </div>
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-[rgba(241,243,252,0.06)] text-[rgba(241,243,252,0.42)] transition group-hover:bg-[rgba(0,229,204,0.12)] group-hover:text-(--arena-accent)"><Zap className="h-5 w-5" /></div>
+            <div className="grid h-11 w-11 place-items-center rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[rgba(241,243,252,0.42)] transition group-hover:border-[rgba(0,229,204,0.2)] group-hover:bg-[rgba(0,229,204,0.12)] group-hover:text-(--arena-accent)"><Zap className="h-5 w-5" /></div>
           </div>
         </article>
       </div>
 
       <section className={`${panelFrameClass} arena-stagger p-5`} style={{ animationDelay: "220ms" }}>
         <div className={panelNoiseClass} />
-        <div className="relative z-[1] space-y-3">
+        <div className="relative z-[1] space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold tracking-[0.14em] text-[rgba(241,243,252,0.6)] uppercase">Match History</p>
+            <div>
+              <p className="font-[var(--font-mono)] text-[0.78rem] font-medium tracking-[0.22em] text-[rgba(241,243,252,0.56)] uppercase">Match History</p>
+              <p className="mt-2 text-sm text-[rgba(241,243,252,0.46)]">
+                Your last arena duels, rating shifts, and opponent snapshots.
+              </p>
+            </div>
+            <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-3 py-1 font-[var(--font-mono)] text-[0.62rem] tracking-[0.16em] text-[rgba(241,243,252,0.54)] uppercase">
+              {recentMatches.length} logged
+            </span>
           </div>
           <div className="space-y-3">
             {recentMatches.length === 0 ? (
-              <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(6,11,18,0.56)] px-4 py-8 text-center text-sm text-[rgba(241,243,252,0.56)]">
-                Your finished arena matches will show up here.
+              <div className="overflow-hidden rounded-[1.35rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(7,11,18,0.72),rgba(5,9,15,0.88))]">
+                <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+                  <div className="grid h-14 w-14 place-items-center rounded-2xl border border-[rgba(0,229,204,0.18)] bg-[rgba(0,229,204,0.08)] text-(--arena-accent)">
+                    <Trophy className="h-6 w-6" />
+                  </div>
+                  <p className="mt-4 text-lg font-medium text-(--on-background)">
+                    No finished duels yet
+                  </p>
+                  <p className="mt-2 max-w-md text-sm leading-7 text-[rgba(241,243,252,0.54)]">
+                    Your completed arena matches, rating swings, and rival results
+                    will start filling this command log once your first duel ends.
+                  </p>
+                </div>
               </div>
             ) : recentMatches.map((match) => {
               const isVictory = match.winner === "user";
               return (
-                <article key={match.summaryKey} className={`group relative overflow-hidden rounded-xl border bg-[rgba(6,11,18,0.72)] p-4 transition hover:border-[rgba(0,229,204,0.28)] ${isVictory ? "border-l-2 border-l-(--signal-success) border-[rgba(255,255,255,0.08)]" : "border-l-2 border-l-(--signal-danger) border-[rgba(255,255,255,0.08)]"}`}>
+                <article key={match.summaryKey} className={`group relative overflow-hidden rounded-[1.15rem] border bg-[linear-gradient(180deg,rgba(7,11,18,0.78),rgba(5,9,15,0.9))] p-4 transition hover:-translate-y-0.5 hover:border-[rgba(0,229,204,0.28)] ${isVictory ? "border-l-2 border-l-(--signal-success) border-[rgba(255,255,255,0.08)]" : "border-l-2 border-l-(--signal-danger) border-[rgba(255,255,255,0.08)]"}`}>
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                      <div className={`grid h-12 w-12 place-items-center rounded-lg text-lg font-bold ${isVictory ? "bg-[rgba(74,222,128,0.12)] text-(--signal-success)" : "bg-[rgba(255,112,112,0.12)] text-(--signal-danger)"}`}>{match.opponentUsername.slice(0, 2).toUpperCase()}</div>
+                      <div className={`grid h-12 w-12 place-items-center rounded-xl text-lg font-bold ${isVictory ? "bg-[rgba(74,222,128,0.12)] text-(--signal-success)" : "bg-[rgba(255,112,112,0.12)] text-(--signal-danger)"}`}>{match.opponentUsername.slice(0, 2).toUpperCase()}</div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className={`text-xs font-bold tracking-[0.1em] uppercase ${isVictory ? "text-(--signal-success)" : "text-(--signal-danger)"}`}>{isVictory ? "Victory" : "Defeat"}</span>
