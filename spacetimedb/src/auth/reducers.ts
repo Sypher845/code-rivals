@@ -76,6 +76,60 @@ function upsertSession(ctx: AuthReducerCtx, username: string) {
   );
 }
 
+function resetLegacySocialStateForIdentity(ctx: AuthReducerCtx) {
+  const identity = ctx.sender;
+  const identityHex = identity.toHexString();
+
+  for (const row of [...ctx.db.friendRequest.friend_request_from_identity.filter(identity)]) {
+    ctx.db.friendRequest.requestId.delete(row.requestId);
+  }
+
+  for (const row of [...ctx.db.friendRequest.friend_request_to_identity.filter(identity)]) {
+    if (ctx.db.friendRequest.requestId.find(row.requestId)) {
+      ctx.db.friendRequest.requestId.delete(row.requestId);
+    }
+  }
+
+  for (const row of [...ctx.db.gameInvite.game_invite_from_identity.filter(identity)]) {
+    ctx.db.gameInvite.inviteId.delete(row.inviteId);
+  }
+
+  for (const row of [...ctx.db.gameInvite.game_invite_to_identity.filter(identity)]) {
+    if (ctx.db.gameInvite.inviteId.find(row.inviteId)) {
+      ctx.db.gameInvite.inviteId.delete(row.inviteId);
+    }
+  }
+
+  for (const row of [...ctx.db.friendship.friendship_user_a.filter(identity)]) {
+    ctx.db.friendship.friendshipKey.delete(row.friendshipKey);
+  }
+
+  for (const row of [...ctx.db.friendship.friendship_user_b.filter(identity)]) {
+    if (ctx.db.friendship.friendshipKey.find(row.friendshipKey)) {
+      ctx.db.friendship.friendshipKey.delete(row.friendshipKey);
+    }
+  }
+
+  for (const row of [...ctx.db.rivalEntry.rival_entry_owner_identity.filter(identity)]) {
+    ctx.db.rivalEntry.rivalKey.delete(row.rivalKey);
+  }
+
+  for (const row of [...ctx.db.rivalEntry.rival_entry_rival_identity.filter(identity)]) {
+    if (ctx.db.rivalEntry.rivalKey.find(row.rivalKey)) {
+      ctx.db.rivalEntry.rivalKey.delete(row.rivalKey);
+    }
+  }
+
+  for (const notification of ctx.db.userNotification.iter()) {
+    if (
+      notification.recipientIdentity.isEqual(identity) ||
+      (notification.actorIdentity?.toHexString() ?? null) === identityHex
+    ) {
+      ctx.db.userNotification.notificationId.delete(notification.notificationId);
+    }
+  }
+}
+
 export const sign_up = spacetimedb.reducer(
   {
     username: t.string(),
@@ -112,6 +166,7 @@ export const sign_up = spacetimedb.reducer(
     });
 
     ensurePlayerProfile(ctx, normalizedUsername);
+    resetLegacySocialStateForIdentity(ctx);
 
     upsertSession(ctx, normalizedUsername);
 

@@ -44,6 +44,13 @@ const defaultSignUpForm: SignUpFormState = {
   confirmPassword: "",
 };
 
+const SPACETIMEDB_HOST =
+  import.meta.env.VITE_SPACETIMEDB_HOST ?? "ws://localhost:3000";
+const SPACETIMEDB_DB_NAME =
+  import.meta.env.VITE_SPACETIMEDB_DB_NAME ?? "code-rivals-hrs2l";
+const SPACETIMEDB_TOKEN_KEY = `${SPACETIMEDB_HOST}/${SPACETIMEDB_DB_NAME}/auth_token`;
+const SPACETIMEDB_TOKEN_RESET_KEY = `${SPACETIMEDB_TOKEN_KEY}/reset_once`;
+
 function buildUserArenaPath(username: string) {
   return `/${encodeURIComponent(username)}`;
 }
@@ -231,6 +238,8 @@ function App() {
       return;
     }
 
+    sessionStorage.removeItem(SPACETIMEDB_TOKEN_RESET_KEY);
+
     if (!isAuthPath(location.pathname)) {
       return;
     }
@@ -253,6 +262,28 @@ function App() {
     session,
     sessionReady,
   ]);
+
+  useEffect(() => {
+    if (!connected || !identity || !sessionReady || session) {
+      return;
+    }
+
+    if (sessionStorage.getItem(SPACETIMEDB_TOKEN_RESET_KEY) === "1") {
+      return;
+    }
+
+    const storedToken = localStorage.getItem(SPACETIMEDB_TOKEN_KEY);
+    if (!storedToken) {
+      return;
+    }
+
+    console.info("[Auth] clearing stale unauthenticated token before auth flow", {
+      identity: identity.toHexString(),
+    });
+    sessionStorage.setItem(SPACETIMEDB_TOKEN_RESET_KEY, "1");
+    localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
+    window.location.replace(location.pathname + location.search + location.hash);
+  }, [connected, identity, location.hash, location.pathname, location.search, session, sessionReady]);
 
   const handleTabChange = (tab: "login" | "signup") => {
     navigate(tab === "signup" ? "/signup" : "/login");
@@ -309,8 +340,10 @@ function App() {
 
     try {
       await logOut();
-      navigate("/");
-      console.info("[Auth] session closed and redirected to landing.");
+      sessionStorage.removeItem(SPACETIMEDB_TOKEN_RESET_KEY);
+      localStorage.removeItem(SPACETIMEDB_TOKEN_KEY);
+      window.location.replace("/");
+      console.info("[Auth] session closed, local identity cleared, and redirected to landing.");
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Unable to close the session.",

@@ -67,6 +67,8 @@ export function ArenaSidebar({
   const [arenaRoomRows] = useTable(tables.arenaRoom);
   const [arenaMemberRows] = useTable(tables.arenaRoomMember);
   const [arenaRoomNoticeRows] = useTable(tables.arenaRoomNotice);
+  const [friendshipRows] = useTable(tables.friendship);
+  const [rivalEntryRows] = useTable(tables.rivalEntry);
 
   const activeRoom = useMemo(() => {
     if (!activeRoomId) return null;
@@ -140,21 +142,64 @@ export function ArenaSidebar({
   );
   const [playerProfileRows] = useTable(tables.playerProfile);
   const [sessionRows] = useTable(tables.authSession);
+  const [playerPresenceRows] = useTable(tables.playerPresence);
   const onlineFriends = useMemo(
-    () =>
-      playerProfileRows
-        .filter((profile) => profile.username !== username)
-        .filter((profile) =>
-          sessionRows.some(
-            (session) => session.username === profile.username && session.connected,
-          ),
-        )
-        .map((profile) => ({
-          id: profile.usernameKey,
-          username: profile.username,
-          league: getLeagueFromElo(Number(profile.eloRating)),
-        })),
-    [playerProfileRows, sessionRows, username],
+    () => {
+      if (!identity) {
+        return [];
+      }
+
+      const relatedIdentityKeys = new Set<string>();
+
+      for (const friendship of friendshipRows) {
+        if (friendship.userA.isEqual(identity)) {
+          relatedIdentityKeys.add(friendship.userB.toHexString());
+        } else if (friendship.userB.isEqual(identity)) {
+          relatedIdentityKeys.add(friendship.userA.toHexString());
+        }
+      }
+
+      for (const rivalEntry of rivalEntryRows) {
+        if (rivalEntry.ownerIdentity.isEqual(identity)) {
+          relatedIdentityKeys.add(rivalEntry.rivalIdentity.toHexString());
+        }
+      }
+
+      const sessionByUsername = new Map(
+        sessionRows
+          .filter((session) => session.connected)
+          .map((session) => [session.username, session]),
+      );
+
+      return playerPresenceRows
+        .filter((presence) => presence.connected)
+        .filter((presence) => !presence.playerIdentity.isEqual(identity))
+        .filter((presence) => relatedIdentityKeys.has(presence.playerIdentity.toHexString()))
+        .map((presence) => {
+          const profile =
+            playerProfileRows.find((row) => row.username === presence.username) ?? null;
+          const session = sessionByUsername.get(presence.username);
+          return {
+            id: presence.playerIdentity.toHexString(),
+            username: presence.username,
+            league: getLeagueFromElo(Number(profile?.eloRating ?? 400n)),
+            lastSeenMicros:
+              session?.lastSeenAt.microsSinceUnixEpoch ??
+              presence.lastSeenAt.microsSinceUnixEpoch,
+          };
+        })
+        .sort((left, right) =>
+          left.lastSeenMicros > right.lastSeenMicros ? -1 : left.lastSeenMicros < right.lastSeenMicros ? 1 : 0,
+        );
+    },
+    [
+      friendshipRows,
+      identity,
+      playerPresenceRows,
+      playerProfileRows,
+      rivalEntryRows,
+      sessionRows,
+    ],
   );
 
   const pushStatus = (message: string, tone: "neutral" | "error" = "neutral") => {
