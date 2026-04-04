@@ -323,6 +323,30 @@ export function FriendsTab({
     });
   };
 
+  const handleChallengeFriend = async (
+    friendKey: string,
+    friendIdentity: Identity,
+    friendUsername: string,
+  ) => {
+    const actionKey = `challenge:${friendKey}`;
+    setSubmitting(actionKey);
+    setStatusMessage(`${friendUsername} is invited.`);
+
+    try {
+      await sendGameInvite({ friendIdentity });
+      navigate(`/${encodeURIComponent(username)}`, {
+        state: {
+          arenaToastMessage: `${friendUsername} is invited.`,
+          arenaToastTone: "neutral",
+        },
+      });
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to complete this action.");
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
   if (mode === "notifications") {
     return (
       <section className="space-y-6">
@@ -728,9 +752,11 @@ export function FriendsTab({
                 type="button"
                 disabled={!challengeStatus.canChallenge || submitting === `challenge:${friend.friendKey}`}
                 onClick={() => {
-                  void runAction(`challenge:${friend.friendKey}`, async () => {
-                    await sendGameInvite({ friendIdentity: friend.friendIdentity });
-                  }, () => setStatusMessage(`Challenge sent to ${friend.username}.`));
+                  void handleChallengeFriend(
+                    friend.friendKey,
+                    friend.friendIdentity,
+                    friend.username,
+                  );
                 }}
                 className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border text-xs font-semibold tracking-[0.1em] uppercase transition ${
                   challengeStatus.canChallenge

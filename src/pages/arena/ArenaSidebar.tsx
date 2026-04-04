@@ -208,6 +208,22 @@ export function ArenaSidebar({
   };
 
   useEffect(() => {
+    const navigationState = location.state as
+      | {
+          arenaToastMessage?: string;
+          arenaToastTone?: "neutral" | "error";
+        }
+      | null;
+
+    if (!navigationState?.arenaToastMessage) {
+      return;
+    }
+
+    pushStatus(navigationState.arenaToastMessage, navigationState.arenaToastTone ?? "neutral");
+    navigate(location.pathname + location.search, { replace: true });
+  }, [location.pathname, location.search, location.state, navigate]);
+
+  useEffect(() => {
     return () => {
       if (roomCodeCopiedTimeoutRef.current !== null) {
         window.clearTimeout(roomCodeCopiedTimeoutRef.current);
