@@ -1,5 +1,7 @@
 # Code Rivals
 
+[Live App](https://code-rivals-six.vercel.app/)
+
 Code Rivals is a real-time competitive coding game where two players enter an arena, lock in power cards, get the same problem for the round, and try to out-code each other before the timer runs out.
 
 Think:
