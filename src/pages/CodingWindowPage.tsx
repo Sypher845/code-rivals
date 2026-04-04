@@ -274,6 +274,7 @@ export function CodingWindowPage() {
   const editorThemeId =
     activeEditorSabotage?.themeId ?? DEFAULT_EDITOR_THEME_ID;
   const flashbangActive = activeEditorSabotage?.flashbangActive ?? false;
+  const lineJumperActive = activeEditorSabotage?.lineJumperActive ?? false;
   const noRetreatActive = activeEditorSabotage?.noRetreatActive ?? false;
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
@@ -426,11 +427,21 @@ export function CodingWindowPage() {
       return;
     }
 
-    setActiveEditorSabotage(handlerOutput.editorEffect);
+    const normalizedEditorEffect =
+      handlerOutput.editorEffect.expiresAtMs === null &&
+      latestIncomingSabotage.fullRound &&
+      roundDeadlineMs !== null
+        ? {
+            ...handlerOutput.editorEffect,
+            expiresAtMs: roundDeadlineMs,
+          }
+        : handlerOutput.editorEffect;
+
+    setActiveEditorSabotage(normalizedEditorEffect);
     setStatusMessage(
       `${formatPowerupName(latestIncomingSabotage.powerupId)} is affecting your editor.`,
     );
-  }, [latestIncomingSabotage]);
+  }, [latestIncomingSabotage, roundDeadlineMs]);
 
   useEffect(() => {
     if (!activeEditorSabotage?.expiresAtMs) {
@@ -692,6 +703,7 @@ export function CodingWindowPage() {
           <div style={{ height: `${vRatio * 100}%` }} className="min-h-0">
             <EditorPanel
               editorThemeId={editorThemeId}
+              lineJumperActive={lineJumperActive}
               noRetreatActive={noRetreatActive}
             />
           </div>

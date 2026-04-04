@@ -91,11 +91,13 @@ function defineFlashbangTheme(monaco: Parameters<OnMount>[1]) {
 
 type EditorPanelProps = {
   editorThemeId?: EditorThemeId;
+  lineJumperActive?: boolean;
   noRetreatActive?: boolean;
 };
 
 export function EditorPanel({
   editorThemeId = DEFAULT_EDITOR_THEME_ID,
+  lineJumperActive = false,
   noRetreatActive = false,
 }: EditorPanelProps) {
   const [language, setLanguage] = useState("cpp");
@@ -190,6 +192,49 @@ export function EditorPanel({
 
     acceptedCodeRef.current = code;
   }, [code]);
+
+  useEffect(() => {
+    if (!editorRef.current || !lineJumperActive) {
+      return;
+    }
+
+    const editor = editorRef.current;
+
+    const jumpCursor = () => {
+      const model = editor.getModel();
+      if (!model) {
+        return;
+      }
+
+      const totalLines = model.getLineCount();
+      if (totalLines <= 0) {
+        return;
+      }
+
+      const randomLineNumber = Math.max(
+        1,
+        Math.floor(Math.random() * totalLines) + 1,
+      );
+      const maxColumn = model.getLineMaxColumn(randomLineNumber);
+      const randomColumn = Math.max(
+        1,
+        Math.floor(Math.random() * Math.max(maxColumn, 1)) + 1,
+      );
+
+      editor.setPosition({ lineNumber: randomLineNumber, column: randomColumn });
+      editor.revealPositionInCenter({
+        lineNumber: randomLineNumber,
+        column: randomColumn,
+      });
+      editor.focus();
+    };
+
+    const intervalId = window.setInterval(jumpCursor, 30_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [lineJumperActive]);
 
   return (
     <div

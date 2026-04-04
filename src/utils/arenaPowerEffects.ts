@@ -8,6 +8,7 @@ export type PowerupEffectTarget = "editor";
 
 export type PowerupEffectHandlerKey =
   | "applyFlashbangEffect"
+  | "applyLineJumperEffect"
   | "applyNoRetreatEffect";
 
 export type PowerupEffectConfig = {
@@ -26,6 +27,12 @@ export const POWERUP_EFFECTS_MAP = {
     fullRound: false,
     handlerKey: "applyFlashbangEffect",
     roundTime: [2, 4, 7],
+    target: "editor",
+  },
+  LineJumperCard: {
+    fullRound: true,
+    handlerKey: "applyLineJumperEffect",
+    roundTime: [0, 0, 0],
     target: "editor",
   },
   SkullCard: {

@@ -10,6 +10,7 @@ export type EditorThemeId =
 export type EditorSabotageEffect = {
   expiresAtMs: number | null;
   flashbangActive: boolean;
+  lineJumperActive: boolean;
   noRetreatActive: boolean;
   powerupId: string;
   themeId: EditorThemeId;
@@ -37,9 +38,31 @@ function applyFlashbangEffect({
     editorEffect: {
       expiresAtMs,
       flashbangActive: true,
+      lineJumperActive: false,
       noRetreatActive: false,
       powerupId: effect.powerupId,
       themeId: FLASHBANG_EDITOR_THEME_ID,
+    },
+  };
+}
+
+function applyLineJumperEffect({
+  effect,
+  emittedAtMs,
+}: PowerupHandlerInput): PowerupHandlerOutput {
+  const expiresAtMs =
+    effect.durationMinutes === null
+      ? null
+      : emittedAtMs + effect.durationMinutes * 60_000;
+
+  return {
+    editorEffect: {
+      expiresAtMs,
+      flashbangActive: false,
+      lineJumperActive: true,
+      noRetreatActive: false,
+      powerupId: effect.powerupId,
+      themeId: DEFAULT_EDITOR_THEME_ID,
     },
   };
 }
@@ -57,6 +80,7 @@ function applyNoRetreatEffect({
     editorEffect: {
       expiresAtMs,
       flashbangActive: false,
+      lineJumperActive: false,
       noRetreatActive: true,
       powerupId: effect.powerupId,
       themeId: DEFAULT_EDITOR_THEME_ID,
@@ -66,6 +90,7 @@ function applyNoRetreatEffect({
 
 const POWERUP_HANDLER_MAP = {
   applyFlashbangEffect,
+  applyLineJumperEffect,
   applyNoRetreatEffect,
 } as const;
 
