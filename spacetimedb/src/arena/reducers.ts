@@ -77,6 +77,50 @@ function getRoundDurationMicros(roundNumber: bigint) {
   return ROUND_THREE_DURATION_MICROS;
 }
 
+function getRoundDurationSeconds(roundNumber: bigint) {
+  return getRoundDurationMicros(roundNumber) / 1_000_000n;
+}
+
+function getRoundMaxPoints(roundNumber: bigint) {
+  return 200n + getRoundDurationSeconds(roundNumber) / 2n;
+}
+
+function calculateRoundPoints(
+  roundNumber: bigint,
+  submittedTimeTakenSeconds: bigint,
+  submittedTestcasesPassed: bigint,
+  submittedTotalTestcases: bigint,
+) {
+  if (submittedTotalTestcases <= 0n || submittedTestcasesPassed <= 0n) {
+    return 0n;
+  }
+
+  const roundDurationSeconds = getRoundDurationSeconds(roundNumber);
+  const clampedTimeTakenSeconds =
+    submittedTimeTakenSeconds < 0n
+      ? 0n
+      : submittedTimeTakenSeconds > roundDurationSeconds
+        ? roundDurationSeconds
+        : submittedTimeTakenSeconds;
+  const clampedTestcasesPassed =
+    submittedTestcasesPassed > submittedTotalTestcases
+      ? submittedTotalTestcases
+      : submittedTestcasesPassed;
+
+  const maxPoints = getRoundMaxPoints(roundNumber);
+  const accuracyPool = (maxPoints * 70n) / 100n;
+  const speedPool = maxPoints - accuracyPool;
+  const secondsRemaining = roundDurationSeconds - clampedTimeTakenSeconds;
+
+  const accuracyPoints =
+    (accuracyPool * clampedTestcasesPassed) / submittedTotalTestcases;
+  const speedPoints =
+    (speedPool * clampedTestcasesPassed * secondsRemaining) /
+    (submittedTotalTestcases * roundDurationSeconds);
+
+  return accuracyPoints + speedPoints;
+}
+
 function requireSession(ctx: ArenaReducerCtx) {
   const session = ctx.db.authSession.sessionIdentity.find(ctx.sender);
   if (!session) {
@@ -523,7 +567,7 @@ export const submit_round_result = spacetimedb.reducer(
     totalTestcases: t.u64(),
     pointsEarned: t.u64(),
   },
-  (ctx, { roomId, timeTakenSeconds, testcasesPassed, totalTestcases, pointsEarned }) => {
+  (ctx, { roomId, timeTakenSeconds, testcasesPassed, totalTestcases, pointsEarned: _pointsEarned }) => {
     requireSession(ctx);
     const normalizedRoomId = normalizeRoomId(roomId);
     const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
@@ -545,6 +589,13 @@ export const submit_round_result = spacetimedb.reducer(
       return;
     }
 
+    const calculatedPointsEarned = calculateRoundPoints(
+      room.currentRound,
+      timeTakenSeconds,
+      testcasesPassed,
+      totalTestcases,
+    );
+
     ctx.db.arenaRoundResult.insert({
       resultKey: buildRoundResultKey(
         normalizedRoomId,
@@ -558,7 +609,7 @@ export const submit_round_result = spacetimedb.reducer(
       timeTakenSeconds,
       testcasesPassed,
       totalTestcases,
-      pointsEarned,
+      pointsEarned: calculatedPointsEarned,
       createdAt: ctx.timestamp,
     });
 
