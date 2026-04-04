@@ -57,6 +57,7 @@ import SetPlayerActivityReducer from "./set_player_activity_reducer";
 import SignUpReducer from "./sign_up_reducer";
 import StartArenaMatchReducer from "./start_arena_match_reducer";
 import SubmitRoundResultReducer from "./submit_round_result_reducer";
+import TriggerArenaSabotageReducer from "./trigger_arena_sabotage_reducer";
 import UnlockArenaPowerupReducer from "./unlock_arena_powerup_reducer";
 
 // Import all procedure arg schemas
@@ -69,6 +70,7 @@ import ArenaRoomRow from "./arena_room_table";
 import ArenaRoomMemberRow from "./arena_room_member_table";
 import ArenaRoomNoticeRow from "./arena_room_notice_table";
 import ArenaRoundResultRow from "./arena_round_result_table";
+import ArenaSabotageEventRow from "./arena_sabotage_event_table";
 import AuthSessionRow from "./auth_session_table";
 import FriendRequestRow from "./friend_request_table";
 import FriendshipRow from "./friendship_table";
@@ -175,6 +177,24 @@ const tablesSchema = __schema({
       { name: 'arena_round_result_result_key_key', constraint: 'unique', columns: ['resultKey'] },
     ],
   }, ArenaRoundResultRow),
+  arenaSabotageEvent: __table({
+    name: 'arena_sabotage_event',
+    indexes: [
+      { accessor: 'eventId', name: 'arena_sabotage_event_event_id_idx_btree', algorithm: 'btree', columns: [
+        'eventId',
+      ] },
+      { accessor: 'arena_sabotage_event_room_id', name: 'arena_sabotage_event_room_id_idx_btree', algorithm: 'btree', columns: [
+        'roomId',
+      ] },
+      { accessor: 'arena_sabotage_event_target_player_identity', name: 'arena_sabotage_event_target_player_identity_idx_btree', algorithm: 'btree', columns: [
+        'targetPlayerIdentity',
+      ] },
+    ],
+    constraints: [
+      { name: 'arena_sabotage_event_event_id_key', constraint: 'unique', columns: ['eventId'] },
+    ],
+    event: true,
+  }, ArenaSabotageEventRow),
   authSession: __table({
     name: 'auth_session',
     indexes: [
@@ -335,6 +355,7 @@ const reducersSchema = __reducers(
   __reducerSchema("sign_up", SignUpReducer),
   __reducerSchema("start_arena_match", StartArenaMatchReducer),
   __reducerSchema("submit_round_result", SubmitRoundResultReducer),
+  __reducerSchema("trigger_arena_sabotage", TriggerArenaSabotageReducer),
   __reducerSchema("unlock_arena_powerup", UnlockArenaPowerupReducer),
 );
 

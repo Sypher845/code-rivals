@@ -108,6 +108,17 @@ export const ArenaRoundResult = __t.object("ArenaRoundResult", {
 });
 export type ArenaRoundResult = __Infer<typeof ArenaRoundResult>;
 
+export const ArenaSabotageEvent = __t.object("ArenaSabotageEvent", {
+  eventId: __t.u64(),
+  roomId: __t.string(),
+  roundNumber: __t.u64(),
+  sourcePlayerIdentity: __t.identity(),
+  targetPlayerIdentity: __t.identity(),
+  powerupId: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ArenaSabotageEvent = __Infer<typeof ArenaSabotageEvent>;
+
 export const AuthAccount = __t.object("AuthAccount", {
   id: __t.u64(),
   username: __t.string(),
