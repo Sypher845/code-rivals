@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useReducer, useSpacetimeDB, useTable } from "spacetimedb/react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { TopBar } from "./coding-window/TopBar";
 import { DescriptionPanel } from "./coding-window/DescriptionPanel";
 import { EditorPanel } from "./coding-window/EditorPanel";
@@ -11,6 +11,7 @@ import { reducers, tables } from "../module_bindings";
 import type { ArenaSabotageEvent } from "../module_bindings/types";
 import {
   formatPowerupName,
+  getPassiveTimePenaltySeconds,
   powerupRequiresManualActivation,
   resolvePowerupEffect,
   type ResolvedPowerupEffect,
@@ -19,6 +20,7 @@ import {
   DEFAULT_EDITOR_THEME_ID,
   executePowerupHandler,
   type EditorSabotageEffect,
+  ZEN_EDITOR_THEME_ID,
 } from "../utils/arenaPowerHandlers";
 
 const PROBLEM_API_EASY_URL =
@@ -55,6 +57,14 @@ type OutgoingSabotage = ResolvedPowerupEffect & {
   roundNumber: number;
   targetPlayerIdentityHex: string;
 };
+
+type ZenRoundStage = "intro" | "playing" | "finished";
+
+const ZEN_SABOTAGE_OPTIONS = [
+  "SkullCard",
+  "TimeKumCard",
+  "LineJumperCard",
+] as const;
 
 function getRoundDurationSeconds(roundNumber: number) {
   if (roundNumber === 1) {
@@ -215,10 +225,73 @@ function DragHandle({
   );
 }
 
+function ZenRoundCard({
+  roundNumber,
+  selfSabotageEnabled,
+  stage,
+  onExit,
+  onStart,
+}: {
+  roundNumber: number;
+  selfSabotageEnabled: boolean;
+  stage: ZenRoundStage;
+  onExit: () => void;
+  onStart: () => void;
+}) {
+  const isFinished = stage === "finished";
+
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+      <div className="w-full max-w-xl rounded-[28px] border border-[#2b2b2b] bg-[#121212] p-8 text-center shadow-[0_32px_80px_rgba(0,0,0,0.4)]">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[#7d7d7d]">
+          Zen Mode
+        </p>
+        <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#f2f2f2]">
+          {isFinished ? "Practice session complete" : `Start Round ${roundNumber}`}
+        </h2>
+        <p className="mt-4 text-sm leading-7 text-[#9d9d9d]">
+          {isFinished
+            ? "You finished all three solo rounds. Restart Zen Mode whenever you want another quiet practice run."
+            : "Solo practice keeps the regular round pacing, but strips the interface back to a sober black-and-gray layout."}
+        </p>
+        {!isFinished ? (
+          <div className="mt-6 rounded-2xl border border-[#262626] bg-[#171717] px-5 py-4 text-left">
+            <p className="text-sm font-medium text-[#e0e0e0]">
+              Self sabotage
+            </p>
+            <p className="mt-2 text-sm leading-6 text-[#9b9b9b]">
+              {selfSabotageEnabled
+                ? "Enabled. One random sabotage will be applied this round from No Retreat, Time Kum, and Line Jumper."
+                : "Disabled. This round will run clean with the standard timer."}
+            </p>
+          </div>
+        ) : null}
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <button
+            type="button"
+            onClick={onExit}
+            className="rounded-xl border border-[#2f2f2f] bg-[#181818] px-5 py-3 text-sm font-medium text-[#d0d0d0] transition hover:border-[#474747] hover:bg-[#1f1f1f]"
+          >
+            Exit Zen Mode
+          </button>
+          <button
+            type="button"
+            onClick={onStart}
+            className="rounded-xl bg-[#e2e2e2] px-5 py-3 text-sm font-semibold text-[#111111] transition hover:bg-[#f0f0f0]"
+          >
+            {isFinished ? "Restart Practice" : `Start Round ${roundNumber}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════════════════════ MAIN PAGE ═══════════════════════════════ */
 
 export function CodingWindowPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { identity } = useSpacetimeDB();
   const { roomSegment, roundSegment, username } = useParams();
   const normalizedRoomId =
@@ -227,6 +300,7 @@ export function CodingWindowPage() {
     roundSegment?.replace(/^r/i, "") ?? "1",
     10,
   );
+  const zenRequested = searchParams.get("zen") === "1";
   const fallbackRoundNumber =
     Number.isNaN(parsedRoundNumber) || parsedRoundNumber < 1 ? 1 : parsedRoundNumber;
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -234,6 +308,17 @@ export function CodingWindowPage() {
   const [problemRequestInFlight, setProblemRequestInFlight] = useState(false);
   const [problemRequestError, setProblemRequestError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [isZenMode, setIsZenMode] = useState(zenRequested);
+  const [zenSelfSabotageEnabled, setZenSelfSabotageEnabled] = useState(false);
+  const [zenRoundNumber, setZenRoundNumber] = useState(1);
+  const [zenRoundStage, setZenRoundStage] = useState<ZenRoundStage>("intro");
+  const [zenRoundStartMs, setZenRoundStartMs] = useState<number | null>(null);
+  const [zenRoundDurationSeconds, setZenRoundDurationSeconds] = useState(() =>
+    getRoundDurationSeconds(1),
+  );
+  const [zenAssignedSabotageId, setZenAssignedSabotageId] = useState<string | null>(
+    null,
+  );
   const [activeEditorSabotage, setActiveEditorSabotage] =
     useState<EditorSabotageEffect | null>(null);
   const [latestIncomingSabotage, setLatestIncomingSabotage] =
@@ -249,6 +334,7 @@ export function CodingWindowPage() {
   const [arenaRoundProblemRows] = useTable(tables.arenaRoundProblem);
   const [matchSummaryRows] = useTable(tables.arenaMatchSummary);
   const cacheRoundProblem = useReducer(reducers.cacheRoundProblem);
+  const [sessionRows] = useTable(tables.authSession);
   const submitRoundResult = useReducer(reducers.submitRoundResult);
   const triggerArenaSabotage = useReducer(reducers.triggerArenaSabotage);
 
@@ -259,6 +345,15 @@ export function CodingWindowPage() {
 
     return arenaRoomRows.find((room) => room.roomId === normalizedRoomId) ?? null;
   }, [arenaRoomRows, normalizedRoomId]);
+  const sessionUsername = useMemo(() => {
+    if (!identity) {
+      return null;
+    }
+
+    return (
+      sessionRows.find((row) => row.sessionIdentity.isEqual(identity))?.username ?? null
+    );
+  }, [identity, sessionRows]);
 
   const activeRoundNumber = activeRoom?.currentRound
     ? Number(activeRoom.currentRound)
@@ -440,11 +535,24 @@ export function CodingWindowPage() {
     ((roomPhase === "playing" && !storedRoundProblem) || problemRequestInFlight) &&
     !problemError;
   const activeRoundProblemApiUrl = getRoundProblemApiUrl(activeRoundNumber);
-  const submitDisabled =
+  const arenaSubmitDisabled =
     !normalizedRoomId ||
     roomPhase !== "playing" ||
     isSubmitting ||
     Boolean(myRoundState?.hasSubmitted);
+
+  const zenSecondsRemaining =
+    zenRoundStage !== "playing" || zenRoundStartMs === null
+      ? zenRoundDurationSeconds
+      : Math.max(
+          0,
+          Math.ceil(
+            (zenRoundStartMs + zenRoundDurationSeconds * 1000 - nowMs) / 1000,
+          ),
+        );
+  const submitDisabled = isZenMode
+    ? zenRoundStage !== "playing" || isSubmitting
+    : arenaSubmitDisabled;
 
   const { ratio: hRatio, handleMouseDown: hMouseDown } = useDragResize(
     "horizontal",
@@ -461,7 +569,7 @@ export function CodingWindowPage() {
 
   const handleIncomingSabotageEvent = useCallback(
     (eventRow: ArenaSabotageEvent) => {
-      if (!identity || !normalizedRoomId) {
+      if (!identity || !normalizedRoomId || isZenMode) {
         return;
       }
 
@@ -505,7 +613,7 @@ export function CodingWindowPage() {
         });
       }
     },
-    [identity, normalizedRoomId, roundDeadlineMs],
+    [identity, isZenMode, normalizedRoomId, roundDeadlineMs],
   );
 
   const sabotageEventCallbacks = useMemo(
@@ -516,7 +624,11 @@ export function CodingWindowPage() {
   useTable(tables.arenaSabotageEvent, sabotageEventCallbacks);
 
   useEffect(() => {
-    if (roundDeadlineMs === null) {
+    const shouldTick =
+      (isZenMode && zenRoundStage === "playing") ||
+      (!isZenMode && roundDeadlineMs !== null);
+
+    if (!shouldTick) {
       return;
     }
 
@@ -525,10 +637,10 @@ export function CodingWindowPage() {
     }, 250);
 
     return () => window.clearInterval(timerId);
-  }, [roundDeadlineMs]);
+  }, [isZenMode, roundDeadlineMs, zenRoundStage]);
 
   useEffect(() => {
-    if (!normalizedRoomId || !username) {
+    if (isZenMode || !normalizedRoomId || !username) {
       return;
     }
 
@@ -577,11 +689,12 @@ export function CodingWindowPage() {
     playerSummary,
     navigate,
     normalizedRoomId,
+    isZenMode,
     username,
   ]);
 
   useEffect(() => {
-    if (!currentRoundKey) {
+    if (isZenMode || !currentRoundKey) {
       return;
     }
 
@@ -592,7 +705,7 @@ export function CodingWindowPage() {
     setActiveOutgoingSabotage(null);
     setActiveEditorSabotage(null);
     setProblemRequestError(null);
-  }, [currentRoundKey]);
+  }, [currentRoundKey, isZenMode]);
 
   useEffect(() => {
     if (!latestIncomingSabotage) {
@@ -668,7 +781,7 @@ export function CodingWindowPage() {
   }, [activeOutgoingSabotage, nowMs]);
 
   useEffect(() => {
-    if (secondsRemaining !== 0 || submitDisabled || !normalizedRoomId) {
+    if (isZenMode || secondsRemaining !== 0 || submitDisabled || !normalizedRoomId) {
       return;
     }
 
@@ -692,6 +805,7 @@ export function CodingWindowPage() {
       }
     })();
   }, [
+    isZenMode,
     myRoundDurationSeconds,
     normalizedRoomId,
     secondsRemaining,
@@ -782,6 +896,11 @@ export function CodingWindowPage() {
   ]);
 
   const handleRun = useCallback(() => {
+    if (isZenMode && zenRoundStage !== "playing") {
+      setStatusMessage("Start the Zen round before running code.");
+      return;
+    }
+
     if (noMistakesActive) {
       setStatusMessage(
         "No Mistakes is active. Run is disabled, so this round is submit-only.",
@@ -791,7 +910,7 @@ export function CodingWindowPage() {
 
     setHasRun(true);
     setStatusMessage(`Run completed. ${testCases.length || 1} sample testcases checked.`);
-  }, [noMistakesActive, testCases.length]);
+  }, [isZenMode, noMistakesActive, testCases.length, zenRoundStage]);
 
   const handleSabotage = useCallback(async () => {
     if (!normalizedRoomId) {
@@ -844,6 +963,32 @@ export function CodingWindowPage() {
   ]);
 
   const handleSubmit = useCallback(async () => {
+    if (isZenMode) {
+      if (submitDisabled) {
+        return;
+      }
+
+      const submittedRound = zenRoundNumber;
+      setIsSubmitting(true);
+      setActiveEditorSabotage(null);
+      setZenAssignedSabotageId(null);
+      setZenRoundStartMs(null);
+
+      if (submittedRound >= 3) {
+        setZenRoundStage("finished");
+        setStatusMessage("Zen practice complete. All three rounds are done.");
+      } else {
+        const nextRound = submittedRound + 1;
+        setZenRoundNumber(nextRound);
+        setZenRoundStage("intro");
+        setZenRoundDurationSeconds(getRoundDurationSeconds(nextRound));
+        setStatusMessage(`Round ${submittedRound} submitted. Start Round ${nextRound} when you're ready.`);
+      }
+
+      setIsSubmitting(false);
+      return;
+    }
+
     if (!normalizedRoomId || submitDisabled) {
       return;
     }
@@ -869,15 +1014,112 @@ export function CodingWindowPage() {
       setIsSubmitting(false);
     }
   }, [
+    isZenMode,
     myRoundDurationSeconds,
     normalizedRoomId,
     secondsRemaining,
     submitDisabled,
     submitRoundResult,
     totalTestcases,
+    zenRoundNumber,
   ]);
 
-  const topBarStatusMessage = !normalizedRoomId
+  const handleZenRoundStart = useCallback(() => {
+    const roundNumber = zenRoundStage === "finished" ? 1 : zenRoundNumber;
+    const baseDurationSeconds = getRoundDurationSeconds(roundNumber);
+    const selectedSabotageId = zenSelfSabotageEnabled
+      ? ZEN_SABOTAGE_OPTIONS[
+          Math.floor(Math.random() * ZEN_SABOTAGE_OPTIONS.length)
+        ] ?? null
+      : null;
+    const nextDurationSeconds = selectedSabotageId
+      ? Math.max(
+          0,
+          baseDurationSeconds -
+            getPassiveTimePenaltySeconds(selectedSabotageId, roundNumber),
+        )
+      : baseDurationSeconds;
+    const emittedAtMs = Date.now();
+
+    if (zenRoundStage === "finished") {
+      setZenRoundNumber(1);
+    }
+
+    if (selectedSabotageId) {
+      const effect = resolvePowerupEffect(selectedSabotageId, roundNumber);
+      const handlerOutput = effect
+        ? executePowerupHandler({ effect, emittedAtMs })
+        : null;
+
+      if (handlerOutput?.editorEffect) {
+        setActiveEditorSabotage({
+          ...handlerOutput.editorEffect,
+          expiresAtMs: emittedAtMs + nextDurationSeconds * 1000,
+          themeId: ZEN_EDITOR_THEME_ID,
+        });
+      } else {
+        setActiveEditorSabotage(null);
+      }
+    } else {
+      setActiveEditorSabotage(null);
+    }
+
+    setHasRun(false);
+    setZenAssignedSabotageId(selectedSabotageId);
+    setZenRoundDurationSeconds(nextDurationSeconds);
+    setZenRoundStartMs(emittedAtMs);
+    setZenRoundStage("playing");
+    setStatusMessage(
+      selectedSabotageId
+        ? `${formatPowerupName(selectedSabotageId)} is active for this Zen round.`
+        : `Zen round ${roundNumber} started.`,
+    );
+  }, [zenRoundNumber, zenRoundStage, zenSelfSabotageEnabled]);
+
+  useEffect(() => {
+    setIsZenMode(zenRequested);
+  }, [zenRequested]);
+
+  useEffect(() => {
+    if (!isZenMode) {
+      setZenRoundNumber(1);
+      setZenRoundStage("intro");
+      setZenRoundStartMs(null);
+      setZenRoundDurationSeconds(getRoundDurationSeconds(1));
+      setZenAssignedSabotageId(null);
+      setActiveEditorSabotage(null);
+      return;
+    }
+
+    setZenRoundNumber(1);
+    setZenRoundStage("intro");
+    setZenRoundStartMs(null);
+    setZenRoundDurationSeconds(getRoundDurationSeconds(1));
+    setZenAssignedSabotageId(null);
+    setLatestIncomingSabotage(null);
+    setActiveEditorSabotage(null);
+    setStatusMessage("Zen Mode is on. Start Round 1 whenever you want.");
+  }, [isZenMode]);
+
+  useEffect(() => {
+    if (!isZenMode || zenRoundStage !== "playing" || zenSecondsRemaining !== 0) {
+      return;
+    }
+
+    void handleSubmit();
+  }, [handleSubmit, isZenMode, zenRoundStage, zenSecondsRemaining]);
+
+  const topBarStatusMessage = isZenMode
+    ? zenRoundStage === "finished"
+      ? "Three quiet rounds completed."
+      : zenRoundStage === "intro"
+        ? zenSelfSabotageEnabled
+          ? "Zen Mode is ready. A random self-sabotage will apply when the round starts."
+          : "Zen Mode is ready. Start whenever you want."
+        : zenAssignedSabotageId
+          ? `${formatPowerupName(zenAssignedSabotageId)} is active for this round.`
+          : statusMessage
+    : !normalizedRoomId
     ? "Open this page from an arena room."
     : !activeRoom && playerSummary
       ? "Match complete. Redirecting to results..."
@@ -893,13 +1135,29 @@ export function CodingWindowPage() {
             ? `Incoming sabotage queued: ${formatPowerupName(latestIncomingSabotage.powerupId)}.`
             : null);
 
+  const displayedRoundNumber = isZenMode ? zenRoundNumber : activeRoundNumber;
+  const displayedSecondsRemaining = isZenMode ? zenSecondsRemaining : secondsRemaining;
+  const displayedEditorThemeId = isZenMode
+    ? activeEditorSabotage?.themeId ?? ZEN_EDITOR_THEME_ID
+    : activeEditorSabotage?.themeId ?? DEFAULT_EDITOR_THEME_ID;
+  const handleExitZenMode = useCallback(() => {
+    const arenaPath = sessionUsername
+      ? `/${encodeURIComponent(sessionUsername)}`
+      : username
+        ? `/${encodeURIComponent(username)}`
+        : "/";
+
+    navigate(arenaPath, { replace: true });
+  }, [navigate, sessionUsername, username]);
   return (
     <div
       className="flex h-screen flex-col overflow-hidden"
-      style={{ background: P.bg }}
+      style={{ background: isZenMode ? "#0d0d0d" : P.bg }}
     >
       {/* ambient glow background */}
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_10%,rgba(0,255,255,0.06),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(224,141,255,0.07),transparent_24%)]" />
+      {!isZenMode ? (
+        <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_10%,rgba(0,255,255,0.06),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(224,141,255,0.07),transparent_24%)]" />
+      ) : null}
 
       {/* ═══════════════ TOP NAV BAR ═══════════════ */}
       <TopBar
@@ -935,20 +1193,48 @@ export function CodingWindowPage() {
           Boolean(roundStartOpponentDebuffLabel)
         }
         opponentCardUsed={null}
-        opponentHasSubmitted={Boolean(opponentRoundState?.hasSubmitted)}
-        opponentIsTyping={Boolean(opponentRoundState?.isTyping)}
-        opponentName={opponentMember?.memberName ?? "Rival"}
+        opponentHasSubmitted={
+          isZenMode ? false : Boolean(opponentRoundState?.hasSubmitted)
+        }
+        opponentIsTyping={isZenMode ? false : Boolean(opponentRoundState?.isTyping)}
+        opponentName={isZenMode ? "Zen" : opponentMember?.memberName ?? "Rival"}
         onSubmit={handleSubmit}
-        roundNumber={activeRoundNumber}
-        secondsRemaining={secondsRemaining}
+        roundNumber={displayedRoundNumber}
+        secondsRemaining={displayedSecondsRemaining}
         sabotageUsed={
-          selectedPowerupRequiresManualActivation ? sabotageUsed : true
+          isZenMode
+            ? Boolean(zenAssignedSabotageId)
+            : selectedPowerupRequiresManualActivation
+              ? sabotageUsed
+              : true
         }
         statusMessage={topBarStatusMessage}
-        submitLabel={myRoundState?.hasSubmitted ? "Submitted" : "Submit"}
+        submitLabel={
+          isZenMode
+            ? zenRoundStage === "finished"
+              ? "Complete"
+              : "Submit"
+            : myRoundState?.hasSubmitted
+              ? "Submitted"
+              : "Submit"
+        }
+        zenMode={isZenMode}
+        zenSelfSabotageEnabled={zenSelfSabotageEnabled}
+        onToggleZenSelfSabotage={() =>
+          setZenSelfSabotageEnabled((current) => !current)
+        }
       />
 
       {/* ═══════════════ MAIN CONTENT ═══════════════ */}
+      {isZenMode && zenRoundStage !== "playing" ? (
+        <ZenRoundCard
+          roundNumber={zenRoundNumber}
+          selfSabotageEnabled={zenSelfSabotageEnabled}
+          stage={zenRoundStage}
+          onExit={handleExitZenMode}
+          onStart={handleZenRoundStart}
+        />
+      ) : (
       <div ref={containerRef} className="flex min-h-0 flex-1 gap-0 p-2">
         {/* LEFT: description */}
         <div style={{ width: `${hRatio * 100}%` }} className="min-w-0">
@@ -957,6 +1243,7 @@ export function CodingWindowPage() {
             problem={problem}
             isLoading={problemLoading}
             error={problemError}
+            zenMode={isZenMode}
           />
         </div>
 
@@ -970,12 +1257,13 @@ export function CodingWindowPage() {
           {/* editor */}
           <div style={{ height: `${vRatio * 100}%` }} className="min-h-0">
             <EditorPanel
-              editorThemeId={editorThemeId}
+              editorThemeId={displayedEditorThemeId}
               keySwapActive={keySwapActive}
               keySwapMap={keySwapMap}
               lineJumperActive={lineJumperActive}
               visuallyImpairedActive={visuallyImpairedActive}
               noRetreatActive={noRetreatActive}
+              zenMode={isZenMode}
             />
           </div>
 
@@ -986,10 +1274,12 @@ export function CodingWindowPage() {
             <TestCasesPanel
               flashbangActive={flashbangActive}
               problem={problem}
+              zenMode={isZenMode}
             />
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

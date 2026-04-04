@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, User } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Moon, User } from "lucide-react";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
 import coderivalsMark from "../assets/coderivals-mark.svg";
@@ -202,6 +202,14 @@ export function ArenaPage({
             >
               Leaderboard
             </Link>
+            <button
+              type="button"
+              onClick={() => navigate("/coding-window?zen=1")}
+              className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-[rgba(241,243,252,0.62)] transition hover:bg-[rgba(255,255,255,0.05)] hover:text-(--on-background)"
+            >
+              <Moon className="h-4 w-4" />
+              Zen Mode
+            </button>
           </nav>
 
           <div className="inline-flex items-center gap-3">

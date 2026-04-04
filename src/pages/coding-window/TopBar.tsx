@@ -5,6 +5,8 @@ import {
   Check,
   Timer,
   Keyboard,
+  Moon,
+  Sparkles,
 } from "lucide-react";
 import { POWER_CARD_REGISTRY } from "../powerups/powerupRegistry";
 import {
@@ -14,18 +16,43 @@ import {
 
 /* ═══════════════════════════ MATCH TIMER ═════════════════════════════ */
 
-function MatchTimer({ secondsRemaining }: { secondsRemaining: number }) {
+function MatchTimer({
+  secondsRemaining,
+  zenMode = false,
+}: {
+  secondsRemaining: number;
+  zenMode?: boolean;
+}) {
   const minutes = String(Math.floor(secondsRemaining / 60)).padStart(2, "0");
   const seconds = String(secondsRemaining % 60).padStart(2, "0");
 
   const isLow = secondsRemaining < 60;
 
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-[rgba(0,255,255,0.18)] bg-[rgba(0,255,255,0.04)] px-4 py-2">
-      <Timer className={`h-4.5 w-4.5 ${isLow ? "text-[var(--signal-danger)]" : "text-[var(--secondary)]"}`} />
+    <div
+      className={`flex items-center gap-2.5 rounded-lg border px-4 py-2 ${
+        zenMode
+          ? "border-[#2c2c2c] bg-[#181818]"
+          : "border-[rgba(0,255,255,0.18)] bg-[rgba(0,255,255,0.04)]"
+      }`}
+    >
+      <Timer
+        className={`h-4.5 w-4.5 ${
+          isLow
+            ? "text-[var(--signal-danger)]"
+            : zenMode
+              ? "text-[#cfcfcf]"
+              : "text-[var(--secondary)]"
+        }`}
+      />
       <span
-        className={`text-lg font-bold tracking-[0.08em] tabular-nums ${isLow ? "text-[var(--signal-danger)] animate-pulse" : "text-[var(--secondary)]"
-          }`}
+        className={`text-lg font-bold tracking-[0.08em] tabular-nums ${
+          isLow
+            ? "text-[var(--signal-danger)] animate-pulse"
+            : zenMode
+              ? "text-[#cfcfcf]"
+              : "text-[var(--secondary)]"
+        }`}
       >
         {minutes}:{seconds}
       </span>
@@ -49,6 +76,7 @@ type OpponentSummary = {
   hasSubmitted: boolean;
   isTyping: boolean;
   username: string;
+  zenMode?: boolean;
 };
 
 function OpponentCard({
@@ -59,6 +87,7 @@ function OpponentCard({
   hasSubmitted,
   isTyping,
   username,
+  zenMode = false,
 }: OpponentSummary) {
   const debuffCountdown =
     activeDebuffSecondsRemaining === null ||
@@ -69,13 +98,19 @@ function OpponentCard({
   return (
     <div className="flex items-center gap-3 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] px-4 py-2">
       {/* avatar placeholder */}
-      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--ghost-border)] bg-[rgba(224,141,255,0.08)] text-sm font-bold text-[var(--primary)]">
-        {username[0]?.toUpperCase() ?? "R"}
+      <div
+        className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border text-sm font-bold ${
+          zenMode
+            ? "border-[#3a3a3a] bg-[#1a1a1a] text-[#d0d0d0]"
+            : "border-[var(--ghost-border)] bg-[rgba(224,141,255,0.08)] text-[var(--primary)]"
+        }`}
+      >
+        {zenMode ? <Moon className="h-4 w-4" /> : username[0]?.toUpperCase() ?? "R"}
       </div>
 
       <div className="flex flex-col gap-0.5">
         <span className="text-sm font-semibold text-[var(--on-background)]">
-          {username}
+          {zenMode ? "Zen Practice" : username}
         </span>
 
         {activeDebuffLabel ? (
@@ -90,8 +125,13 @@ function OpponentCard({
         ) : null}
 
         <div className="flex items-center gap-2.5">
+          {zenMode && (
+            <span className="inline-flex items-center rounded-full border border-[#3a3a3a] bg-[#1a1a1a] px-2 py-0.5 text-[0.7rem] font-medium text-[#b8b8b8]">
+              Solo run
+            </span>
+          )}
           {/* typing indicator */}
-          {isTyping && (
+          {!zenMode && isTyping && (
             <span className="inline-flex items-center gap-1 text-xs text-[var(--secondary)]">
               <Keyboard className="h-3 w-3" />
               <span className="flex gap-[2px]">
@@ -103,7 +143,7 @@ function OpponentCard({
           )}
 
           {/* card used */}
-          {cardUsed && (
+          {!zenMode && cardUsed && (
             <span className="inline-flex items-center rounded-full border border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)] px-2 py-0.5 text-[0.7rem] font-medium text-[var(--primary)]">
               {cardUsed}
             </span>
@@ -215,6 +255,9 @@ type TopBarProps = {
   sabotageUsed: boolean;
   statusMessage: string | null;
   submitLabel: string;
+  zenMode: boolean;
+  zenSelfSabotageEnabled: boolean;
+  onToggleZenSelfSabotage: () => void;
 };
 
 export function TopBar({
@@ -241,9 +284,18 @@ export function TopBar({
   sabotageUsed,
   statusMessage,
   submitLabel,
+  zenMode,
+  zenSelfSabotageEnabled,
+  onToggleZenSelfSabotage,
 }: TopBarProps) {
   return (
-    <nav className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--ghost-border)] bg-[rgba(10,14,20,0.96)] px-6 py-3">
+    <nav
+      className={`flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-6 py-3 ${
+        zenMode
+          ? "border-[#2b2b2b] bg-[#101010]"
+          : "border-[var(--ghost-border)] bg-[rgba(10,14,20,0.96)]"
+      }`}
+    >
       {/* LEFT — Opponent status card */}
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
         <OpponentCard
@@ -254,21 +306,43 @@ export function TopBar({
           hasSubmitted={opponentHasSubmitted}
           isTyping={opponentIsTyping}
           username={opponentName}
+          zenMode={zenMode}
         />
-        <div className="rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-xs uppercase tracking-[0.16em] text-[var(--text-secondary)]">
+        <div
+          className={`rounded-lg border px-3 py-2 text-xs uppercase tracking-[0.16em] ${
+            zenMode
+              ? "border-[#2b2b2b] bg-[#181818] text-[#9a9a9a]"
+              : "border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] text-[var(--text-secondary)]"
+          }`}
+        >
           Round {roundNumber}
         </div>
       </div>
 
       {/* CENTER — Timer */}
       <div className="flex items-center justify-center px-6">
-        <MatchTimer secondsRemaining={secondsRemaining} />
+        <MatchTimer secondsRemaining={secondsRemaining} zenMode={zenMode} />
       </div>
 
       {/* RIGHT — Power card + Run/Submit */}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+        {zenMode ? (
+          <button
+            type="button"
+            onClick={onToggleZenSelfSabotage}
+            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition ${
+              zenSelfSabotageEnabled
+                ? "border-[#5a5a5a] bg-[#232323] text-[#efefef]"
+                : "border-[#2b2b2b] bg-[#181818] text-[#9f9f9f] hover:border-[#4a4a4a] hover:text-[#efefef]"
+            }`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Self Sabotage {zenSelfSabotageEnabled ? "On" : "Off"}
+          </button>
+        ) : null}
+
         {/* Power card sabotage button */}
-        {mySelectedPowerupId ? (
+        {!zenMode && mySelectedPowerupId ? (
           <SabotageButton
             cardName={mySelectedPowerupId}
             isSabotaged={sabotageUsed}
@@ -285,7 +359,11 @@ export function TopBar({
         <button
           onClick={onRun}
           disabled={!canRun}
-          className="inline-flex items-center gap-2 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.04)] px-5 py-2 text-sm font-medium text-[var(--on-background)] transition hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.08)] disabled:cursor-not-allowed disabled:opacity-50"
+          className={`inline-flex items-center gap-2 rounded-lg border px-5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            zenMode
+              ? "border-[#2b2b2b] bg-[#181818] text-[#efefef] hover:border-[#454545] hover:bg-[#1f1f1f]"
+              : "border-[var(--ghost-border)] bg-[rgba(255,255,255,0.04)] text-[var(--on-background)] hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.08)]"
+          }`}
         >
           <Play className="h-4 w-4" />
           Run
@@ -295,7 +373,11 @@ export function TopBar({
         <button
           onClick={onSubmit}
           disabled={!canSubmit || isSubmitting}
-          className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-[#0a0e14] shadow-[0_0_18px_rgba(224,141,255,0.2)] transition hover:-translate-y-px hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className={`inline-flex items-center gap-2 rounded-lg px-5 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${
+            zenMode
+              ? "bg-[#e0e0e0] text-[#111111] shadow-[0_0_18px_rgba(255,255,255,0.08)] hover:-translate-y-px hover:bg-[#f0f0f0]"
+              : "bg-[var(--primary)] text-[#0a0e14] shadow-[0_0_18px_rgba(224,141,255,0.2)] hover:-translate-y-px hover:opacity-90"
+          }`}
         >
           <Send className="h-4 w-4" />
           {isSubmitting ? "Submitting..." : submitLabel}
@@ -303,7 +385,11 @@ export function TopBar({
       </div>
 
       {statusMessage ? (
-        <div className="basis-full text-right text-sm text-[var(--text-secondary)]">
+        <div
+          className={`basis-full text-right text-sm ${
+            zenMode ? "text-[#8e8e8e]" : "text-[var(--text-secondary)]"
+          }`}
+        >
           {statusMessage}
         </div>
       ) : null}

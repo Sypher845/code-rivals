@@ -2,10 +2,12 @@ import type { ResolvedPowerupEffect } from "./arenaPowerEffects";
 
 export const DEFAULT_EDITOR_THEME_ID = "neonCommand" as const;
 export const FLASHBANG_EDITOR_THEME_ID = "flashbangLowContrast" as const;
+export const ZEN_EDITOR_THEME_ID = "zenMonochrome" as const;
 
 export type EditorThemeId =
   | typeof DEFAULT_EDITOR_THEME_ID
-  | typeof FLASHBANG_EDITOR_THEME_ID;
+  | typeof FLASHBANG_EDITOR_THEME_ID
+  | typeof ZEN_EDITOR_THEME_ID;
 
 export type EditorSabotageEffect = {
   expiresAtMs: number | null;

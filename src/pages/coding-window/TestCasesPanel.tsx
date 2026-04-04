@@ -7,11 +7,13 @@ import { getParsedTestCases } from "./problemContent";
 type TestCasesPanelProps = {
   flashbangActive?: boolean;
   problem?: RemoteProblemData | null;
+  zenMode?: boolean;
 };
 
 export function TestCasesPanel({
   flashbangActive = false,
   problem,
+  zenMode = false,
 }: TestCasesPanelProps) {
   const [activeMainTab, setActiveMainTab] = useState<"testcase" | "result">(
     "testcase",
@@ -33,13 +35,19 @@ export function TestCasesPanel({
       className={`flex h-full flex-col overflow-hidden rounded-xl border ${
         flashbangActive
           ? "border-[#ece7e1] bg-white"
+          : zenMode
+            ? "border-[#2b2b2b] bg-[#111111]"
           : "border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]"
       }`}
     >
       {/* tab header */}
       <div
         className={`relative flex items-center border-b px-4 py-0 ${
-          flashbangActive ? "border-[#f1ece6]" : "border-[var(--ghost-border)]"
+          flashbangActive
+            ? "border-[#f1ece6]"
+            : zenMode
+              ? "border-[#2b2b2b]"
+              : "border-[var(--ghost-border)]"
         }`}
       >
         <div className="flex items-center gap-1">
@@ -51,9 +59,13 @@ export function TestCasesPanel({
                 activeMainTab === tab
                   ? flashbangActive
                     ? "text-[#f2eee9]"
+                    : zenMode
+                      ? "text-[#d4d4d4]"
                     : "text-[var(--primary)]"
                   : flashbangActive
                     ? "text-[#f4f0eb] hover:text-[#e6e1db]"
+                    : zenMode
+                      ? "text-[#8e8e8e] hover:text-[#cccccc]"
                     : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
               }`}
             >
@@ -64,6 +76,8 @@ export function TestCasesPanel({
                   className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${
                     flashbangActive
                       ? "bg-[#f8f4ef]"
+                      : zenMode
+                        ? "bg-[#4b4b4b]"
                       : "bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]"
                   }`}
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
@@ -95,9 +109,13 @@ export function TestCasesPanel({
                       activeCase === i
                         ? flashbangActive
                           ? "text-[#ebe7e2]"
+                          : zenMode
+                            ? "text-[#efefef]"
                           : "text-[var(--primary)]"
                         : flashbangActive
                           ? "bg-white text-[#f4f0eb] hover:text-[#e6e1db]"
+                          : zenMode
+                            ? "bg-[#171717] text-[#8e8e8e] hover:text-[#d0d0d0]"
                           : "bg-[rgba(255,255,255,0.03)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                     }`}
                   >
@@ -107,6 +125,8 @@ export function TestCasesPanel({
                         className={`absolute inset-0 rounded-md ${
                           flashbangActive
                             ? "bg-[#fefcf9]"
+                            : zenMode
+                              ? "bg-[#242424]"
                             : "bg-[rgba(224,141,255,0.1)]"
                         }`}
                         transition={{
@@ -138,6 +158,8 @@ export function TestCasesPanel({
                       className={`mb-1.5 block text-sm font-medium ${
                         flashbangActive
                           ? "text-[#f2eee9]"
+                          : zenMode
+                            ? "text-[#a5a5a5]"
                           : "text-[var(--text-tertiary)]"
                       }`}
                     >
@@ -147,6 +169,8 @@ export function TestCasesPanel({
                       className={`rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 ${
                         flashbangActive
                           ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                          : zenMode
+                            ? "border-[#2b2b2b] bg-[#171717] text-[#efefef]"
                           : "border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] text-[var(--on-background)]"
                       }`}
                     >
@@ -158,6 +182,8 @@ export function TestCasesPanel({
                       className={`mb-1.5 block text-sm font-medium ${
                         flashbangActive
                           ? "text-[#f2eee9]"
+                          : zenMode
+                            ? "text-[#a5a5a5]"
                           : "text-[var(--text-tertiary)]"
                       }`}
                     >
@@ -167,6 +193,8 @@ export function TestCasesPanel({
                       className={`rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 ${
                         flashbangActive
                           ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                          : zenMode
+                            ? "border-[#2b2b2b] bg-[#171717] text-[#efefef]"
                           : "border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] text-[var(--on-background)]"
                       }`}
                     >
@@ -186,7 +214,11 @@ export function TestCasesPanel({
               className="flex h-full flex-col items-center justify-center gap-2 py-12 text-center"
             >
               {!hasRun ? (
-                <p className="text-base text-[var(--text-tertiary)]">
+                <p
+                  className={`text-base ${
+                    zenMode ? "text-[#8e8e8e]" : "text-[var(--text-tertiary)]"
+                  }`}
+                >
                   You must run your code first
                 </p>
               ) : (

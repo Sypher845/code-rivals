@@ -5,6 +5,7 @@ import { DEFAULT_CODE, LANGUAGES } from "./constants";
 import {
   DEFAULT_EDITOR_THEME_ID,
   FLASHBANG_EDITOR_THEME_ID,
+  ZEN_EDITOR_THEME_ID,
   type EditorThemeId,
 } from "../../utils/arenaPowerHandlers";
 
@@ -89,6 +90,46 @@ function defineFlashbangTheme(monaco: Parameters<OnMount>[1]) {
   });
 }
 
+function defineZenTheme(monaco: Parameters<OnMount>[1]) {
+  monaco.editor.defineTheme(ZEN_EDITOR_THEME_ID, {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "keyword", foreground: "d4d4d4", fontStyle: "bold" },
+      { token: "type", foreground: "bdbdbd" },
+      { token: "string", foreground: "c2c2c2" },
+      { token: "number", foreground: "a8a8a8" },
+      { token: "comment", foreground: "707070", fontStyle: "italic" },
+      { token: "function", foreground: "d0d0d0" },
+      { token: "variable", foreground: "efefef" },
+      { token: "operator", foreground: "cfcfcf" },
+      { token: "delimiter", foreground: "bfbfbf" },
+      { token: "identifier", foreground: "efefef" },
+    ],
+    colors: {
+      "editor.background": "#111111",
+      "editor.foreground": "#efefef",
+      "editor.lineHighlightBackground": "#1a1a1a",
+      "editor.selectionBackground": "#4b4b4b66",
+      "editorCursor.foreground": "#d4d4d4",
+      "editorLineNumber.foreground": "#5d5d5d",
+      "editorLineNumber.activeForeground": "#8d8d8d",
+      "editor.selectionHighlightBackground": "#64646433",
+      "editorIndentGuide.background": "#222222",
+      "editorIndentGuide.activeBackground": "#343434",
+      "editorWidget.background": "#171717",
+      "editorWidget.border": "#2a2a2a",
+      "editorSuggestWidget.background": "#171717",
+      "editorSuggestWidget.border": "#2a2a2a",
+      "editorSuggestWidget.selectedBackground": "#2a2a2a",
+      "scrollbar.shadow": "#00000000",
+      "scrollbarSlider.background": "#6b6b6b22",
+      "scrollbarSlider.hoverBackground": "#7a7a7a33",
+      "scrollbarSlider.activeBackground": "#8a8a8a44",
+    },
+  });
+}
+
 type EditorPanelProps = {
   editorThemeId?: EditorThemeId;
   keySwapActive?: boolean;
@@ -96,6 +137,7 @@ type EditorPanelProps = {
   lineJumperActive?: boolean;
   visuallyImpairedActive?: boolean;
   noRetreatActive?: boolean;
+  zenMode?: boolean;
 };
 
 export function EditorPanel({
@@ -105,6 +147,7 @@ export function EditorPanel({
   lineJumperActive = false,
   visuallyImpairedActive = false,
   noRetreatActive = false,
+  zenMode = false,
 }: EditorPanelProps) {
   const [language, setLanguage] = useState("cpp");
   const [code, setCode] = useState(DEFAULT_CODE);
@@ -117,6 +160,7 @@ export function EditorPanel({
   const handleMount: OnMount = (editor, monaco) => {
     defineNeonTheme(monaco);
     defineFlashbangTheme(monaco);
+    defineZenTheme(monaco);
     monaco.editor.setTheme(editorThemeId);
     editorRef.current = editor;
     monacoRef.current = monaco;
@@ -301,6 +345,8 @@ export function EditorPanel({
       className={`flex h-full flex-col overflow-hidden rounded-xl border ${
         editorThemeId === FLASHBANG_EDITOR_THEME_ID
           ? "border-[#ece7e1] bg-white"
+          : zenMode
+            ? "border-[#2b2b2b] bg-[#111111]"
           : "border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]"
       }`}
     >
@@ -309,6 +355,8 @@ export function EditorPanel({
         className={`flex items-center justify-between border-b px-4 py-2 ${
           editorThemeId === FLASHBANG_EDITOR_THEME_ID
             ? "border-[#f1ece6]"
+            : zenMode
+              ? "border-[#2b2b2b]"
             : "border-[var(--ghost-border)]"
         }`}
       >
@@ -318,6 +366,8 @@ export function EditorPanel({
             className={`inline-flex items-center gap-1.5 text-sm font-semibold tracking-wide ${
               editorThemeId === FLASHBANG_EDITOR_THEME_ID
                 ? "text-[#f2eee9]"
+                : zenMode
+                  ? "text-[#d4d4d4]"
                 : "text-[var(--primary)]"
             }`}
           >
@@ -331,6 +381,8 @@ export function EditorPanel({
               className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition ${
                 editorThemeId === FLASHBANG_EDITOR_THEME_ID
                   ? "border-[#fbf8f4] bg-white text-[#efebe6] hover:border-[#f6f2ed] hover:bg-[#fffefd]"
+                  : zenMode
+                    ? "border-[#303030] bg-[#171717] text-[#c8c8c8] hover:border-[#4a4a4a] hover:bg-[#1d1d1d]"
                   : "border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.06)]"
               }`}
             >
@@ -345,6 +397,8 @@ export function EditorPanel({
                 className={`absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-lg border shadow-xl ${
                   editorThemeId === FLASHBANG_EDITOR_THEME_ID
                     ? "border-[#fbf8f4] bg-white"
+                    : zenMode
+                      ? "border-[#303030] bg-[#171717]"
                     : "border-[var(--ghost-border)] bg-[#0d1017]"
                 }`}
               >
@@ -360,6 +414,10 @@ export function EditorPanel({
                         ? lang.value === language
                           ? "bg-[#fefcf9] text-[#e8e3dd]"
                           : "text-[#f0ece7] hover:bg-[#fffefd]"
+                        : zenMode
+                          ? lang.value === language
+                            ? "bg-[#242424] text-[#f1f1f1]"
+                            : "text-[#b9b9b9] hover:bg-[#202020]"
                         : lang.value === language
                           ? "bg-[rgba(224,141,255,0.1)] text-[var(--primary)]"
                           : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)]"
@@ -386,6 +444,8 @@ export function EditorPanel({
             className={`grid h-9 w-9 place-items-center rounded-md transition ${
               editorThemeId === FLASHBANG_EDITOR_THEME_ID
                 ? "text-[#efebe6] hover:bg-[#fffefd] hover:text-[#e3ded8]"
+                : zenMode
+                  ? "text-[#9a9a9a] hover:bg-[#1d1d1d] hover:text-[#d4d4d4]"
                 : "text-[var(--text-tertiary)] hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--text-secondary)]"
             }`}
           >

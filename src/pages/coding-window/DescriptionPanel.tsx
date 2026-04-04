@@ -13,6 +13,7 @@ type DescriptionPanelProps = {
   problem?: RemoteProblemData | null;
   isLoading?: boolean;
   error?: string | null;
+  zenMode?: boolean;
 };
 
 /** render backtick-wrapped text as <code> */
@@ -61,6 +62,7 @@ export function DescriptionPanel({
   problem,
   isLoading = false,
   error = null,
+  zenMode = false,
 }: DescriptionPanelProps) {
   const title = getTitle(problem);
   const descriptionText = getDescriptionText(problem);
@@ -85,18 +87,28 @@ export function DescriptionPanel({
       className={`flex h-full flex-col overflow-hidden rounded-xl border ${
         flashbangActive
           ? "border-[#ece7e1] bg-white"
+          : zenMode
+            ? "border-[#2b2b2b] bg-[#111111]"
           : "border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]"
       }`}
     >
       {/* header */}
       <div
         className={`relative flex items-center border-b px-4 py-0 ${
-          flashbangActive ? "border-[#f1ece6]" : "border-[var(--ghost-border)]"
+          flashbangActive
+            ? "border-[#f1ece6]"
+            : zenMode
+              ? "border-[#2b2b2b]"
+              : "border-[var(--ghost-border)]"
         }`}
       >
         <span
           className={`relative inline-flex items-center px-4 py-3 text-sm font-semibold ${
-            flashbangActive ? "text-[#f2eee9]" : "text-[var(--primary)]"
+            flashbangActive
+              ? "text-[#f2eee9]"
+              : zenMode
+                ? "text-[#d4d4d4]"
+                : "text-[var(--primary)]"
           }`}
         >
           Description
@@ -104,6 +116,8 @@ export function DescriptionPanel({
             className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${
               flashbangActive
                 ? "bg-[#f8f4ef]"
+                : zenMode
+                  ? "bg-[#4b4b4b]"
                 : "bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]"
             }`}
           />
@@ -115,7 +129,11 @@ export function DescriptionPanel({
         {/* title — name only, no number */}
         <h1
           className={`text-2xl font-bold tracking-tight ${
-            flashbangActive ? "text-[#efebe6]" : "text-[var(--on-background)]"
+            flashbangActive
+              ? "text-[#efebe6]"
+              : zenMode
+                ? "text-[#efefef]"
+                : "text-[var(--on-background)]"
           }`}
         >
           {title}
@@ -127,6 +145,8 @@ export function DescriptionPanel({
               className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
                 flashbangActive
                   ? "border-[#fbf8f4] bg-[#fffefd] text-[#efebe6]"
+                  : zenMode
+                    ? "border-[#3a3a3a] bg-[#1a1a1a] text-[#d4d4d4]"
                   : "border-[var(--ghost-border)] bg-[rgba(224,141,255,0.12)] text-[var(--primary)]"
               }`}
             >
@@ -138,7 +158,11 @@ export function DescriptionPanel({
         {/* description text */}
         <div
           className={`mt-5 text-[0.95rem] leading-8 ${
-            flashbangActive ? "text-[#f0ece7]" : "text-[var(--text-secondary)]"
+            flashbangActive
+              ? "text-[#f0ece7]"
+              : zenMode
+                ? "text-[#b8b8b8]"
+                : "text-[var(--text-secondary)]"
           }`}
         >
           {isLoading && (
@@ -168,6 +192,8 @@ export function DescriptionPanel({
                   className={`text-[1.35rem] font-bold tracking-tight ${
                     flashbangActive
                       ? "text-[#efebe6]"
+                      : zenMode
+                        ? "text-[#efefef]"
                       : "text-[var(--on-background)]"
                   }`}
                 >
@@ -177,6 +203,8 @@ export function DescriptionPanel({
                   className={`mt-3 rounded-2xl border px-7 py-6 ${
                     flashbangActive
                       ? "border-[#f1ece6] bg-white"
+                      : zenMode
+                        ? "border-[#2b2b2b] bg-[#161616]"
                       : "border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.03)] shadow-[inset_1px_0_0_rgba(255,255,255,0.12)]"
                   }`}
                 >
@@ -184,6 +212,8 @@ export function DescriptionPanel({
                     className={`space-y-4 text-[1rem] leading-8 ${
                       flashbangActive
                         ? "text-[#f0ece7]"
+                        : zenMode
+                          ? "text-[#b8b8b8]"
                         : "text-[var(--text-secondary)]"
                     }`}
                   >
@@ -193,6 +223,8 @@ export function DescriptionPanel({
                           className={`font-bold text-[1.03rem] ${
                             flashbangActive
                               ? "text-[#ebe7e2]"
+                              : zenMode
+                                ? "text-[#efefef]"
                               : "text-[var(--on-background)]"
                           }`}
                         >
@@ -213,14 +245,22 @@ export function DescriptionPanel({
           <div className="mt-8">
             <h3
               className={`text-base font-semibold ${
-                flashbangActive ? "text-[#efebe6]" : "text-[var(--on-background)]"
+                flashbangActive
+                  ? "text-[#efebe6]"
+                  : zenMode
+                    ? "text-[#efefef]"
+                    : "text-[var(--on-background)]"
               }`}
             >
               Constraints:
             </h3>
             <ul
               className={`mt-3 list-disc space-y-2 pl-6 text-[0.9rem] leading-7 ${
-                flashbangActive ? "text-[#f0ece7]" : "text-[var(--text-secondary)]"
+                flashbangActive
+                  ? "text-[#f0ece7]"
+                  : zenMode
+                    ? "text-[#b8b8b8]"
+                    : "text-[var(--text-secondary)]"
               }`}
             >
               {displayConstraints.map((c, i) => (
@@ -238,14 +278,22 @@ export function DescriptionPanel({
           <div className="mt-8">
             <h3
               className={`text-base font-semibold ${
-                flashbangActive ? "text-[#efebe6]" : "text-[var(--on-background)]"
+                flashbangActive
+                  ? "text-[#efebe6]"
+                  : zenMode
+                    ? "text-[#efefef]"
+                    : "text-[var(--on-background)]"
               }`}
             >
               Follow Up:
             </h3>
             <div
               className={`mt-3 text-[0.95rem] leading-8 ${
-                flashbangActive ? "text-[#f0ece7]" : "text-[var(--text-secondary)]"
+                flashbangActive
+                  ? "text-[#f0ece7]"
+                  : zenMode
+                    ? "text-[#b8b8b8]"
+                    : "text-[var(--text-secondary)]"
               }`}
             >
               {followUp.split("\n").map((paragraph, i) => (
