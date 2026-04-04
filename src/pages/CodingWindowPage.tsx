@@ -136,6 +136,7 @@ export function CodingWindowPage() {
   const [arenaRoomRows] = useTable(tables.arenaRoom);
   const [arenaRoomMemberRows] = useTable(tables.arenaRoomMember);
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
+  const [matchSummaryRows] = useTable(tables.arenaMatchSummary);
   const submitRoundResult = useReducer(reducers.submitRoundResult);
 
   const activeRoom = useMemo(() => {
@@ -149,6 +150,18 @@ export function CodingWindowPage() {
   const activeRoundNumber = activeRoom?.currentRound
     ? Number(activeRoom.currentRound)
     : fallbackRoundNumber;
+  const playerSummary = useMemo(() => {
+    if (!normalizedRoomId || !username) {
+      return null;
+    }
+
+    return (
+      matchSummaryRows.find(
+        (row) =>
+          row.roomId === normalizedRoomId && row.playerUsername === username,
+      ) ?? null
+    );
+  }, [matchSummaryRows, normalizedRoomId, username]);
   const fallbackSecondsRemaining = getRoundDurationSeconds(activeRoundNumber);
   const roundStartMs = activeRoom?.roundStartTime
     ? Number(activeRoom.roundStartTime.microsSinceUnixEpoch / 1000n)
@@ -239,7 +252,19 @@ export function CodingWindowPage() {
   }, [roundDeadlineMs]);
 
   useEffect(() => {
-    if (!normalizedRoomId || !username || !activeRoom) {
+    if (!normalizedRoomId || !username) {
+      return;
+    }
+
+    if (!activeRoom && playerSummary) {
+      navigate(
+        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/results`,
+        { replace: true },
+      );
+      return;
+    }
+
+    if (!activeRoom) {
       return;
     }
 
@@ -273,6 +298,7 @@ export function CodingWindowPage() {
     activeRoom,
     activeRoundNumber,
     fallbackRoundNumber,
+    playerSummary,
     navigate,
     normalizedRoomId,
     username,
@@ -388,6 +414,8 @@ export function CodingWindowPage() {
 
   const topBarStatusMessage = !normalizedRoomId
     ? "Open this page from an arena room."
+    : !activeRoom && playerSummary
+      ? "Match complete. Redirecting to results..."
     : roomPhase !== "playing"
       ? "Waiting for the live round state to sync."
       : myRoundState?.hasSubmitted
