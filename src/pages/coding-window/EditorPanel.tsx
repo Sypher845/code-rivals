@@ -1,7 +1,12 @@
-import { useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { RotateCcw } from "lucide-react";
 import { DEFAULT_CODE, LANGUAGES } from "./constants";
+import {
+  DEFAULT_EDITOR_THEME_ID,
+  FLASHBANG_EDITOR_THEME_ID,
+  type EditorThemeId,
+} from "../../utils/arenaPowerHandlers";
 
 /* ──────────────────────── register custom Monaco theme ──────────────── */
 function defineNeonTheme(monaco: Parameters<OnMount>[1]) {
@@ -44,22 +49,79 @@ function defineNeonTheme(monaco: Parameters<OnMount>[1]) {
   });
 }
 
-export function EditorPanel() {
+function defineFlashbangTheme(monaco: Parameters<OnMount>[1]) {
+  monaco.editor.defineTheme(FLASHBANG_EDITOR_THEME_ID, {
+    base: "vs",
+    inherit: true,
+    rules: [
+      { token: "keyword", foreground: "8f8b84", fontStyle: "bold" },
+      { token: "type", foreground: "98938c" },
+      { token: "string", foreground: "918d87" },
+      { token: "number", foreground: "9d9891" },
+      { token: "comment", foreground: "bcb7b0", fontStyle: "italic" },
+      { token: "function", foreground: "8d8881" },
+      { token: "variable", foreground: "8c8882" },
+      { token: "operator", foreground: "aaa49d" },
+      { token: "delimiter", foreground: "b2ada7" },
+      { token: "identifier", foreground: "8e8a84" },
+    ],
+    colors: {
+      "editor.background": "#f7f4ee",
+      "editor.foreground": "#8f8a84",
+      "editor.lineHighlightBackground": "#f1eee8",
+      "editor.selectionBackground": "#d8d2c818",
+      "editorCursor.foreground": "#b4ada4",
+      "editorLineNumber.foreground": "#d0cac3",
+      "editorLineNumber.activeForeground": "#b8b1aa",
+      "editor.selectionHighlightBackground": "#ddd7cf14",
+      "editorIndentGuide.background": "#ece7e0",
+      "editorIndentGuide.activeBackground": "#ded8d0",
+      "editorWidget.background": "#f4f1eb",
+      "editorWidget.border": "#e4ded7",
+      "editorSuggestWidget.background": "#f4f1eb",
+      "editorSuggestWidget.border": "#e4ded7",
+      "editorSuggestWidget.selectedBackground": "#ebe6df",
+      "scrollbar.shadow": "#00000000",
+      "scrollbarSlider.background": "#c8c1b822",
+      "scrollbarSlider.hoverBackground": "#c8c1b833",
+      "scrollbarSlider.activeBackground": "#c8c1b844",
+    },
+  });
+}
+
+type EditorPanelProps = {
+  editorThemeId?: EditorThemeId;
+};
+
+export function EditorPanel({
+  editorThemeId = DEFAULT_EDITOR_THEME_ID,
+}: EditorPanelProps) {
   const [language, setLanguage] = useState("cpp");
   const [code, setCode] = useState(DEFAULT_CODE);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
+  const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
 
   const handleMount: OnMount = (editor, monaco) => {
     defineNeonTheme(monaco);
-    monaco.editor.setTheme("neonCommand");
+    defineFlashbangTheme(monaco);
+    monaco.editor.setTheme(editorThemeId);
     editorRef.current = editor;
+    monacoRef.current = monaco;
     editor.focus();
   };
 
   const handleReset = () => setCode(DEFAULT_CODE);
 
   const currentLang = LANGUAGES.find((l) => l.value === language);
+
+  useEffect(() => {
+    if (!monacoRef.current) {
+      return;
+    }
+
+    monacoRef.current.editor.setTheme(editorThemeId);
+  }, [editorThemeId]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]">
@@ -125,7 +187,7 @@ export function EditorPanel() {
           value={code}
           onChange={(val) => setCode(val ?? "")}
           onMount={handleMount}
-          theme="neonCommand"
+          theme={editorThemeId}
           options={{
             fontSize: 15,
             fontFamily: "'IBM Plex Mono', 'Cascadia Code', 'Consolas', monospace",

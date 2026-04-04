@@ -8,6 +8,17 @@ import { TestCasesPanel } from "./coding-window/TestCasesPanel";
 import { P } from "./coding-window/constants";
 import { getParsedTestCases } from "./coding-window/problemContent";
 import { reducers, tables } from "../module_bindings";
+import type { ArenaSabotageEvent } from "../module_bindings/types";
+import {
+  formatPowerupName,
+  resolvePowerupEffect,
+  type ResolvedPowerupEffect,
+} from "../utils/arenaPowerEffects";
+import {
+  DEFAULT_EDITOR_THEME_ID,
+  executePowerupHandler,
+  type EditorSabotageEffect,
+} from "../utils/arenaPowerHandlers";
 
 const PROBLEM_API_URL =
   import.meta.env.VITE_PROBLEM_API_URL ?? "http://localhost:8080";
@@ -24,6 +35,13 @@ export type RemoteProblemData = {
     output?: string;
   }>;
   [key: string]: unknown;
+};
+
+type IncomingSabotage = ResolvedPowerupEffect & {
+  emittedAtMs: number;
+  roomId: string;
+  roundNumber: number;
+  sourcePlayerIdentityHex: string;
 };
 
 function getRoundDurationSeconds(roundNumber: number) {
@@ -131,6 +149,11 @@ export function CodingWindowPage() {
   const [problemLoading, setProblemLoading] = useState(true);
   const [problemError, setProblemError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [activeEditorSabotage, setActiveEditorSabotage] =
+    useState<EditorSabotageEffect | null>(null);
+  const [latestIncomingSabotage, setLatestIncomingSabotage] =
+    useState<IncomingSabotage | null>(null);
+  const [usedSabotageRoundKey, setUsedSabotageRoundKey] = useState<string | null>(null);
   const [hasRun, setHasRun] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [arenaRoomRows] = useTable(tables.arenaRoom);
@@ -138,6 +161,7 @@ export function CodingWindowPage() {
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
   const [matchSummaryRows] = useTable(tables.arenaMatchSummary);
   const submitRoundResult = useReducer(reducers.submitRoundResult);
+  const triggerArenaSabotage = useReducer(reducers.triggerArenaSabotage);
 
   const activeRoom = useMemo(() => {
     if (!normalizedRoomId) {
@@ -217,7 +241,12 @@ export function CodingWindowPage() {
     myRoundState?.hasLockedPower && myRoundState.powerupId
       ? myRoundState.powerupId
       : null;
-  const sabotageUsed = false;
+  const currentRoundKey =
+    normalizedRoomId === null ? null : `${normalizedRoomId}:${activeRoundNumber}`;
+  const sabotageUsed =
+    currentRoundKey !== null && usedSabotageRoundKey === currentRoundKey;
+  const editorThemeId =
+    activeEditorSabotage?.themeId ?? DEFAULT_EDITOR_THEME_ID;
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
   const submitDisabled =
@@ -238,6 +267,46 @@ export function CodingWindowPage() {
     0.6,
     rightContainerRef,
   );
+
+  const handleIncomingSabotageEvent = useCallback(
+    (eventRow: ArenaSabotageEvent) => {
+      if (!identity || !normalizedRoomId) {
+        return;
+      }
+
+      if (eventRow.roomId !== normalizedRoomId) {
+        return;
+      }
+
+      if (!eventRow.targetPlayerIdentity.isEqual(identity)) {
+        return;
+      }
+
+      const resolvedEffect = resolvePowerupEffect(
+        eventRow.powerupId,
+        Number(eventRow.roundNumber),
+      );
+      if (!resolvedEffect) {
+        return;
+      }
+
+      setLatestIncomingSabotage({
+        ...resolvedEffect,
+        emittedAtMs: Number(eventRow.createdAt.microsSinceUnixEpoch / 1000n),
+        roomId: eventRow.roomId,
+        roundNumber: Number(eventRow.roundNumber),
+        sourcePlayerIdentityHex: eventRow.sourcePlayerIdentity.toHexString(),
+      });
+    },
+    [identity, normalizedRoomId],
+  );
+
+  const sabotageEventCallbacks = useMemo(
+    () => ({ onInsert: handleIncomingSabotageEvent }),
+    [handleIncomingSabotageEvent],
+  );
+
+  useTable(tables.arenaSabotageEvent, sabotageEventCallbacks);
 
   useEffect(() => {
     if (roundDeadlineMs === null) {
@@ -303,6 +372,71 @@ export function CodingWindowPage() {
     normalizedRoomId,
     username,
   ]);
+
+  useEffect(() => {
+    if (!currentRoundKey) {
+      return;
+    }
+
+    setUsedSabotageRoundKey((current) =>
+      current === currentRoundKey ? current : null,
+    );
+    setLatestIncomingSabotage(null);
+    setActiveEditorSabotage(null);
+  }, [currentRoundKey]);
+
+  useEffect(() => {
+    if (!latestIncomingSabotage) {
+      return;
+    }
+
+    const handlerOutput = executePowerupHandler({
+      effect: latestIncomingSabotage,
+      emittedAtMs: latestIncomingSabotage.emittedAtMs,
+    });
+    if (!handlerOutput?.editorEffect) {
+      return;
+    }
+
+    setActiveEditorSabotage(handlerOutput.editorEffect);
+    setStatusMessage(
+      `${formatPowerupName(latestIncomingSabotage.powerupId)} is affecting your editor.`,
+    );
+  }, [latestIncomingSabotage]);
+
+  useEffect(() => {
+    if (!activeEditorSabotage?.expiresAtMs) {
+      return;
+    }
+
+    const activeStatusMessage = `${formatPowerupName(activeEditorSabotage.powerupId)} is affecting your editor.`;
+    const remainingMs = activeEditorSabotage.expiresAtMs - Date.now();
+    if (remainingMs <= 0) {
+      setActiveEditorSabotage(null);
+      setStatusMessage((current) =>
+        current === activeStatusMessage ? null : current,
+      );
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setActiveEditorSabotage((current) => {
+        if (
+          current?.powerupId !== activeEditorSabotage.powerupId ||
+          current.expiresAtMs !== activeEditorSabotage.expiresAtMs
+        ) {
+          return current;
+        }
+
+        return null;
+      });
+      setStatusMessage((current) =>
+        current === activeStatusMessage ? null : current,
+      );
+    }, remainingMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeEditorSabotage]);
 
   useEffect(() => {
     if (secondsRemaining !== 0 || submitDisabled || !normalizedRoomId) {
@@ -378,6 +512,48 @@ export function CodingWindowPage() {
     setStatusMessage(`Run completed. ${testCases.length || 1} sample testcases checked.`);
   }, [testCases.length]);
 
+  const handleSabotage = useCallback(async () => {
+    if (!normalizedRoomId) {
+      setStatusMessage("Open this page from an arena room.");
+      return;
+    }
+
+    if (roomPhase !== "playing") {
+      setStatusMessage("Sabotage becomes available when the round is live.");
+      return;
+    }
+
+    if (!mySelectedPowerupId) {
+      setStatusMessage("Lock a power before triggering sabotage.");
+      return;
+    }
+
+    if (sabotageUsed) {
+      return;
+    }
+
+    try {
+      await triggerArenaSabotage({ roomId: normalizedRoomId });
+      if (currentRoundKey) {
+        setUsedSabotageRoundKey(currentRoundKey);
+      }
+      setStatusMessage(
+        `Sent ${formatPowerupName(mySelectedPowerupId)} to your rival.`,
+      );
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Unable to trigger sabotage.",
+      );
+    }
+  }, [
+    currentRoundKey,
+    mySelectedPowerupId,
+    normalizedRoomId,
+    roomPhase,
+    sabotageUsed,
+    triggerArenaSabotage,
+  ]);
+
   const handleSubmit = useCallback(async () => {
     if (!normalizedRoomId || submitDisabled) {
       return;
@@ -420,7 +596,10 @@ export function CodingWindowPage() {
       ? "Waiting for the live round state to sync."
       : myRoundState?.hasSubmitted
         ? "Submission synced. Redirecting when the room advances."
-        : statusMessage;
+        : statusMessage ??
+          (latestIncomingSabotage
+            ? `Incoming sabotage queued: ${formatPowerupName(latestIncomingSabotage.powerupId)}.`
+            : null);
 
   return (
     <div
@@ -436,6 +615,7 @@ export function CodingWindowPage() {
         isSubmitting={isSubmitting}
         mySelectedPowerupId={mySelectedPowerupId}
         onRun={handleRun}
+        onSabotage={handleSabotage}
         opponentCardUsed={null}
         opponentHasSubmitted={Boolean(opponentRoundState?.hasSubmitted)}
         opponentIsTyping={Boolean(opponentRoundState?.isTyping)}
@@ -468,7 +648,7 @@ export function CodingWindowPage() {
         >
           {/* editor */}
           <div style={{ height: `${vRatio * 100}%` }} className="min-h-0">
-            <EditorPanel />
+            <EditorPanel editorThemeId={editorThemeId} />
           </div>
 
           <DragHandle direction="vertical" onMouseDown={vMouseDown} />
