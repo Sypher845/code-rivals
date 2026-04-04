@@ -71,6 +71,7 @@ function formatDurationLabel(totalSeconds: number) {
 type OpponentSummary = {
   activeDebuffLabel?: string | null;
   activeDebuffSecondsRemaining?: number | null;
+  activeDebuffTotalSeconds?: number | null;
   activeDebuffUsesRoundTimer?: boolean;
   cardUsed?: string | null;
   hasSubmitted: boolean;
@@ -82,6 +83,7 @@ type OpponentSummary = {
 function OpponentCard({
   activeDebuffLabel,
   activeDebuffSecondsRemaining,
+  activeDebuffTotalSeconds = null,
   activeDebuffUsesRoundTimer = false,
   cardUsed,
   hasSubmitted,
@@ -95,8 +97,62 @@ function OpponentCard({
       ? null
       : formatDurationLabel(activeDebuffSecondsRemaining);
 
+  const hasActiveTimedBorder =
+    !activeDebuffUsesRoundTimer &&
+    activeDebuffSecondsRemaining !== null &&
+    activeDebuffSecondsRemaining !== undefined &&
+    activeDebuffSecondsRemaining > 0 &&
+    activeDebuffTotalSeconds !== null &&
+    activeDebuffTotalSeconds > 0;
+
+  const timedDebuffSecondsRemaining = activeDebuffSecondsRemaining ?? 0;
+
+  const timedBorderProgress = hasActiveTimedBorder
+    ? Math.max(
+        0,
+        Math.min(1, timedDebuffSecondsRemaining / activeDebuffTotalSeconds),
+      )
+    : 0;
+
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] px-4 py-2">
+    <div className="relative flex items-center gap-3 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] px-4 py-2">
+      {hasActiveTimedBorder ? (
+        <svg
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <rect
+            x="1"
+            y="1"
+            width="98"
+            height="98"
+            rx="7"
+            ry="7"
+            fill="none"
+            stroke="rgba(124,216,124,0.24)"
+            strokeWidth="2"
+          />
+          <rect
+            x="1"
+            y="1"
+            width="98"
+            height="98"
+            rx="7"
+            ry="7"
+            fill="none"
+            stroke="rgba(124,216,124,0.9)"
+            strokeWidth="3"
+            pathLength={1}
+            strokeDasharray={1}
+            strokeDashoffset={1 - timedBorderProgress}
+            strokeLinecap="round"
+            className="transition-[stroke-dashoffset] duration-1000 ease-linear"
+          />
+        </svg>
+      ) : null}
+
       {/* avatar placeholder */}
       <div
         className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border text-sm font-bold ${
@@ -197,21 +253,21 @@ function SabotageButton({
       onClick={handleClick}
       whileHover={isSabotaged ? undefined : { scale: 1.02 }}
       whileTap={isSabotaged ? undefined : { scale: 0.98 }}
-      className={`group relative inline-flex min-w-[22rem] items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors ${
+      className={`group relative inline-flex min-w-[22rem] items-center gap-3 rounded-xl border px-3 py-1.5 text-left text-sm transition-colors ${
         isSabotaged
           ? "cursor-default border-[rgba(124,216,124,0.24)] bg-[rgba(124,216,124,0.08)] text-[#9ae99a]"
           : "border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.06)] text-[var(--primary)] hover:border-[rgba(224,141,255,0.45)] hover:bg-[rgba(224,141,255,0.12)] hover:shadow-[0_0_24px_rgba(224,141,255,0.18)]"
       }`}
     >
       <div
-        className={`flex h-[6rem] w-[6rem] shrink-0 items-center justify-center overflow-hidden rounded-xl border p-1.5 ${
+        className={`flex h-[5rem] w-[5rem] shrink-0 items-center justify-center overflow-hidden rounded-xl border p-1 ${
           isSabotaged
             ? "border-[rgba(124,216,124,0.28)] bg-[rgba(124,216,124,0.08)]"
             : "border-[rgba(224,141,255,0.2)] bg-[rgba(224,141,255,0.08)]"
         }`}
       >
-        <div className="pointer-events-none scale-[0.34]">
-          <CardComponent size={280} className="cursor-default" />
+        <div className="pointer-events-none scale-[0.29]">
+          <CardComponent size={250} className="cursor-default" />
         </div>
       </div>
 
@@ -232,6 +288,7 @@ function SabotageButton({
 type TopBarProps = {
   activeDebuffLabel?: string | null;
   activeDebuffSecondsRemaining?: number | null;
+  activeDebuffTotalSeconds?: number | null;
   activeDebuffUsesRoundTimer?: boolean;
   canSubmit: boolean;
   canRun?: boolean;
@@ -244,6 +301,7 @@ type TopBarProps = {
   onSubmit: () => void;
   opponentActiveDebuffLabel?: string | null;
   opponentActiveDebuffSecondsRemaining?: number | null;
+  opponentActiveDebuffTotalSeconds?: number | null;
   opponentActiveDebuffUsesRoundTimer?: boolean;
   opponentCardUsed?: string | null;
   opponentHasSubmitted: boolean;
@@ -263,6 +321,7 @@ type TopBarProps = {
 export function TopBar({
   activeDebuffLabel = null,
   activeDebuffSecondsRemaining = null,
+  activeDebuffTotalSeconds = null,
   activeDebuffUsesRoundTimer = false,
   canSubmit,
   canRun = true,
@@ -275,6 +334,7 @@ export function TopBar({
   onSubmit,
   opponentActiveDebuffLabel = null,
   opponentActiveDebuffSecondsRemaining = null,
+  opponentActiveDebuffTotalSeconds = null,
   opponentActiveDebuffUsesRoundTimer = false,
   opponentCardUsed,
   opponentHasSubmitted,
@@ -311,9 +371,10 @@ export function TopBar({
       >
         {!zenMode ? (
           <OpponentCard
-            activeDebuffLabel={opponentActiveDebuffLabel}
-            activeDebuffSecondsRemaining={opponentActiveDebuffSecondsRemaining}
-            activeDebuffUsesRoundTimer={opponentActiveDebuffUsesRoundTimer}
+            activeDebuffLabel={activeDebuffLabel}
+            activeDebuffSecondsRemaining={activeDebuffSecondsRemaining}
+            activeDebuffTotalSeconds={activeDebuffTotalSeconds}
+            activeDebuffUsesRoundTimer={activeDebuffUsesRoundTimer}
             cardUsed={opponentCardUsed}
             hasSubmitted={opponentHasSubmitted}
             isTyping={opponentIsTyping}
@@ -428,25 +489,6 @@ export function TopBar({
         </button>
       </div>
 
-      {statusMessage ? (
-        <div
-          className={`basis-full text-right text-sm ${
-            zenMode ? "text-[#8e8e8e]" : "text-[var(--text-secondary)]"
-          }`}
-        >
-          {statusMessage}
-        </div>
-      ) : null}
-      {activeDebuffLabel ? (
-        <div className="basis-full text-right text-sm text-[#ffd27a]">
-          {activeDebuffLabel}
-          {activeDebuffUsesRoundTimer
-            ? " · Until round end"
-            : activeDebuffSecondsRemaining !== null
-              ? ` · ${formatDurationLabel(activeDebuffSecondsRemaining)}`
-              : ""}
-        </div>
-      ) : null}
       </div>
     </nav>
   );

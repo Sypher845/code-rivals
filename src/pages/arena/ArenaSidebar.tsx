@@ -281,7 +281,7 @@ export function ArenaSidebar({
 
   const handleCreateArena = async () => {
     if (!identity) {
-      pushStatus("Connection is not ready yet.", "error");
+      pushStatus("Session identity is not ready yet.", "error");
       return;
     }
     if (!arenaReady) {
@@ -306,7 +306,7 @@ export function ArenaSidebar({
 
   const handleJoinArena = async () => {
     if (!identity) {
-      pushStatus("Connection is not ready yet.", "error");
+      pushStatus("Session identity is not ready yet.", "error");
       return;
     }
     if (!arenaReady) {
@@ -514,7 +514,7 @@ export function ArenaSidebar({
                     />
                   </label>
                   <button
-                    className={arenaActionClass}
+                    className={`${arenaActionClass} mt-2`}
                     type="button"
                     onClick={handleJoinArena}
                     disabled={!arenaReady}

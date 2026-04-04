@@ -340,7 +340,7 @@ export function CodingWindowPage() {
   const [problemRequestError, setProblemRequestError] = useState<string | null>(null);
   const [zenProblemJson, setZenProblemJson] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [zenToastMessage, setZenToastMessage] = useState<string | null>(null);
+  const [topToastMessage, setTopToastMessage] = useState<string | null>(null);
   const [isZenMode, setIsZenMode] = useState(zenRequested);
   const [isZenTransitioning, setIsZenTransitioning] = useState(false);
   const [coverDirection, setCoverDirection] = useState<ZenTransitionDirection>("rtl");
@@ -571,6 +571,11 @@ export function CodingWindowPage() {
     activeEditorSabotage?.expiresAtMs === undefined
       ? null
       : Math.max(0, Math.ceil((activeEditorSabotage.expiresAtMs - nowMs) / 1000));
+  const activeDebuffTotalSeconds =
+    latestIncomingSabotage?.durationMinutes === null ||
+    latestIncomingSabotage?.durationMinutes === undefined
+      ? null
+      : Math.max(0, Math.round(latestIncomingSabotage.durationMinutes * 60));
   const opponentDebuffSecondsRemaining =
     activeOutgoingSabotage?.expiresAtMs === null ||
     activeOutgoingSabotage?.expiresAtMs === undefined
@@ -579,9 +584,15 @@ export function CodingWindowPage() {
           0,
           Math.ceil((activeOutgoingSabotage.expiresAtMs - nowMs) / 1000),
         );
+  const opponentDebuffTotalSeconds =
+    activeOutgoingSabotage?.durationMinutes === null ||
+    activeOutgoingSabotage?.durationMinutes === undefined
+      ? null
+      : Math.max(0, Math.round(activeOutgoingSabotage.durationMinutes * 60));
   const visibleTestCases = useMemo(() => getVisibleTestCases(problem), [problem]);
   const judgeTestCases = useMemo(() => getJudgeTestCases(problem), [problem]);
-  const totalTestcases = BigInt(Math.max(judgeTestCases.length, 1));
+  const testCases = visibleTestCases;
+  const totalTestcases = BigInt(Math.max(testCases.length, 1));
   const problemError =
     (isZenMode ? parsedZenProblem.error : parsedProblem.error) ??
     problemRequestError;
@@ -1375,19 +1386,19 @@ export function CodingWindowPage() {
   }, [handleSubmit, isZenMode, zenRoundStage, zenSecondsRemaining]);
 
   useEffect(() => {
-    if (!isZenMode || !statusMessage) {
+    if (!statusMessage) {
       return;
     }
 
-    setZenToastMessage(statusMessage);
+    setTopToastMessage(statusMessage);
     const timeoutId = window.setTimeout(() => {
-      setZenToastMessage(null);
+      setTopToastMessage(null);
     }, 2800);
 
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [isZenMode, statusMessage]);
+  }, [statusMessage]);
 
   const topBarStatusMessage = isZenMode
     ? zenRoundStage === "finished"
@@ -1487,10 +1498,10 @@ export function CodingWindowPage() {
           />
         ) : null}
       </AnimatePresence>
-      {isZenMode && zenToastMessage ? (
+      {topToastMessage ? (
         <div className="pointer-events-none fixed top-22 right-6 z-120">
           <div className="rounded-xl border border-[#353535] bg-[#121212] px-4 py-2.5 text-sm text-[#e0e0e0] shadow-[0_18px_48px_rgba(0,0,0,0.55)]">
-            {zenToastMessage}
+            {topToastMessage}
           </div>
         </div>
       ) : null}
@@ -1508,6 +1519,7 @@ export function CodingWindowPage() {
             : roundStartSelfDebuffLabel
         }
         activeDebuffSecondsRemaining={activeDebuffSecondsRemaining}
+        activeDebuffTotalSeconds={activeDebuffTotalSeconds}
         activeDebuffUsesRoundTimer={
           Boolean(latestIncomingSabotage?.fullRound && activeEditorSabotage) ||
           Boolean(roundStartSelfDebuffLabel)
@@ -1530,6 +1542,7 @@ export function CodingWindowPage() {
             : roundStartOpponentDebuffLabel
         }
         opponentActiveDebuffSecondsRemaining={opponentDebuffSecondsRemaining}
+        opponentActiveDebuffTotalSeconds={opponentDebuffTotalSeconds}
         opponentActiveDebuffUsesRoundTimer={
           Boolean(activeOutgoingSabotage?.fullRound) ||
           Boolean(roundStartOpponentDebuffLabel)
