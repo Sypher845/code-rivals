@@ -173,7 +173,22 @@ export function EditorPanel({
     setCode(DEFAULT_CODE);
   };
 
-  const currentLang = LANGUAGES.find((l) => l.value === language);
+  const effectiveLanguage = zenMode ? "cpp" : language;
+  const currentLang = LANGUAGES.find((l) => l.value === effectiveLanguage);
+
+  useEffect(() => {
+    if (!zenMode) {
+      return;
+    }
+
+    if (language !== "cpp") {
+      setLanguage("cpp");
+    }
+
+    if (showLangMenu) {
+      setShowLangMenu(false);
+    }
+  }, [zenMode, language, showLangMenu]);
 
   useEffect(() => {
     if (!monacoRef.current) {
@@ -375,60 +390,54 @@ export function EditorPanel({
             Code
           </span>
 
-          <div className="relative">
-            <button
-              onClick={() => setShowLangMenu(!showLangMenu)}
-              className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition ${
-                editorThemeId === FLASHBANG_EDITOR_THEME_ID
-                  ? "border-[#fbf8f4] bg-white text-[#efebe6] hover:border-[#f6f2ed] hover:bg-[#fffefd]"
-                  : zenMode
-                    ? "border-[#303030] bg-[#171717] text-[#c8c8c8] hover:border-[#4a4a4a] hover:bg-[#1d1d1d]"
-                  : "border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.06)]"
-              }`}
-            >
-              {currentLang?.label ?? "C++"}
-              <svg className="h-3.5 w-3.5 opacity-50" viewBox="0 0 12 12">
-                <path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
-              </svg>
-            </button>
-
-            {showLangMenu && (
-              <div
-                className={`absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-lg border shadow-xl ${
+          {!zenMode ? (
+            <div className="relative">
+              <button
+                onClick={() => setShowLangMenu(!showLangMenu)}
+                className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition ${
                   editorThemeId === FLASHBANG_EDITOR_THEME_ID
-                    ? "border-[#fbf8f4] bg-white"
-                    : zenMode
-                      ? "border-[#303030] bg-[#171717]"
-                    : "border-[var(--ghost-border)] bg-[#0d1017]"
+                    ? "border-[#fbf8f4] bg-white text-[#efebe6] hover:border-[#f6f2ed] hover:bg-[#fffefd]"
+                    : "border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.06)]"
                 }`}
               >
-                {LANGUAGES.map((lang) => (
-                  <button
-                    key={lang.value}
-                    onClick={() => {
-                      setLanguage(lang.value);
-                      setShowLangMenu(false);
-                    }}
-                    className={`block w-full px-4 py-2.5 text-left text-sm transition ${
-                      editorThemeId === FLASHBANG_EDITOR_THEME_ID
-                        ? lang.value === language
-                          ? "bg-[#fefcf9] text-[#e8e3dd]"
-                          : "text-[#f0ece7] hover:bg-[#fffefd]"
-                        : zenMode
+                {currentLang?.label ?? "C++"}
+                <svg className="h-3.5 w-3.5 opacity-50" viewBox="0 0 12 12">
+                  <path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                </svg>
+              </button>
+
+              {showLangMenu && (
+                <div
+                  className={`absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-lg border shadow-xl ${
+                    editorThemeId === FLASHBANG_EDITOR_THEME_ID
+                      ? "border-[#fbf8f4] bg-white"
+                      : "border-[var(--ghost-border)] bg-[#0d1017]"
+                  }`}
+                >
+                  {LANGUAGES.map((lang) => (
+                    <button
+                      key={lang.value}
+                      onClick={() => {
+                        setLanguage(lang.value);
+                        setShowLangMenu(false);
+                      }}
+                      className={`block w-full px-4 py-2.5 text-left text-sm transition ${
+                        editorThemeId === FLASHBANG_EDITOR_THEME_ID
                           ? lang.value === language
-                            ? "bg-[#242424] text-[#f1f1f1]"
-                            : "text-[#b9b9b9] hover:bg-[#202020]"
-                        : lang.value === language
-                          ? "bg-[rgba(224,141,255,0.1)] text-[var(--primary)]"
-                          : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)]"
-                    }`}
-                  >
-                    {lang.label}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+                            ? "bg-[#fefcf9] text-[#e8e3dd]"
+                            : "text-[#f0ece7] hover:bg-[#fffefd]"
+                          : lang.value === language
+                            ? "bg-[rgba(224,141,255,0.1)] text-[var(--primary)]"
+                            : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)]"
+                      }`}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
         </div>
 
         {/* right: reset only */}
@@ -464,7 +473,7 @@ export function EditorPanel({
       >
         <Editor
           height="100%"
-          language={language}
+          language={effectiveLanguage}
           value={code}
           onChange={(val) => {
             const nextCode = val ?? "";

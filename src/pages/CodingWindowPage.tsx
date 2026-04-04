@@ -307,6 +307,7 @@ export function CodingWindowPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [problemRequestInFlight, setProblemRequestInFlight] = useState(false);
   const [problemRequestError, setProblemRequestError] = useState<string | null>(null);
+  const [zenProblemJson, setZenProblemJson] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isZenMode, setIsZenMode] = useState(zenRequested);
   const [zenSelfSabotageEnabled, setZenSelfSabotageEnabled] = useState(false);
@@ -380,7 +381,11 @@ export function CodingWindowPage() {
     () => parseStoredProblem(storedRoundProblem?.problemJson),
     [storedRoundProblem?.problemJson],
   );
-  const problem = parsedProblem.problem;
+  const parsedZenProblem = useMemo(
+    () => parseStoredProblem(zenProblemJson),
+    [zenProblemJson],
+  );
+  const problem = isZenMode ? parsedZenProblem.problem : parsedProblem.problem;
   const playerSummary = useMemo(() => {
     if (!normalizedRoomId || !username) {
       return null;
@@ -530,11 +535,16 @@ export function CodingWindowPage() {
         );
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
-  const problemError = parsedProblem.error ?? problemRequestError;
+  const problemError =
+    (isZenMode ? parsedZenProblem.error : parsedProblem.error) ??
+    problemRequestError;
   const problemLoading =
-    ((roomPhase === "playing" && !storedRoundProblem) || problemRequestInFlight) &&
+    (((isZenMode && !zenProblemJson) ||
+      (roomPhase === "playing" && !storedRoundProblem)) ||
+      problemRequestInFlight) &&
     !problemError;
   const activeRoundProblemApiUrl = getRoundProblemApiUrl(activeRoundNumber);
+  const zenRoundProblemApiUrl = getRoundProblemApiUrl(zenRoundNumber);
   const arenaSubmitDisabled =
     !normalizedRoomId ||
     roomPhase !== "playing" ||
@@ -706,6 +716,61 @@ export function CodingWindowPage() {
     setActiveEditorSabotage(null);
     setProblemRequestError(null);
   }, [currentRoundKey, isZenMode]);
+
+  useEffect(() => {
+    if (!isZenMode) {
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+
+    void (async () => {
+      try {
+        setProblemRequestInFlight(true);
+        setProblemRequestError(null);
+
+        const response = await fetch(zenRoundProblemApiUrl, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          throw new Error(
+            `Problem API request failed with status ${response.status}.`,
+          );
+        }
+
+        const problemJson = (await response.text()).trim();
+        if (!problemJson) {
+          throw new Error("Problem API returned an empty response.");
+        }
+
+        JSON.parse(problemJson);
+
+        if (!cancelled) {
+          setZenProblemJson(problemJson);
+        }
+      } catch (error) {
+        if ((error as Error).name === "AbortError" || cancelled) {
+          return;
+        }
+
+        setProblemRequestError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load the Zen round problem.",
+        );
+      } finally {
+        if (!cancelled) {
+          setProblemRequestInFlight(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [isZenMode, zenRoundProblemApiUrl]);
 
   useEffect(() => {
     if (!latestIncomingSabotage) {
@@ -1087,6 +1152,7 @@ export function CodingWindowPage() {
       setZenRoundStartMs(null);
       setZenRoundDurationSeconds(getRoundDurationSeconds(1));
       setZenAssignedSabotageId(null);
+      setZenProblemJson(null);
       setActiveEditorSabotage(null);
       return;
     }
@@ -1096,6 +1162,7 @@ export function CodingWindowPage() {
     setZenRoundStartMs(null);
     setZenRoundDurationSeconds(getRoundDurationSeconds(1));
     setZenAssignedSabotageId(null);
+    setZenProblemJson(null);
     setLatestIncomingSabotage(null);
     setActiveEditorSabotage(null);
     setStatusMessage("Zen Mode is on. Start Round 1 whenever you want.");
