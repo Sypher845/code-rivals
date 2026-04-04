@@ -3,50 +3,6 @@ import { Link } from "react-router-dom";
 import { SectionEyebrow, BrandMark } from "./SharedComponents";
 import { stats, logoStrip } from "./landing-data";
 
-export function StatsSection() {
-  return (
-    <section
-      id="stats"
-      className="border-t border-[var(--border-subtle)] px-5 py-24 sm:px-8 xl:px-10"
-    >
-      <div className="mx-auto max-w-7xl">
-        <div data-landing-reveal className="landing-reveal">
-          <SectionEyebrow icon={BarChart3}>By the numbers</SectionEyebrow>
-          <h2 className="text-[clamp(2.15rem,4vw,3.4rem)] leading-[1.02] font-semibold tracking-[-0.04em]">
-            The arena is already live.
-          </h2>
-        </div>
-
-        <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-[var(--border-subtle)] bg-[var(--border-subtle)] md:grid-cols-2 xl:grid-cols-4">
-          {stats.map((stat, index) => (
-            <article
-              key={stat.label}
-              data-landing-reveal
-              className={`landing-reveal bg-[var(--background)] px-6 py-8 text-center transition hover:bg-[var(--surface-subtle)] ${
-                index === 1
-                  ? "landing-delay-1"
-                  : index === 2
-                    ? "landing-delay-2"
-                    : index === 3
-                      ? "landing-delay-3"
-                      : ""
-              }`}
-            >
-              <p
-                className={`text-[2rem] leading-none font-semibold tracking-[-0.04em] ${stat.valueClassName}`}
-              >
-                {stat.value}
-              </p>
-              <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                {stat.label}
-              </p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
 
 export function LogoStrip() {
   return (

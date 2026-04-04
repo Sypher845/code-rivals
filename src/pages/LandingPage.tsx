@@ -5,7 +5,7 @@ import { FeaturesSection } from "./landing/FeaturesSection";
 import { FlowSection } from "./landing/FlowSection";
 import { PowersSection } from "./landing/PowersSection";
 import { ZenSection } from "./landing/ZenSection";
-import { StatsSection, CTASection, Footer } from "./landing/BottomSections";
+import { CTASection, Footer } from "./landing/BottomSections";
 
 type LandingPageProps = {
   isAuthenticated?: boolean;
@@ -67,7 +67,6 @@ export function LandingPage({
       <FlowSection />
       <PowersSection />
       <ZenSection isAuthenticated={isAuthenticated} username={username} />
-      <StatsSection />
       <CTASection isAuthenticated={isAuthenticated} username={username} />
       <Footer />
     </main>
