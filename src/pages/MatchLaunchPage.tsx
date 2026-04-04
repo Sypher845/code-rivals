@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Identity } from "spacetimedb";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useReducer, useTable } from "spacetimedb/react";
 import { panelFrameClass, panelNoiseClass } from "../components/uiClasses";
 import { reducers, tables } from "../module_bindings";
@@ -15,9 +15,9 @@ export function MatchLaunchPage({
   username,
 }: MatchLaunchPageProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const roomId = searchParams.get("room");
-  const normalizedRoomId = roomId?.trim().toUpperCase() ?? null;
+  const { roomSegment, roundSegment } = useParams();
+  const normalizedRoomId = roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? null;
+  const normalizedRoundNumber = roundSegment?.replace(/^r/i, "") ?? "1";
   const [submitMessage, setSubmitMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -54,16 +54,18 @@ export function MatchLaunchPage({
     }
 
     if (activeRoom.matchState === "drafting") {
+      const round = activeRoom.currentRound?.toString() ?? normalizedRoundNumber;
       navigate(
-        `/${encodeURIComponent(username)}/powerups?room=${normalizedRoomId}`,
+        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}/power-cards`,
         { replace: true },
       );
       return;
     }
 
     if (activeRoom.matchState === "round_intro") {
+      const round = activeRoom.currentRound?.toString() ?? normalizedRoundNumber;
       navigate(
-        `/${encodeURIComponent(username)}/powerups/ready?room=${normalizedRoomId}`,
+        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}/power-cards-locked`,
         { replace: true },
       );
       return;
@@ -192,7 +194,7 @@ export function MatchLaunchPage({
                 Return to Arena
               </Link>
               <Link
-                to={`/${encodeURIComponent(username)}/powerups${normalizedRoomId ? `?room=${normalizedRoomId}` : ""}`}
+                to={`/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${normalizedRoundNumber}/power-cards`}
                 className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[rgba(241,243,252,0.14)] bg-[rgba(10,16,25,0.82)] px-6 font-(--font-mono) text-xs tracking-[0.16em] uppercase transition hover:border-[rgba(241,243,252,0.28)]"
               >
                 Review Lock Screen

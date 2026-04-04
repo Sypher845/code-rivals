@@ -381,7 +381,7 @@ function App() {
       <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
       <Route path="/coding-window" element={<CodingWindowPage />} />
       <Route
-        path="/:username/powerups/ready"
+        path="/:username/:roomSegment/:roundSegment/power-cards-locked"
         element={
           session && currentUsername ? (
             <UserPowerupReadyRoute
@@ -395,7 +395,7 @@ function App() {
         }
       />
       <Route
-        path="/:username/powerups"
+        path="/:username/:roomSegment/:roundSegment/power-cards"
         element={
           session && currentUsername ? (
             <UserPowerupRoute
@@ -409,7 +409,7 @@ function App() {
         }
       />
       <Route
-        path="/:username/match"
+        path="/:username/:roomSegment/:roundSegment/match"
         element={
           session && currentUsername ? (
             <UserMatchRoute

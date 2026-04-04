@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { panelFrameClass } from "../components/uiClasses";
 import { reducers, tables } from "../module_bindings";
 import {
@@ -25,9 +25,9 @@ export function PowerupSelectionPage({
   username,
 }: PowerupSelectionPageProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const roomId = searchParams.get("room");
-  const normalizedRoomId = roomId?.trim().toUpperCase() ?? null;
+  const { roomSegment, roundSegment } = useParams();
+  const normalizedRoomId = roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? null;
+  const normalizedRoundNumber = roundSegment?.replace(/^r/i, "") ?? "1";
 
   const [arenaRoomRows, arenaRoomsReady] = useTable(tables.arenaRoom);
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
@@ -137,9 +137,7 @@ export function PowerupSelectionPage({
       });
       setLockedPowerupId(activePowerup.id);
       navigate(
-        `/${encodeURIComponent(username)}/powerups/ready?${new URLSearchParams({
-          room: normalizedRoomId,
-        }).toString()}`,
+        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${normalizedRoundNumber}/power-cards-locked`,
       );
     } catch (error) {
       setLockStatusMessage(
@@ -195,20 +193,23 @@ export function PowerupSelectionPage({
       return;
     }
 
-    const query = new URLSearchParams({ room: normalizedRoomId }).toString();
     if (activeRoom.matchState === "round_intro") {
-      navigate(`/${encodeURIComponent(username)}/powerups/ready?${query}`, {
-        replace: true,
-      });
+      const round = activeRoom.currentRound?.toString() ?? normalizedRoundNumber;
+      navigate(
+        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}/power-cards-locked`,
+        { replace: true },
+      );
       return;
     }
 
     if (activeRoom.matchState === "playing") {
-      navigate(`/${encodeURIComponent(username)}/match?${query}`, {
-        replace: true,
-      });
+      const round = activeRoom.currentRound?.toString() ?? normalizedRoundNumber;
+      navigate(
+        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}/match`,
+        { replace: true },
+      );
     }
-  }, [activeRoom, navigate, normalizedRoomId, username]);
+  }, [activeRoom, navigate, normalizedRoomId, normalizedRoundNumber, username]);
 
   const missingRoomMessage = !normalizedRoomId
     ? "Open this screen from an active room to load your draft cards."
@@ -218,9 +219,9 @@ export function PowerupSelectionPage({
         ? `Room ${normalizedRoomId} was not found.`
         : !isDraftingRound
           ? "This round is not currently in the drafting phase."
-        : powerups.length === 0
-          ? "Your cards are not assigned yet. Wait for match start or verify room membership."
-          : null;
+          : powerups.length === 0
+            ? "Your cards are not assigned yet. Wait for match start or verify room membership."
+            : null;
 
   /* ── carousel layout helpers ── */
   const getVisibleCards = () => {
@@ -347,19 +348,16 @@ export function PowerupSelectionPage({
                         mass: 0.8,
                       }}
                       style={{ zIndex, position: "absolute" }}
-                      className={`${panelFrameClass} shrink-0 rounded-3xl p-4 text-center outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
-                        active
+                      className={`${panelFrameClass} shrink-0 rounded-3xl p-4 text-center outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${active
                           ? "w-[19.2rem] sm:w-[26.4rem]"
                           : "w-[15.6rem] bg-[rgba(11,17,28,0.58)] sm:w-[21.6rem]"
-                      } ${
-                        active && lockedCard
+                        } ${active && lockedCard
                           ? "bg-[rgba(22,25,33,0.9)]"
                           : ""
-                      } ${
-                        active && !lockedCard
+                        } ${active && !lockedCard
                           ? "bg-[rgba(8,22,30,0.9)]"
                           : ""
-                      }`}
+                        }`}
                       aria-pressed={active}
                       disabled={isLocked && !lockedCard}
                     >
@@ -417,11 +415,10 @@ export function PowerupSelectionPage({
                   aria-label={`Select card ${i + 1}`}
                 >
                   <span
-                    className={`absolute inset-0 rounded-full transition-all duration-300 ${
-                      i === activeIndex
+                    className={`absolute inset-0 rounded-full transition-all duration-300 ${i === activeIndex
                         ? "scale-100 bg-[var(--primary)] shadow-[0_0_8px_rgba(224,141,255,0.5)]"
                         : "scale-75 bg-[rgba(241,243,252,0.2)]"
-                    }`}
+                      }`}
                   />
                   {i === activeIndex && (
                     <motion.span

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { panelFrameClass, panelNoiseClass } from "../components/uiClasses";
 import { reducers, tables } from "../module_bindings";
 import { POWER_CARD_REGISTRY } from "./powerups/powerupRegistry";
@@ -23,9 +23,9 @@ export function PowerupReadyPage({
   username,
 }: PowerupReadyPageProps) {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const roomId = searchParams.get("room");
-  const normalizedRoomId = roomId?.trim().toUpperCase() ?? null;
+  const { roomSegment, roundSegment } = useParams();
+  const normalizedRoomId = roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? null;
+  const normalizedRoundNumber = roundSegment?.replace(/^r/i, "") ?? "1";
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const hasNavigatedRef = useRef(false);
@@ -123,10 +123,11 @@ export function PowerupReadyPage({
     }
 
     const params = new URLSearchParams({ room: normalizedRoomId });
-    navigate(`/${encodeURIComponent(username)}/match?${params.toString()}`, {
+    const round = activeRoom.currentRound?.toString() ?? normalizedRoundNumber;
+    navigate(`/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}/match`, {
       replace: true,
     });
-  }, [activeRoom, navigate, normalizedRoomId, username]);
+  }, [activeRoom, navigate, normalizedRoomId, normalizedRoundNumber, username]);
 
   const missingRoomMessage = !normalizedRoomId
     ? "Open this screen from an active room to wait for lock-in."
@@ -134,7 +135,7 @@ export function PowerupReadyPage({
       ? "Loading room state..."
       : !activeRoom
         ? `Room ${normalizedRoomId} was not found.`
-        : activeRoom.matchState !== "round_intro"
+        : activeRoom.matchState !== "round_intro" && activeRoom.matchState !== "drafting"
           ? "This room is not in the round intro countdown yet."
           : !isAssignedPlayer
             ? "Only assigned players can wait on this screen."
@@ -145,7 +146,7 @@ export function PowerupReadyPage({
 
     try {
       await unlockArenaPowerup({ roomId: normalizedRoomId });
-      navigate(`/${encodeURIComponent(username)}/powerups?room=${normalizedRoomId}`);
+      navigate(`/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${normalizedRoundNumber}/power-cards`);
     } catch (error) {
       setStatusMessage(
         error instanceof Error ? error.message : "Unable to unlock your powerup.",
@@ -286,10 +287,10 @@ export function PowerupReadyPage({
                       void handleUnlock();
                     }}
                     disabled={bothPlayersLocked}
-                >
-                  Unlock & Return
-                </button>
-                <Link
+                  >
+                    Unlock & Return
+                  </button>
+                  <Link
                     to={`/${encodeURIComponent(username)}`}
                     className="inline-flex min-h-12 flex-1 items-center justify-center rounded-xl border border-[rgba(0,255,255,0.24)] px-5 font-(--font-mono) text-xs tracking-[0.16em] text-(--secondary) uppercase transition hover:bg-[rgba(0,255,255,0.08)]"
                   >

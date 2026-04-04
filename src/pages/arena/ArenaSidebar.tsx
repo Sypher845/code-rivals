@@ -126,8 +126,8 @@ export function ArenaSidebar({
   const isLobbyReady = Boolean(activeRoom && activeRoomMembers.length >= 2);
   const isCurrentUserInActiveRoom = Boolean(
     identity &&
-      activeRoom &&
-      activeRoomMembers.some((member) => member.memberIdentity.isEqual(identity)),
+    activeRoom &&
+    activeRoomMembers.some((member) => member.memberIdentity.isEqual(identity)),
   );
   const onlineFriends = useMemo(
     () => mockFriends.filter((friend) => friend.isOnline),
@@ -253,12 +253,13 @@ export function ArenaSidebar({
       return;
     }
 
+    const round = activeRoom.currentRound?.toString() ?? "1";
     const targetPath =
       activeRoom.matchState === "playing"
-        ? `/${encodeURIComponent(username)}/match`
+        ? `/${encodeURIComponent(username)}/room=${activeRoom.roomId}/r${round}/match`
         : activeRoom.matchState === "round_intro"
-          ? `/${encodeURIComponent(username)}/powerups/ready`
-          : `/${encodeURIComponent(username)}/powerups`;
+          ? `/${encodeURIComponent(username)}/room=${activeRoom.roomId}/r${round}/power-cards-locked`
+          : `/${encodeURIComponent(username)}/room=${activeRoom.roomId}/r${round}/power-cards`;
 
     if (location.pathname === targetPath) {
       return;
@@ -270,8 +271,7 @@ export function ArenaSidebar({
     }
 
     window.sessionStorage.setItem(redirectKey, "1");
-    const query = new URLSearchParams({ room: activeRoom.roomId });
-    navigate(`${targetPath}?${query.toString()}`);
+    navigate(targetPath);
   }, [
     activeRoom,
     isCurrentUserInActiveRoom,
@@ -348,22 +348,20 @@ export function ArenaSidebar({
             <button
               type="button"
               onClick={() => setArenaMode("create")}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${
-                arenaMode === "create"
+              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "create"
                   ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
-              }`}
+                }`}
             >
               Create
             </button>
             <button
               type="button"
               onClick={() => setArenaMode("join")}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${
-                arenaMode === "join"
+              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "join"
                   ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
-              }`}
+                }`}
             >
               Join
             </button>
@@ -410,11 +408,10 @@ export function ArenaSidebar({
 
           {statusMessage ? (
             <div
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                statusTone === "error"
+              className={`rounded-lg border px-3 py-2 text-sm ${statusTone === "error"
                   ? "border-[rgba(255,92,122,0.28)] bg-[rgba(255,92,122,0.08)] text-[rgba(255,207,214,0.92)]"
                   : "border-[rgba(0,229,204,0.24)] bg-[rgba(0,229,204,0.08)] text-[rgba(214,255,249,0.92)]"
-              }`}
+                }`}
             >
               {statusMessage}
             </div>
@@ -520,7 +517,7 @@ export function ArenaSidebar({
                           </span>
                         ) : null}
                         {isArenaAdmin &&
-                        !member.memberIdentity.isEqual(activeRoom.creatorIdentity) ? (
+                          !member.memberIdentity.isEqual(activeRoom.creatorIdentity) ? (
                           <button
                             type="button"
                             className="rounded-lg border border-[rgba(224,141,255,0.35)] bg-[rgba(45,22,41,0.72)] px-2.5 py-1 text-[0.6rem] font-semibold tracking-[0.08em] uppercase"
