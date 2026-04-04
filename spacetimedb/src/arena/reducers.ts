@@ -253,6 +253,10 @@ function buildRoundResultKey(
   return `${roomId}:${playerIdentityHex}:${roundNumber.toString()}`;
 }
 
+function buildRoundProblemKey(roomId: string, roundNumber: bigint) {
+  return `${roomId}:${roundNumber.toString()}`;
+}
+
 function listRoomMembers(ctx: ArenaReducerCtx, roomId: string) {
   return [...ctx.db.arenaRoomMember.iter()].filter(
     (member) => member.roomId === roomId,
@@ -376,6 +380,13 @@ function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
   const timeoutJobs = listRoomTimeoutJobs(ctx, roomId);
   for (const timeoutJob of timeoutJobs) {
     ctx.db.arenaRoomTimeoutJob.scheduledId.delete(timeoutJob.scheduledId);
+  }
+
+  const roundProblems = [
+    ...ctx.db.arenaRoundProblem.arena_round_problem_room_id.filter(roomId),
+  ];
+  for (const roundProblem of roundProblems) {
+    ctx.db.arenaRoundProblem.roundProblemKey.delete(roundProblem.roundProblemKey);
   }
 
   const matchContinueRows = [
@@ -944,6 +955,65 @@ export const begin_playing_round = spacetimedb.reducer(
         `${getDisplayUsername(ctx, playerTwoIdentity)} is already in another match.`,
       );
     }
+  },
+);
+
+export const cache_round_problem = spacetimedb.reducer(
+  {
+    roomId: t.string(),
+    roundNumber: t.u64(),
+    problemApiUrl: t.string(),
+    problemJson: t.string(),
+  },
+  (ctx, { roomId, roundNumber, problemApiUrl, problemJson }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+    if (!room) {
+      throw new SenderError("Room not found.");
+    }
+
+    const membershipKey = buildMembershipKey(
+      normalizedRoomId,
+      ctx.sender.toHexString(),
+    );
+    if (!ctx.db.arenaRoomMember.membershipKey.find(membershipKey)) {
+      throw new SenderError("You are not a member of this room.");
+    }
+
+    if (room.currentRound !== roundNumber) {
+      return;
+    }
+
+    const roundProblemKey = buildRoundProblemKey(normalizedRoomId, roundNumber);
+    if (ctx.db.arenaRoundProblem.roundProblemKey.find(roundProblemKey)) {
+      return;
+    }
+
+    const normalizedProblemApiUrl = problemApiUrl.trim();
+    if (!normalizedProblemApiUrl) {
+      throw new SenderError("Problem API URL is required.");
+    }
+
+    const normalizedProblemJson = problemJson.trim();
+    if (!normalizedProblemJson) {
+      throw new SenderError("Problem payload is empty.");
+    }
+
+    try {
+      JSON.parse(normalizedProblemJson);
+    } catch {
+      throw new SenderError("Problem payload must be valid JSON.");
+    }
+
+    ctx.db.arenaRoundProblem.insert({
+      roundProblemKey,
+      roomId: normalizedRoomId,
+      roundNumber,
+      problemApiUrl: normalizedProblemApiUrl,
+      problemJson: normalizedProblemJson,
+      fetchedAt: ctx.timestamp,
+    });
   },
 );
 

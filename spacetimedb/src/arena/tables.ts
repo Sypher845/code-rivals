@@ -132,6 +132,29 @@ export const arena_round_result = table(
   },
 );
 
+export const arena_round_problem = table(
+  {
+    name: "arena_round_problem",
+    public: true,
+    indexes: [
+      {
+        accessor: "arena_round_problem_room_id",
+        name: "arena_round_problem_room_id",
+        algorithm: "btree",
+        columns: ["roomId"],
+      },
+    ],
+  },
+  {
+    roundProblemKey: t.string().primaryKey(),
+    roomId: t.string(),
+    roundNumber: t.u64(),
+    problemApiUrl: t.string(),
+    problemJson: t.string(),
+    fetchedAt: t.timestamp(),
+  },
+);
+
 export const arena_match_summary = table(
   {
     name: "arena_match_summary",

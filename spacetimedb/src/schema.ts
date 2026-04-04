@@ -2,6 +2,7 @@ import { schema } from "spacetimedb/server";
 import { auth_account, auth_session, player_profile } from "./auth/tables";
 import {
   arena_match_continue,
+  arena_round_problem,
   arena_match_summary,
   arena_room,
   arena_room_member,
@@ -29,6 +30,7 @@ const spacetimedb = schema({
   arenaPowerupLock: arena_powerup_lock,
   arenaSabotageEvent: arena_sabotage_event,
   arenaRoundResult: arena_round_result,
+  arenaRoundProblem: arena_round_problem,
   arenaMatchSummary: arena_match_summary,
   arenaMatchContinue: arena_match_continue,
   arenaRoomTimeoutJob: arena_room_timeout_job,

@@ -47,6 +47,10 @@ export function listRoundResults(ctx: SharedReducerCtx, roomId: string) {
   return [...ctx.db.arenaRoundResult.arena_round_result_room_id.filter(roomId)];
 }
 
+export function listRoundProblems(ctx: SharedReducerCtx, roomId: string) {
+  return [...ctx.db.arenaRoundProblem.arena_round_problem_room_id.filter(roomId)];
+}
+
 export function deleteArenaRoomState(ctx: SharedReducerCtx, roomId: string) {
   const roomMembers = listRoomMembers(ctx, roomId);
   for (const member of roomMembers) {
@@ -61,6 +65,11 @@ export function deleteArenaRoomState(ctx: SharedReducerCtx, roomId: string) {
   const roundResults = listRoundResults(ctx, roomId);
   for (const roundResult of roundResults) {
     ctx.db.arenaRoundResult.resultKey.delete(roundResult.resultKey);
+  }
+
+  const roundProblems = listRoundProblems(ctx, roomId);
+  for (const roundProblem of roundProblems) {
+    ctx.db.arenaRoundProblem.roundProblemKey.delete(roundProblem.roundProblemKey);
   }
 
   const timeoutJobs = listRoomTimeoutJobs(ctx, roomId);

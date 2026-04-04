@@ -21,8 +21,12 @@ import {
   type EditorSabotageEffect,
 } from "../utils/arenaPowerHandlers";
 
-const PROBLEM_API_URL =
-  import.meta.env.VITE_PROBLEM_API_URL ?? "http://localhost:8080";
+const PROBLEM_API_EASY_URL =
+  import.meta.env.VITE_PROBLEM_API_EASY_URL ??
+  import.meta.env.VITE_PROBLEM_API_URL ??
+  "http://localhost:8080/easy";
+const PROBLEM_API_MEDIUM_URL =
+  import.meta.env.VITE_PROBLEM_API_MEDIUM_URL ?? "http://localhost:8080/medium";
 
 export type RemoteProblemData = {
   task_id?: string;
@@ -57,20 +61,30 @@ function getRoundDurationSeconds(roundNumber: number) {
   return 15 * 60;
 }
 
-function microsTimestampToMs(
-  timestamp: { microsSinceUnixEpoch: bigint } | null | undefined,
-) {
-  if (!timestamp || timestamp.microsSinceUnixEpoch <= 0n) {
-    return null;
-  }
-
-  return Number(timestamp.microsSinceUnixEpoch / 1000n);
+function buildRoundProblemKey(roomId: string, roundNumber: number) {
+  return `${roomId}:${roundNumber}`;
 }
 
-function hasRealTimestamp(
-  timestamp: { microsSinceUnixEpoch: bigint } | null | undefined,
-) {
-  return Boolean(timestamp && timestamp.microsSinceUnixEpoch > 0n);
+function getRoundProblemApiUrl(roundNumber: number) {
+  return roundNumber <= 1 ? PROBLEM_API_EASY_URL : PROBLEM_API_MEDIUM_URL;
+}
+
+function parseStoredProblem(problemJson: string | null | undefined) {
+  if (!problemJson?.trim()) {
+    return { problem: null, error: null as string | null };
+  }
+
+  try {
+    return {
+      problem: JSON.parse(problemJson) as RemoteProblemData,
+      error: null as string | null,
+    };
+  } catch {
+    return {
+      problem: null,
+      error: "Shared round problem could not be parsed.",
+    };
+  }
 }
 
 /* ══════════════════════════ RESIZABLE DIVIDER ════════════════════════ */
@@ -162,9 +176,8 @@ export function CodingWindowPage() {
     Number.isNaN(parsedRoundNumber) || parsedRoundNumber < 1 ? 1 : parsedRoundNumber;
   const [nowMs, setNowMs] = useState(() => Date.now());
   const containerRef = useRef<HTMLDivElement>(null);
-  const [problem, setProblem] = useState<RemoteProblemData | null>(null);
-  const [problemLoading, setProblemLoading] = useState(true);
-  const [problemError, setProblemError] = useState<string | null>(null);
+  const [problemRequestInFlight, setProblemRequestInFlight] = useState(false);
+  const [problemRequestError, setProblemRequestError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [activeEditorSabotage, setActiveEditorSabotage] =
     useState<EditorSabotageEffect | null>(null);
@@ -176,7 +189,9 @@ export function CodingWindowPage() {
   const [arenaRoomRows] = useTable(tables.arenaRoom);
   const [arenaRoomMemberRows] = useTable(tables.arenaRoomMember);
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
+  const [arenaRoundProblemRows] = useTable(tables.arenaRoundProblem);
   const [matchSummaryRows] = useTable(tables.arenaMatchSummary);
+  const cacheRoundProblem = useReducer(reducers.cacheRoundProblem);
   const submitRoundResult = useReducer(reducers.submitRoundResult);
   const triggerArenaSabotage = useReducer(reducers.triggerArenaSabotage);
 
@@ -191,6 +206,29 @@ export function CodingWindowPage() {
   const activeRoundNumber = activeRoom?.currentRound
     ? Number(activeRoom.currentRound)
     : fallbackRoundNumber;
+  const activeRoundProblemKey = useMemo(() => {
+    if (!normalizedRoomId || activeRoundNumber < 1) {
+      return null;
+    }
+
+    return buildRoundProblemKey(normalizedRoomId, activeRoundNumber);
+  }, [activeRoundNumber, normalizedRoomId]);
+  const storedRoundProblem = useMemo(() => {
+    if (!activeRoundProblemKey) {
+      return null;
+    }
+
+    return (
+      arenaRoundProblemRows.find(
+        (row) => row.roundProblemKey === activeRoundProblemKey,
+      ) ?? null
+    );
+  }, [activeRoundProblemKey, arenaRoundProblemRows]);
+  const parsedProblem = useMemo(
+    () => parseStoredProblem(storedRoundProblem?.problemJson),
+    [storedRoundProblem?.problemJson],
+  );
+  const problem = parsedProblem.problem;
   const playerSummary = useMemo(() => {
     if (!normalizedRoomId || !username) {
       return null;
@@ -303,6 +341,11 @@ export function CodingWindowPage() {
   const noRetreatActive = activeEditorSabotage?.noRetreatActive ?? false;
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
+  const problemError = parsedProblem.error ?? problemRequestError;
+  const problemLoading =
+    ((roomPhase === "playing" && !storedRoundProblem) || problemRequestInFlight) &&
+    !problemError;
+  const activeRoundProblemApiUrl = getRoundProblemApiUrl(activeRoundNumber);
   const submitDisabled =
     !normalizedRoomId ||
     roomPhase !== "playing" ||
@@ -437,6 +480,7 @@ export function CodingWindowPage() {
     );
     setLatestIncomingSabotage(null);
     setActiveEditorSabotage(null);
+    setProblemRequestError(null);
   }, [currentRoundKey]);
 
   useEffect(() => {
@@ -536,40 +580,85 @@ export function CodingWindowPage() {
   ]);
 
   useEffect(() => {
+    if (!normalizedRoomId || !activeRoom || roomPhase !== "playing") {
+      setProblemRequestInFlight(false);
+      return;
+    }
+
+    if (storedRoundProblem) {
+      setProblemRequestInFlight(false);
+      setProblemRequestError(null);
+      return;
+    }
+
+    let cancelled = false;
     const controller = new AbortController();
 
-    async function loadProblem() {
+    void (async () => {
       try {
-        setProblemLoading(true);
-        setProblemError(null);
+        setProblemRequestInFlight(true);
+        setProblemRequestError(null);
 
-        const response = await fetch(PROBLEM_API_URL, {
+        const response = await fetch(activeRoundProblemApiUrl, {
           signal: controller.signal,
         });
-
         if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
+          throw new Error(
+            `Problem API request failed with status ${response.status}.`,
+          );
         }
 
-        const data = (await response.json()) as RemoteProblemData;
-        setProblem(data);
-      } catch (error) {
-        if ((error as Error).name === "AbortError") {
+        const problemJson = (await response.text()).trim();
+        if (!problemJson) {
+          throw new Error("Problem API returned an empty response.");
+        }
+
+        try {
+          JSON.parse(problemJson);
+        } catch {
+          throw new Error("Problem API returned invalid JSON.");
+        }
+
+        if (cancelled) {
           return;
         }
 
-        setProblemError(
-          `Unable to load description from ${PROBLEM_API_URL}. Showing fallback content.`,
+        await cacheRoundProblem({
+          roomId: normalizedRoomId,
+          roundNumber: BigInt(activeRoundNumber),
+          problemApiUrl: activeRoundProblemApiUrl,
+          problemJson,
+        });
+      } catch (error) {
+        if ((error as Error).name === "AbortError" || cancelled) {
+          return;
+        }
+
+        setProblemRequestError(
+          error instanceof Error
+            ? error.message
+            : "Unable to load the shared round problem.",
         );
       } finally {
-        setProblemLoading(false);
+        if (!cancelled) {
+          setProblemRequestInFlight(false);
+        }
       }
-    }
+    })();
 
-    void loadProblem();
-
-    return () => controller.abort();
-  }, []);
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [
+    activeRoundProblemApiUrl,
+    activeRoundNumber,
+    activeRoom,
+    cacheRoundProblem,
+    normalizedRoomId,
+    roomPhase,
+    storedRoundProblem,
+  ]);
 
   const handleRun = useCallback(() => {
     if (noMistakesActive) {

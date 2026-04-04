@@ -97,6 +97,16 @@ export const ArenaRoomTimeoutJob = __t.object("ArenaRoomTimeoutJob", {
 });
 export type ArenaRoomTimeoutJob = __Infer<typeof ArenaRoomTimeoutJob>;
 
+export const ArenaRoundProblem = __t.object("ArenaRoundProblem", {
+  roundProblemKey: __t.string(),
+  roomId: __t.string(),
+  roundNumber: __t.u64(),
+  problemApiUrl: __t.string(),
+  problemJson: __t.string(),
+  fetchedAt: __t.timestamp(),
+});
+export type ArenaRoundProblem = __Infer<typeof ArenaRoundProblem>;
+
 export const ArenaRoundResult = __t.object("ArenaRoundResult", {
   resultKey: __t.string(),
   roomId: __t.string(),

@@ -37,6 +37,7 @@ import {
 import AcceptFriendRequestReducer from "./accept_friend_request_reducer";
 import AcceptGameInviteReducer from "./accept_game_invite_reducer";
 import BeginPlayingRoundReducer from "./begin_playing_round_reducer";
+import CacheRoundProblemReducer from "./cache_round_problem_reducer";
 import CancelFriendRequestReducer from "./cancel_friend_request_reducer";
 import CancelGameInviteReducer from "./cancel_game_invite_reducer";
 import CreateArenaRoomReducer from "./create_arena_room_reducer";
@@ -69,6 +70,7 @@ import ArenaPowerupLockRow from "./arena_powerup_lock_table";
 import ArenaRoomRow from "./arena_room_table";
 import ArenaRoomMemberRow from "./arena_room_member_table";
 import ArenaRoomNoticeRow from "./arena_room_notice_table";
+import ArenaRoundProblemRow from "./arena_round_problem_table";
 import ArenaRoundResultRow from "./arena_round_result_table";
 import ArenaSabotageEventRow from "./arena_sabotage_event_table";
 import AuthSessionRow from "./auth_session_table";
@@ -163,6 +165,20 @@ const tablesSchema = __schema({
       { name: 'arena_room_notice_notice_id_key', constraint: 'unique', columns: ['noticeId'] },
     ],
   }, ArenaRoomNoticeRow),
+  arenaRoundProblem: __table({
+    name: 'arena_round_problem',
+    indexes: [
+      { accessor: 'arena_round_problem_room_id', name: 'arena_round_problem_room_id_idx_btree', algorithm: 'btree', columns: [
+        'roomId',
+      ] },
+      { accessor: 'roundProblemKey', name: 'arena_round_problem_round_problem_key_idx_btree', algorithm: 'btree', columns: [
+        'roundProblemKey',
+      ] },
+    ],
+    constraints: [
+      { name: 'arena_round_problem_round_problem_key_key', constraint: 'unique', columns: ['roundProblemKey'] },
+    ],
+  }, ArenaRoundProblemRow),
   arenaRoundResult: __table({
     name: 'arena_round_result',
     indexes: [
@@ -335,6 +351,7 @@ const reducersSchema = __reducers(
   __reducerSchema("accept_friend_request", AcceptFriendRequestReducer),
   __reducerSchema("accept_game_invite", AcceptGameInviteReducer),
   __reducerSchema("begin_playing_round", BeginPlayingRoundReducer),
+  __reducerSchema("cache_round_problem", CacheRoundProblemReducer),
   __reducerSchema("cancel_friend_request", CancelFriendRequestReducer),
   __reducerSchema("cancel_game_invite", CancelGameInviteReducer),
   __reducerSchema("create_arena_room", CreateArenaRoomReducer),

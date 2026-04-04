@@ -1,6 +1,7 @@
 export { default } from "./schema";
 export {
   begin_playing_round,
+  cache_round_problem,
   create_arena_room,
   delete_arena_room,
   join_arena_room,
