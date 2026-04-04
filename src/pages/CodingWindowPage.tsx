@@ -247,6 +247,7 @@ export function CodingWindowPage() {
     currentRoundKey !== null && usedSabotageRoundKey === currentRoundKey;
   const editorThemeId =
     activeEditorSabotage?.themeId ?? DEFAULT_EDITOR_THEME_ID;
+  const flashbangActive = activeEditorSabotage?.flashbangActive ?? false;
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
   const submitDisabled =
@@ -633,6 +634,7 @@ export function CodingWindowPage() {
         {/* LEFT: description */}
         <div style={{ width: `${hRatio * 100}%` }} className="min-w-0">
           <DescriptionPanel
+            flashbangActive={flashbangActive}
             problem={problem}
             isLoading={problemLoading}
             error={problemError}
@@ -655,7 +657,10 @@ export function CodingWindowPage() {
 
           {/* test cases */}
           <div className="min-h-0 flex-1">
-            <TestCasesPanel problem={problem} />
+            <TestCasesPanel
+              flashbangActive={flashbangActive}
+              problem={problem}
+            />
           </div>
         </div>
       </div>

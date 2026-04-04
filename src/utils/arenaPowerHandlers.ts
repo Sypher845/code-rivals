@@ -9,6 +9,7 @@ export type EditorThemeId =
 
 export type EditorSabotageEffect = {
   expiresAtMs: number | null;
+  flashbangActive: boolean;
   powerupId: string;
   themeId: EditorThemeId;
 };
@@ -34,6 +35,7 @@ function applyFlashbangEffect({
   return {
     editorEffect: {
       expiresAtMs,
+      flashbangActive: true,
       powerupId: effect.powerupId,
       themeId: FLASHBANG_EDITOR_THEME_ID,
     },

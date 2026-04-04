@@ -5,10 +5,14 @@ import type { RemoteProblemData } from "../CodingWindowPage";
 import { getParsedTestCases } from "./problemContent";
 
 type TestCasesPanelProps = {
+  flashbangActive?: boolean;
   problem?: RemoteProblemData | null;
 };
 
-export function TestCasesPanel({ problem }: TestCasesPanelProps) {
+export function TestCasesPanel({
+  flashbangActive = false,
+  problem,
+}: TestCasesPanelProps) {
   const [activeMainTab, setActiveMainTab] = useState<"testcase" | "result">(
     "testcase",
   );
@@ -25,9 +29,19 @@ export function TestCasesPanel({ problem }: TestCasesPanelProps) {
   const currentCase = testCases[activeCase] ?? PROBLEM.testCases[0];
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]">
+    <div
+      className={`flex h-full flex-col overflow-hidden rounded-xl border ${
+        flashbangActive
+          ? "border-[#ece7e1] bg-white"
+          : "border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]"
+      }`}
+    >
       {/* tab header */}
-      <div className="relative flex items-center border-b border-[var(--ghost-border)] px-4 py-0">
+      <div
+        className={`relative flex items-center border-b px-4 py-0 ${
+          flashbangActive ? "border-[#f1ece6]" : "border-[var(--ghost-border)]"
+        }`}
+      >
         <div className="flex items-center gap-1">
           {(["testcase", "result"] as const).map((tab) => (
             <button
@@ -35,15 +49,23 @@ export function TestCasesPanel({ problem }: TestCasesPanelProps) {
               onClick={() => setActiveMainTab(tab)}
               className={`relative inline-flex items-center gap-2 px-4 py-3 text-sm font-medium capitalize transition-colors ${
                 activeMainTab === tab
-                  ? "text-[var(--primary)]"
-                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                  ? flashbangActive
+                    ? "text-[#f2eee9]"
+                    : "text-[var(--primary)]"
+                  : flashbangActive
+                    ? "text-[#f4f0eb] hover:text-[#e6e1db]"
+                    : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
               }`}
             >
               {tab === "testcase" ? "Testcases" : "Test Result"}
               {activeMainTab === tab && (
                 <motion.div
                   layoutId="testTab-underline"
-                  className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]"
+                  className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${
+                    flashbangActive
+                      ? "bg-[#f8f4ef]"
+                      : "bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]"
+                  }`}
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
                 />
               )}
@@ -71,14 +93,22 @@ export function TestCasesPanel({ problem }: TestCasesPanelProps) {
                     onClick={() => setActiveCase(i)}
                     className={`relative rounded-md px-4 py-2 text-sm font-medium transition ${
                       activeCase === i
-                        ? "text-[var(--primary)]"
-                        : "bg-[rgba(255,255,255,0.03)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                        ? flashbangActive
+                          ? "text-[#ebe7e2]"
+                          : "text-[var(--primary)]"
+                        : flashbangActive
+                          ? "bg-white text-[#f4f0eb] hover:text-[#e6e1db]"
+                          : "bg-[rgba(255,255,255,0.03)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
                     }`}
                   >
                     {activeCase === i && (
                       <motion.div
                         layoutId="caseTab-bg"
-                        className="absolute inset-0 rounded-md bg-[rgba(224,141,255,0.1)]"
+                        className={`absolute inset-0 rounded-md ${
+                          flashbangActive
+                            ? "bg-[#fefcf9]"
+                            : "bg-[rgba(224,141,255,0.1)]"
+                        }`}
                         transition={{
                           type: "spring",
                           stiffness: 400,
@@ -104,18 +134,42 @@ export function TestCasesPanel({ problem }: TestCasesPanelProps) {
                   className="space-y-4"
                 >
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[var(--text-tertiary)]">
+                    <label
+                      className={`mb-1.5 block text-sm font-medium ${
+                        flashbangActive
+                          ? "text-[#f2eee9]"
+                          : "text-[var(--text-tertiary)]"
+                      }`}
+                    >
                       Input
                     </label>
-                    <pre className="rounded-lg border border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 text-[var(--on-background)]">
+                    <pre
+                      className={`rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 ${
+                        flashbangActive
+                          ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                          : "border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] text-[var(--on-background)]"
+                      }`}
+                    >
                       {currentCase?.input}
                     </pre>
                   </div>
                   <div>
-                    <label className="mb-1.5 block text-sm font-medium text-[var(--text-tertiary)]">
+                    <label
+                      className={`mb-1.5 block text-sm font-medium ${
+                        flashbangActive
+                          ? "text-[#f2eee9]"
+                          : "text-[var(--text-tertiary)]"
+                      }`}
+                    >
                       Expected Output
                     </label>
-                    <pre className="rounded-lg border border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 text-[var(--on-background)]">
+                    <pre
+                      className={`rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 ${
+                        flashbangActive
+                          ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                          : "border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] text-[var(--on-background)]"
+                      }`}
+                    >
                       {currentCase?.expectedOutput}
                     </pre>
                   </div>

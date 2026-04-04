@@ -54,37 +54,37 @@ function defineFlashbangTheme(monaco: Parameters<OnMount>[1]) {
     base: "vs",
     inherit: true,
     rules: [
-      { token: "keyword", foreground: "8f8b84", fontStyle: "bold" },
-      { token: "type", foreground: "98938c" },
-      { token: "string", foreground: "918d87" },
-      { token: "number", foreground: "9d9891" },
-      { token: "comment", foreground: "bcb7b0", fontStyle: "italic" },
-      { token: "function", foreground: "8d8881" },
-      { token: "variable", foreground: "8c8882" },
-      { token: "operator", foreground: "aaa49d" },
-      { token: "delimiter", foreground: "b2ada7" },
-      { token: "identifier", foreground: "8e8a84" },
+      { token: "keyword", foreground: "f1ede8", fontStyle: "bold" },
+      { token: "type", foreground: "ebe7e2" },
+      { token: "string", foreground: "f0ece7" },
+      { token: "number", foreground: "e9e5e0" },
+      { token: "comment", foreground: "f7f4f1", fontStyle: "italic" },
+      { token: "function", foreground: "ede9e4" },
+      { token: "variable", foreground: "f1ede8" },
+      { token: "operator", foreground: "ebe7e2" },
+      { token: "delimiter", foreground: "efebe6" },
+      { token: "identifier", foreground: "f2eee9" },
     ],
     colors: {
-      "editor.background": "#f7f4ee",
-      "editor.foreground": "#8f8a84",
-      "editor.lineHighlightBackground": "#f1eee8",
-      "editor.selectionBackground": "#d8d2c818",
-      "editorCursor.foreground": "#b4ada4",
-      "editorLineNumber.foreground": "#d0cac3",
-      "editorLineNumber.activeForeground": "#b8b1aa",
-      "editor.selectionHighlightBackground": "#ddd7cf14",
-      "editorIndentGuide.background": "#ece7e0",
-      "editorIndentGuide.activeBackground": "#ded8d0",
-      "editorWidget.background": "#f4f1eb",
-      "editorWidget.border": "#e4ded7",
-      "editorSuggestWidget.background": "#f4f1eb",
-      "editorSuggestWidget.border": "#e4ded7",
-      "editorSuggestWidget.selectedBackground": "#ebe6df",
+      "editor.background": "#ffffff",
+      "editor.foreground": "#f1ede8",
+      "editor.lineHighlightBackground": "#fdfdfd",
+      "editor.selectionBackground": "#f7f3ee24",
+      "editorCursor.foreground": "#e8e3dd",
+      "editorLineNumber.foreground": "#f8f4ef",
+      "editorLineNumber.activeForeground": "#efeae5",
+      "editor.selectionHighlightBackground": "#faf7f318",
+      "editorIndentGuide.background": "#fcfaf7",
+      "editorIndentGuide.activeBackground": "#f6f2ed",
+      "editorWidget.background": "#ffffff",
+      "editorWidget.border": "#f8f4ef",
+      "editorSuggestWidget.background": "#ffffff",
+      "editorSuggestWidget.border": "#f8f4ef",
+      "editorSuggestWidget.selectedBackground": "#fefcf9",
       "scrollbar.shadow": "#00000000",
-      "scrollbarSlider.background": "#c8c1b822",
-      "scrollbarSlider.hoverBackground": "#c8c1b833",
-      "scrollbarSlider.activeBackground": "#c8c1b844",
+      "scrollbarSlider.background": "#f4f0eb22",
+      "scrollbarSlider.hoverBackground": "#f4f0eb33",
+      "scrollbarSlider.activeBackground": "#f4f0eb44",
     },
   });
 }
@@ -124,12 +124,30 @@ export function EditorPanel({
   }, [editorThemeId]);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]">
+    <div
+      className={`flex h-full flex-col overflow-hidden rounded-xl border ${
+        editorThemeId === FLASHBANG_EDITOR_THEME_ID
+          ? "border-[#ece7e1] bg-white"
+          : "border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]"
+      }`}
+    >
       {/* header bar */}
-      <div className="flex items-center justify-between border-b border-[var(--ghost-border)] px-4 py-2">
+      <div
+        className={`flex items-center justify-between border-b px-4 py-2 ${
+          editorThemeId === FLASHBANG_EDITOR_THEME_ID
+            ? "border-[#f1ece6]"
+            : "border-[var(--ghost-border)]"
+        }`}
+      >
         {/* left: language selector */}
         <div className="relative flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 text-sm font-semibold tracking-wide text-[var(--primary)]">
+          <span
+            className={`inline-flex items-center gap-1.5 text-sm font-semibold tracking-wide ${
+              editorThemeId === FLASHBANG_EDITOR_THEME_ID
+                ? "text-[#f2eee9]"
+                : "text-[var(--primary)]"
+            }`}
+          >
             <span className="opacity-60">{"</>"}</span>
             Code
           </span>
@@ -137,7 +155,11 @@ export function EditorPanel({
           <div className="relative">
             <button
               onClick={() => setShowLangMenu(!showLangMenu)}
-              className="inline-flex items-center gap-2 rounded-md border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.06)]"
+              className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition ${
+                editorThemeId === FLASHBANG_EDITOR_THEME_ID
+                  ? "border-[#fbf8f4] bg-white text-[#efebe6] hover:border-[#f6f2ed] hover:bg-[#fffefd]"
+                  : "border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.06)]"
+              }`}
             >
               {currentLang?.label ?? "C++"}
               <svg className="h-3.5 w-3.5 opacity-50" viewBox="0 0 12 12">
@@ -146,7 +168,13 @@ export function EditorPanel({
             </button>
 
             {showLangMenu && (
-              <div className="absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-lg border border-[var(--ghost-border)] bg-[#0d1017] shadow-xl">
+              <div
+                className={`absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-lg border shadow-xl ${
+                  editorThemeId === FLASHBANG_EDITOR_THEME_ID
+                    ? "border-[#fbf8f4] bg-white"
+                    : "border-[var(--ghost-border)] bg-[#0d1017]"
+                }`}
+              >
                 {LANGUAGES.map((lang) => (
                   <button
                     key={lang.value}
@@ -154,10 +182,15 @@ export function EditorPanel({
                       setLanguage(lang.value);
                       setShowLangMenu(false);
                     }}
-                    className={`block w-full px-4 py-2.5 text-left text-sm transition ${lang.value === language
-                      ? "bg-[rgba(224,141,255,0.1)] text-[var(--primary)]"
-                      : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)]"
-                      }`}
+                    className={`block w-full px-4 py-2.5 text-left text-sm transition ${
+                      editorThemeId === FLASHBANG_EDITOR_THEME_ID
+                        ? lang.value === language
+                          ? "bg-[#fefcf9] text-[#e8e3dd]"
+                          : "text-[#f0ece7] hover:bg-[#fffefd]"
+                        : lang.value === language
+                          ? "bg-[rgba(224,141,255,0.1)] text-[var(--primary)]"
+                          : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)]"
+                    }`}
                   >
                     {lang.label}
                   </button>
@@ -172,7 +205,11 @@ export function EditorPanel({
           <button
             onClick={handleReset}
             title="Reset"
-            className="grid h-9 w-9 place-items-center rounded-md text-[var(--text-tertiary)] transition hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--text-secondary)]"
+            className={`grid h-9 w-9 place-items-center rounded-md transition ${
+              editorThemeId === FLASHBANG_EDITOR_THEME_ID
+                ? "text-[#efebe6] hover:bg-[#fffefd] hover:text-[#e3ded8]"
+                : "text-[var(--text-tertiary)] hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--text-secondary)]"
+            }`}
           >
             <RotateCcw className="h-4 w-4" />
           </button>

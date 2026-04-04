@@ -9,6 +9,7 @@ import {
 import { PROBLEM } from "./constants";
 
 type DescriptionPanelProps = {
+  flashbangActive?: boolean;
   problem?: RemoteProblemData | null;
   isLoading?: boolean;
   error?: string | null;
@@ -56,6 +57,7 @@ function renderInlineCode(text: string) {
 }
 
 export function DescriptionPanel({
+  flashbangActive = false,
   problem,
   isLoading = false,
   error = null,
@@ -79,32 +81,66 @@ export function DescriptionPanel({
         : PROBLEM.constraints;
 
   return (
-    <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]">
+    <div
+      className={`flex h-full flex-col overflow-hidden rounded-xl border ${
+        flashbangActive
+          ? "border-[#ece7e1] bg-white"
+          : "border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]"
+      }`}
+    >
       {/* header */}
-      <div className="relative flex items-center border-b border-[var(--ghost-border)] px-4 py-0">
-        <span className="relative inline-flex items-center px-4 py-3 text-sm font-semibold text-[var(--primary)]">
+      <div
+        className={`relative flex items-center border-b px-4 py-0 ${
+          flashbangActive ? "border-[#f1ece6]" : "border-[var(--ghost-border)]"
+        }`}
+      >
+        <span
+          className={`relative inline-flex items-center px-4 py-3 text-sm font-semibold ${
+            flashbangActive ? "text-[#f2eee9]" : "text-[var(--primary)]"
+          }`}
+        >
           Description
-          <div className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]" />
+          <div
+            className={`absolute bottom-0 left-0 right-0 h-[2px] rounded-full ${
+              flashbangActive
+                ? "bg-[#f8f4ef]"
+                : "bg-gradient-to-r from-[var(--primary)] to-[var(--secondary)]"
+            }`}
+          />
         </span>
       </div>
 
       {/* scrollable body */}
       <div className="hide-scrollbar flex-1 overflow-y-auto px-6 py-6">
         {/* title — name only, no number */}
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--on-background)]">
+        <h1
+          className={`text-2xl font-bold tracking-tight ${
+            flashbangActive ? "text-[#efebe6]" : "text-[var(--on-background)]"
+          }`}
+        >
           {title}
         </h1>
 
         {difficulty && (
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[var(--ghost-border)] bg-[rgba(224,141,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--primary)]">
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] ${
+                flashbangActive
+                  ? "border-[#fbf8f4] bg-[#fffefd] text-[#efebe6]"
+                  : "border-[var(--ghost-border)] bg-[rgba(224,141,255,0.12)] text-[var(--primary)]"
+              }`}
+            >
               {difficulty}
             </span>
           </div>
         )}
 
         {/* description text */}
-        <div className="mt-5 text-[0.95rem] leading-8 text-[var(--text-secondary)]">
+        <div
+          className={`mt-5 text-[0.95rem] leading-8 ${
+            flashbangActive ? "text-[#f0ece7]" : "text-[var(--text-secondary)]"
+          }`}
+        >
           {isLoading && (
             <p className="mb-4 text-sm text-[var(--text-tertiary)]">
               Loading problem description...
@@ -128,14 +164,38 @@ export function DescriptionPanel({
           <div className="mt-8 space-y-8">
             {examples.map((example, index) => (
               <div key={`${example.heading}-${index}`}>
-                <h3 className="text-[1.35rem] font-bold tracking-tight text-[var(--on-background)]">
+                <h3
+                  className={`text-[1.35rem] font-bold tracking-tight ${
+                    flashbangActive
+                      ? "text-[#efebe6]"
+                      : "text-[var(--on-background)]"
+                  }`}
+                >
                   {example.heading}
                 </h3>
-                <div className="mt-3 rounded-2xl border border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.03)] px-7 py-6 shadow-[inset_1px_0_0_rgba(255,255,255,0.12)]">
-                  <div className="space-y-4 text-[1rem] leading-8 text-[var(--text-secondary)]">
+                <div
+                  className={`mt-3 rounded-2xl border px-7 py-6 ${
+                    flashbangActive
+                      ? "border-[#f1ece6] bg-white"
+                      : "border-[rgba(255,255,255,0.04)] bg-[rgba(255,255,255,0.03)] shadow-[inset_1px_0_0_rgba(255,255,255,0.12)]"
+                  }`}
+                >
+                  <div
+                    className={`space-y-4 text-[1rem] leading-8 ${
+                      flashbangActive
+                        ? "text-[#f0ece7]"
+                        : "text-[var(--text-secondary)]"
+                    }`}
+                  >
                     {example.fields.map((field) => (
                       <p key={`${example.heading}-${field.label}`}>
-                        <span className="font-bold text-[1.03rem] text-[var(--on-background)]">
+                        <span
+                          className={`font-bold text-[1.03rem] ${
+                            flashbangActive
+                              ? "text-[#ebe7e2]"
+                              : "text-[var(--on-background)]"
+                          }`}
+                        >
                           {field.label}:
                         </span>{" "}
                         {renderInlineCode(field.value)}
@@ -151,10 +211,18 @@ export function DescriptionPanel({
         {/* constraints */}
         {displayConstraints.length > 0 && (
           <div className="mt-8">
-            <h3 className="text-base font-semibold text-[var(--on-background)]">
+            <h3
+              className={`text-base font-semibold ${
+                flashbangActive ? "text-[#efebe6]" : "text-[var(--on-background)]"
+              }`}
+            >
               Constraints:
             </h3>
-            <ul className="mt-3 list-disc space-y-2 pl-6 text-[0.9rem] leading-7 text-[var(--text-secondary)]">
+            <ul
+              className={`mt-3 list-disc space-y-2 pl-6 text-[0.9rem] leading-7 ${
+                flashbangActive ? "text-[#f0ece7]" : "text-[var(--text-secondary)]"
+              }`}
+            >
               {displayConstraints.map((c, i) => (
                 <li key={i}>
                   <code className="rounded bg-[rgba(255,255,255,0.05)] px-1.5 py-0.5 font-[var(--font-mono)] text-[0.86rem] text-[var(--on-background)]">
@@ -168,10 +236,18 @@ export function DescriptionPanel({
 
         {followUp && (
           <div className="mt-8">
-            <h3 className="text-base font-semibold text-[var(--on-background)]">
+            <h3
+              className={`text-base font-semibold ${
+                flashbangActive ? "text-[#efebe6]" : "text-[var(--on-background)]"
+              }`}
+            >
               Follow Up:
             </h3>
-            <div className="mt-3 text-[0.95rem] leading-8 text-[var(--text-secondary)]">
+            <div
+              className={`mt-3 text-[0.95rem] leading-8 ${
+                flashbangActive ? "text-[#f0ece7]" : "text-[var(--text-secondary)]"
+              }`}
+            >
               {followUp.split("\n").map((paragraph, i) => (
                 <p key={i} className="mt-3 first:mt-0">
                   {renderInlineCode(paragraph)}

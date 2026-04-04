@@ -24,7 +24,8 @@ export type PowerupDescriptor = {
 export const POWER_CARD_REGISTRY: Record<string, Omit<PowerupDescriptor, "id">> = {
   FlashbangCard: {
     Card: FlashbangCard,
-    description: "Editor switches to light theme with low contrast. Good luck reading.",
+    description:
+      "Blasts the opponent's full coding screen white. Description, test cases, and editor all become nearly unreadable.",
   },
   KeySwapCard: {
     Card: KeySwapCard,

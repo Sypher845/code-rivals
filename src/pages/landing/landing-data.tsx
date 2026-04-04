@@ -137,7 +137,7 @@ export const powers: Power[] = [
   {
     name: "Flashbang",
     description:
-      "Editor switches to light theme with low contrast. Good luck reading.",
+      "Turns the opponent's entire coding screen into a blinding white mess, including the description, test cases, and editor.",
     tag: "Visual",
     tagClassName:
       "border-[rgba(0,255,255,0.18)] bg-[rgba(0,255,255,0.08)] text-[var(--secondary)]",
