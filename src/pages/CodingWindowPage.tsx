@@ -49,6 +49,13 @@ type IncomingSabotage = ResolvedPowerupEffect & {
   sourcePlayerIdentityHex: string;
 };
 
+type OutgoingSabotage = ResolvedPowerupEffect & {
+  expiresAtMs: number | null;
+  roomId: string;
+  roundNumber: number;
+  targetPlayerIdentityHex: string;
+};
+
 function getRoundDurationSeconds(roundNumber: number) {
   if (roundNumber === 1) {
     return 5 * 60;
@@ -101,6 +108,38 @@ function hasRealTimestamp(
   timestamp?: { microsSinceUnixEpoch: bigint } | null,
 ) {
   return microsTimestampToMs(timestamp) !== null;
+}
+
+function hasLockedMirrorShield(
+  powerupId: string | null | undefined,
+  hasLockedPower: boolean | null | undefined,
+) {
+  return hasLockedPower === true && powerupId === "MirrorShieldCard";
+}
+
+function getRoundLongDebuffLabel(params: {
+  activeDebuffs?: string[] | null;
+  affectedByOpponentPowerupId?: string | null;
+  roomPhase: string | null;
+}) {
+  const { activeDebuffs, affectedByOpponentPowerupId, roomPhase } = params;
+
+  if (roomPhase !== "playing") {
+    return null;
+  }
+
+  if (activeDebuffs?.includes("NoMistakesCard")) {
+    return formatPowerupName("NoMistakesCard");
+  }
+
+  if (
+    affectedByOpponentPowerupId === "TimeKumCard" ||
+    affectedByOpponentPowerupId === "TimeHeistCard"
+  ) {
+    return formatPowerupName(affectedByOpponentPowerupId);
+  }
+
+  return null;
 }
 
 /* ══════════════════════════ RESIZABLE DIVIDER ════════════════════════ */
@@ -199,6 +238,8 @@ export function CodingWindowPage() {
     useState<EditorSabotageEffect | null>(null);
   const [latestIncomingSabotage, setLatestIncomingSabotage] =
     useState<IncomingSabotage | null>(null);
+  const [activeOutgoingSabotage, setActiveOutgoingSabotage] =
+    useState<OutgoingSabotage | null>(null);
   const [usedSabotageRoundKey, setUsedSabotageRoundKey] = useState<string | null>(null);
   const [hasRun, setHasRun] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -355,6 +396,43 @@ export function CodingWindowPage() {
   const visuallyImpairedActive =
     activeEditorSabotage?.visuallyImpairedActive ?? false;
   const noRetreatActive = activeEditorSabotage?.noRetreatActive ?? false;
+  const myMirrorShieldActive = hasLockedMirrorShield(
+    myRoundState?.powerupId,
+    myRoundState?.hasLockedPower,
+  );
+  const opponentMirrorShieldActive = hasLockedMirrorShield(
+    opponentRoundState?.powerupId,
+    opponentRoundState?.hasLockedPower,
+  );
+  const roundStartSelfDebuffLabel = getRoundLongDebuffLabel({
+    activeDebuffs: myRoundState?.activeDebuffs,
+    affectedByOpponentPowerupId:
+      opponentRoundState?.hasLockedPower && !myMirrorShieldActive
+        ? opponentRoundState.powerupId
+        : null,
+    roomPhase,
+  });
+  const roundStartOpponentDebuffLabel = getRoundLongDebuffLabel({
+    activeDebuffs: opponentRoundState?.activeDebuffs,
+    affectedByOpponentPowerupId:
+      myRoundState?.hasLockedPower && !opponentMirrorShieldActive
+        ? myRoundState.powerupId
+        : null,
+    roomPhase,
+  });
+  const activeDebuffSecondsRemaining =
+    activeEditorSabotage?.expiresAtMs === null ||
+    activeEditorSabotage?.expiresAtMs === undefined
+      ? null
+      : Math.max(0, Math.ceil((activeEditorSabotage.expiresAtMs - nowMs) / 1000));
+  const opponentDebuffSecondsRemaining =
+    activeOutgoingSabotage?.expiresAtMs === null ||
+    activeOutgoingSabotage?.expiresAtMs === undefined
+      ? null
+      : Math.max(
+          0,
+          Math.ceil((activeOutgoingSabotage.expiresAtMs - nowMs) / 1000),
+        );
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
   const problemError = parsedProblem.error ?? problemRequestError;
@@ -391,10 +469,6 @@ export function CodingWindowPage() {
         return;
       }
 
-      if (!eventRow.targetPlayerIdentity.isEqual(identity)) {
-        return;
-      }
-
       const resolvedEffect = resolvePowerupEffect(
         eventRow.powerupId,
         Number(eventRow.roundNumber),
@@ -403,15 +477,35 @@ export function CodingWindowPage() {
         return;
       }
 
+      const emittedAtMs = Number(eventRow.createdAt.microsSinceUnixEpoch / 1000n);
+
+      if (eventRow.targetPlayerIdentity.isEqual(identity)) {
         setLatestIncomingSabotage({
-        ...resolvedEffect,
-        emittedAtMs: Number(eventRow.createdAt.microsSinceUnixEpoch / 1000n),
-        roomId: eventRow.roomId,
-        roundNumber: Number(eventRow.roundNumber),
-        sourcePlayerIdentityHex: eventRow.sourcePlayerIdentity.toHexString(),
-      });
+          ...resolvedEffect,
+          emittedAtMs,
+          roomId: eventRow.roomId,
+          roundNumber: Number(eventRow.roundNumber),
+          sourcePlayerIdentityHex: eventRow.sourcePlayerIdentity.toHexString(),
+        });
+      }
+
+      if (
+        eventRow.sourcePlayerIdentity.isEqual(identity) &&
+        !eventRow.targetPlayerIdentity.isEqual(identity)
+      ) {
+        setActiveOutgoingSabotage({
+          ...resolvedEffect,
+          expiresAtMs:
+            resolvedEffect.durationMinutes === null
+              ? roundDeadlineMs
+              : emittedAtMs + resolvedEffect.durationMinutes * 60_000,
+          roomId: eventRow.roomId,
+          roundNumber: Number(eventRow.roundNumber),
+          targetPlayerIdentityHex: eventRow.targetPlayerIdentity.toHexString(),
+        });
+      }
     },
-    [identity, normalizedRoomId],
+    [identity, normalizedRoomId, roundDeadlineMs],
   );
 
   const sabotageEventCallbacks = useMemo(
@@ -495,6 +589,7 @@ export function CodingWindowPage() {
       current === currentRoundKey ? current : null,
     );
     setLatestIncomingSabotage(null);
+    setActiveOutgoingSabotage(null);
     setActiveEditorSabotage(null);
     setProblemRequestError(null);
   }, [currentRoundKey]);
@@ -561,6 +656,16 @@ export function CodingWindowPage() {
 
     return () => window.clearTimeout(timeoutId);
   }, [activeEditorSabotage]);
+
+  useEffect(() => {
+    if (!activeOutgoingSabotage?.expiresAtMs) {
+      return;
+    }
+
+    if (activeOutgoingSabotage.expiresAtMs <= nowMs) {
+      setActiveOutgoingSabotage(null);
+    }
+  }, [activeOutgoingSabotage, nowMs]);
 
   useEffect(() => {
     if (secondsRemaining !== 0 || submitDisabled || !normalizedRoomId) {
@@ -798,6 +903,16 @@ export function CodingWindowPage() {
 
       {/* ═══════════════ TOP NAV BAR ═══════════════ */}
       <TopBar
+        activeDebuffLabel={
+          activeEditorSabotage
+            ? formatPowerupName(activeEditorSabotage.powerupId)
+            : roundStartSelfDebuffLabel
+        }
+        activeDebuffSecondsRemaining={activeDebuffSecondsRemaining}
+        activeDebuffUsesRoundTimer={
+          Boolean(latestIncomingSabotage?.fullRound && activeEditorSabotage) ||
+          Boolean(roundStartSelfDebuffLabel)
+        }
         canSubmit={!submitDisabled}
         canRun={!noMistakesActive}
         isSubmitting={isSubmitting}
@@ -808,6 +923,16 @@ export function CodingWindowPage() {
           hasRealTimestamp(myRoundState?.appliedAtRoundStartAt)
             ? undefined
             : handleSabotage
+        }
+        opponentActiveDebuffLabel={
+          activeOutgoingSabotage
+            ? formatPowerupName(activeOutgoingSabotage.powerupId)
+            : roundStartOpponentDebuffLabel
+        }
+        opponentActiveDebuffSecondsRemaining={opponentDebuffSecondsRemaining}
+        opponentActiveDebuffUsesRoundTimer={
+          Boolean(activeOutgoingSabotage?.fullRound) ||
+          Boolean(roundStartOpponentDebuffLabel)
         }
         opponentCardUsed={null}
         opponentHasSubmitted={Boolean(opponentRoundState?.hasSubmitted)}

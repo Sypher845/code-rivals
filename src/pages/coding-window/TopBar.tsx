@@ -33,9 +33,18 @@ function MatchTimer({ secondsRemaining }: { secondsRemaining: number }) {
   );
 }
 
+function formatDurationLabel(totalSeconds: number) {
+  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+  const seconds = String(totalSeconds % 60).padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
 /* ═══════════════════════════ OPPONENT CARD ═══════════════════════════ */
 
 type OpponentSummary = {
+  activeDebuffLabel?: string | null;
+  activeDebuffSecondsRemaining?: number | null;
+  activeDebuffUsesRoundTimer?: boolean;
   cardUsed?: string | null;
   hasSubmitted: boolean;
   isTyping: boolean;
@@ -43,11 +52,20 @@ type OpponentSummary = {
 };
 
 function OpponentCard({
+  activeDebuffLabel,
+  activeDebuffSecondsRemaining,
+  activeDebuffUsesRoundTimer = false,
   cardUsed,
   hasSubmitted,
   isTyping,
   username,
 }: OpponentSummary) {
+  const debuffCountdown =
+    activeDebuffSecondsRemaining === null ||
+    activeDebuffSecondsRemaining === undefined
+      ? null
+      : formatDurationLabel(activeDebuffSecondsRemaining);
+
   return (
     <div className="flex items-center gap-3 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] px-4 py-2">
       {/* avatar placeholder */}
@@ -59,6 +77,17 @@ function OpponentCard({
         <span className="text-sm font-semibold text-[var(--on-background)]">
           {username}
         </span>
+
+        {activeDebuffLabel ? (
+          <span className="text-xs text-[#ffd27a]">
+            {activeDebuffLabel}
+            {activeDebuffUsesRoundTimer
+              ? " · Until round end"
+              : debuffCountdown
+                ? ` · ${debuffCountdown}`
+                : ""}
+          </span>
+        ) : null}
 
         <div className="flex items-center gap-2.5">
           {/* typing indicator */}
@@ -163,6 +192,9 @@ function SabotageButton({
 /* ═══════════════════════════ TOP BAR ═════════════════════════════════ */
 
 type TopBarProps = {
+  activeDebuffLabel?: string | null;
+  activeDebuffSecondsRemaining?: number | null;
+  activeDebuffUsesRoundTimer?: boolean;
   canSubmit: boolean;
   canRun?: boolean;
   isSubmitting: boolean;
@@ -171,6 +203,9 @@ type TopBarProps = {
   onRun: () => void;
   onSabotage?: () => void;
   onSubmit: () => void;
+  opponentActiveDebuffLabel?: string | null;
+  opponentActiveDebuffSecondsRemaining?: number | null;
+  opponentActiveDebuffUsesRoundTimer?: boolean;
   opponentCardUsed?: string | null;
   opponentHasSubmitted: boolean;
   opponentIsTyping: boolean;
@@ -183,6 +218,9 @@ type TopBarProps = {
 };
 
 export function TopBar({
+  activeDebuffLabel = null,
+  activeDebuffSecondsRemaining = null,
+  activeDebuffUsesRoundTimer = false,
   canSubmit,
   canRun = true,
   isSubmitting,
@@ -191,6 +229,9 @@ export function TopBar({
   onRun,
   onSabotage,
   onSubmit,
+  opponentActiveDebuffLabel = null,
+  opponentActiveDebuffSecondsRemaining = null,
+  opponentActiveDebuffUsesRoundTimer = false,
   opponentCardUsed,
   opponentHasSubmitted,
   opponentIsTyping,
@@ -206,6 +247,9 @@ export function TopBar({
       {/* LEFT — Opponent status card */}
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
         <OpponentCard
+          activeDebuffLabel={opponentActiveDebuffLabel}
+          activeDebuffSecondsRemaining={opponentActiveDebuffSecondsRemaining}
+          activeDebuffUsesRoundTimer={opponentActiveDebuffUsesRoundTimer}
           cardUsed={opponentCardUsed}
           hasSubmitted={opponentHasSubmitted}
           isTyping={opponentIsTyping}
@@ -261,6 +305,16 @@ export function TopBar({
       {statusMessage ? (
         <div className="basis-full text-right text-sm text-[var(--text-secondary)]">
           {statusMessage}
+        </div>
+      ) : null}
+      {activeDebuffLabel ? (
+        <div className="basis-full text-right text-sm text-[#ffd27a]">
+          {activeDebuffLabel}
+          {activeDebuffUsesRoundTimer
+            ? " · Until round end"
+            : activeDebuffSecondsRemaining !== null
+              ? ` · ${formatDurationLabel(activeDebuffSecondsRemaining)}`
+              : ""}
         </div>
       ) : null}
     </nav>
