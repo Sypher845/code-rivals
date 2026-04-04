@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { RandomAvatar } from "react-random-avatars";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, LogOut, Moon } from "lucide-react";
 import type { Identity } from "spacetimedb";
@@ -341,8 +342,8 @@ export function ArenaPage({
             <div className="relative flex flex-col gap-7 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex items-start gap-4">
                 <div className="relative">
-                  <div className="grid h-24 w-24 place-items-center rounded-2xl border border-[rgba(0,229,204,0.4)] bg-[linear-gradient(140deg,rgba(0,229,204,0.16),rgba(126,87,255,0.14))] text-4xl font-bold text-(--arena-accent)">
-                    {username.slice(0, 2).toUpperCase()}
+                  <div className="grid h-24 w-24 place-items-center overflow-hidden rounded-full border border-[rgba(0,229,204,0.4)] bg-[linear-gradient(140deg,rgba(0,229,204,0.16),rgba(126,87,255,0.14))] shadow-[0_12px_32px_rgba(0,0,0,0.24)]">
+                    <RandomAvatar name={username} size={96} />
                   </div>
                   <div className="absolute -bottom-1 -right-1 rounded-full border border-[rgba(0,229,204,0.5)] bg-[rgba(8,15,24,0.95)] px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-(--arena-accent) uppercase">
                     {myDivision}
