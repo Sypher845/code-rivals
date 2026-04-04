@@ -16,6 +16,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { MatchLaunchPage } from "./pages/MatchLaunchPage";
 import { PowerupReadyPage } from "./pages/PowerupReadyPage";
 import { PowerupSelectionPage } from "./pages/PowerSelectionPage";
+import { CodingWindowPage } from "./pages/CodingWindowPage";
 import { SignupPage } from "./pages/SignupPage";
 
 export type LoginFormState = {
@@ -378,6 +379,7 @@ function App() {
         }
       />
       <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
+      <Route path="/coding-window" element={<CodingWindowPage />} />
       <Route
         path="/:username/powerups/ready"
         element={
