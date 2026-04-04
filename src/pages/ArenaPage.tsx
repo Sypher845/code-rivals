@@ -19,6 +19,13 @@ type ArenaPageProps = {
   username: string;
 };
 
+type ZenTransitionDirection = "ltr" | "rtl";
+
+type ZenTransitionState = {
+  zenTransition?: boolean;
+  zenTransitionDirection?: ZenTransitionDirection;
+};
+
 export function ArenaPage({
   identity,
   isLoggingOut,
@@ -27,6 +34,7 @@ export function ArenaPage({
 }: ArenaPageProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const transitionState = location.state as ZenTransitionState | null;
 
   const [arenaRoomRows, arenaRoomsReady] = useTable(tables.arenaRoom);
   const [arenaMemberRows, arenaMembersReady] = useTable(tables.arenaRoomMember);
@@ -149,9 +157,12 @@ export function ArenaPage({
   const zenModePath = `/${encodeURIComponent(username)}/zen/R1`;
   const zenModeActive = /^\/[^/]+\/zen\/R[123]$/i.test(location.pathname);
   const [isZenTransitioning, setIsZenTransitioning] = useState(false);
-  const [zenTransitionDirection, setZenTransitionDirection] = useState<
-    "ltr" | "rtl"
-  >("ltr");
+  const [coverDirection, setCoverDirection] = useState<ZenTransitionDirection>("ltr");
+  const [revealDirection, setRevealDirection] = useState<ZenTransitionDirection | null>(
+    transitionState?.zenTransition === true
+      ? transitionState.zenTransitionDirection ?? null
+      : null,
+  );
 
   const handleZenModeToggle = () => {
     if (isZenTransitioning) {
@@ -159,14 +170,22 @@ export function ArenaPage({
     }
 
     const enteringZenMode = !zenModeActive;
-    setZenTransitionDirection(enteringZenMode ? "ltr" : "rtl");
+    const transitionDirection: ZenTransitionDirection = enteringZenMode
+      ? "ltr"
+      : "rtl";
+    setCoverDirection(transitionDirection);
     setIsZenTransitioning(true);
     const targetPath = zenModeActive
       ? `/${encodeURIComponent(username)}`
       : zenModePath;
 
     window.setTimeout(() => {
-      navigate(targetPath);
+      navigate(targetPath, {
+        state: {
+          zenTransition: true,
+          zenTransitionDirection: transitionDirection,
+        } satisfies ZenTransitionState,
+      });
     }, 420);
   };
 
@@ -175,17 +194,37 @@ export function ArenaPage({
       <AnimatePresence>
         {isZenTransitioning ? (
           <motion.div
-            key={`zen-transition-${zenTransitionDirection}`}
+            key={`zen-cover-${coverDirection}`}
             className="pointer-events-none fixed inset-0 z-140 bg-black"
             initial={{
               scaleX: 0,
-              originX: zenTransitionDirection === "ltr" ? 0 : 1,
+              originX: coverDirection === "ltr" ? 0 : 1,
             }}
             animate={{
               scaleX: 1,
-              originX: zenTransitionDirection === "ltr" ? 0 : 1,
+              originX: coverDirection === "ltr" ? 0 : 1,
             }}
             transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+          />
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {revealDirection ? (
+          <motion.div
+            key={`zen-reveal-${revealDirection}`}
+            className="pointer-events-none fixed inset-0 z-140 bg-black"
+            initial={{
+              scaleX: 1,
+              originX: revealDirection === "ltr" ? 1 : 0,
+            }}
+            animate={{
+              scaleX: 0,
+              originX: revealDirection === "ltr" ? 1 : 0,
+            }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+            onAnimationComplete={() => {
+              setRevealDirection(null);
+            }}
           />
         ) : null}
       </AnimatePresence>

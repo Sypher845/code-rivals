@@ -70,6 +70,11 @@ type OutgoingSabotage = ResolvedPowerupEffect & {
 };
 
 type ZenRoundStage = "intro" | "playing" | "submitted" | "finished";
+type ZenTransitionDirection = "ltr" | "rtl";
+type ZenTransitionState = {
+  zenTransition?: boolean;
+  zenTransitionDirection?: ZenTransitionDirection;
+};
 
 const ZEN_SABOTAGE_OPTIONS = [
   "SkullCard",
@@ -303,6 +308,7 @@ function ZenRoundCard({
 export function CodingWindowPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const transitionState = location.state as ZenTransitionState | null;
   const { identity } = useSpacetimeDB();
   const { roomSegment, roundSegment, username } = useParams();
   const zenRouteRoundNumber = useMemo(() => {
@@ -333,9 +339,12 @@ export function CodingWindowPage() {
   const [zenToastMessage, setZenToastMessage] = useState<string | null>(null);
   const [isZenMode, setIsZenMode] = useState(zenRequested);
   const [isZenTransitioning, setIsZenTransitioning] = useState(false);
-  const [zenTransitionDirection, setZenTransitionDirection] = useState<
-    "ltr" | "rtl"
-  >("rtl");
+  const [coverDirection, setCoverDirection] = useState<ZenTransitionDirection>("rtl");
+  const [revealDirection, setRevealDirection] = useState<ZenTransitionDirection | null>(
+    transitionState?.zenTransition === true
+      ? transitionState.zenTransitionDirection ?? null
+      : null,
+  );
   const [zenSelfSabotageEnabled, setZenSelfSabotageEnabled] = useState(false);
   const [zenRoundNumber, setZenRoundNumber] = useState(fallbackRoundNumber);
   const [zenRoundStage, setZenRoundStage] = useState<ZenRoundStage>("intro");
@@ -1395,10 +1404,17 @@ export function CodingWindowPage() {
         ? `/${encodeURIComponent(username)}`
         : "/";
 
-    setZenTransitionDirection("rtl");
+    const transitionDirection: ZenTransitionDirection = "rtl";
+    setCoverDirection(transitionDirection);
     setIsZenTransitioning(true);
     window.setTimeout(() => {
-      navigate(arenaPath, { replace: true });
+      navigate(arenaPath, {
+        replace: true,
+        state: {
+          zenTransition: true,
+          zenTransitionDirection: transitionDirection,
+        } satisfies ZenTransitionState,
+      });
     }, 420);
   }, [isZenTransitioning, navigate, sessionUsername, username]);
   return (
@@ -1409,17 +1425,37 @@ export function CodingWindowPage() {
       <AnimatePresence>
         {isZenTransitioning ? (
           <motion.div
-            key={`zen-transition-${zenTransitionDirection}`}
+            key={`zen-cover-${coverDirection}`}
             className="pointer-events-none fixed inset-0 z-140 bg-black"
             initial={{
               scaleX: 0,
-              originX: zenTransitionDirection === "ltr" ? 0 : 1,
+              originX: coverDirection === "ltr" ? 0 : 1,
             }}
             animate={{
               scaleX: 1,
-              originX: zenTransitionDirection === "ltr" ? 0 : 1,
+              originX: coverDirection === "ltr" ? 0 : 1,
             }}
             transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+          />
+        ) : null}
+      </AnimatePresence>
+      <AnimatePresence>
+        {revealDirection ? (
+          <motion.div
+            key={`zen-reveal-${revealDirection}`}
+            className="pointer-events-none fixed inset-0 z-140 bg-black"
+            initial={{
+              scaleX: 1,
+              originX: revealDirection === "ltr" ? 1 : 0,
+            }}
+            animate={{
+              scaleX: 0,
+              originX: revealDirection === "ltr" ? 1 : 0,
+            }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+            onAnimationComplete={() => {
+              setRevealDirection(null);
+            }}
           />
         ) : null}
       </AnimatePresence>
