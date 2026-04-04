@@ -17,6 +17,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { PowerupReadyPage } from "./pages/PowerupReadyPage";
 import { PowerupSelectionPage } from "./pages/PowerSelectionPage";
 import { CodingWindowPage } from "./pages/CodingWindowPage";
+import { ArenaResultsPage } from "./pages/ArenaResultsPage";
 import { SignupPage } from "./pages/SignupPage";
 
 export type LoginFormState = {
@@ -149,6 +150,25 @@ function UserPowerupReadyRoute({
   }
 
   return <PowerupReadyPage identity={identity} username={username} />;
+}
+
+function UserArenaResultsRoute({
+  expectedUsername,
+}: {
+  expectedUsername: string;
+}) {
+  const params = useParams();
+  const requestedUsername = params.username;
+
+  if (!requestedUsername) {
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
+  }
+
+  if (requestedUsername !== expectedUsername) {
+    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
+  }
+
+  return <ArenaResultsPage />;
 }
 
 
@@ -385,6 +405,16 @@ function App() {
               identity={identity}
               username={session.username}
             />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
+      <Route
+        path="/:username/:roomSegment/results"
+        element={
+          session && currentUsername ? (
+            <UserArenaResultsRoute expectedUsername={currentUsername} />
           ) : (
             <Navigate replace to="/login" />
           )
