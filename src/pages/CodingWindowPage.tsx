@@ -68,7 +68,7 @@ type OutgoingSabotage = ResolvedPowerupEffect & {
   targetPlayerIdentityHex: string;
 };
 
-type ZenRoundStage = "intro" | "playing" | "finished";
+type ZenRoundStage = "intro" | "playing" | "submitted" | "finished";
 
 const ZEN_SABOTAGE_OPTIONS = [
   "SkullCard",
@@ -577,8 +577,10 @@ export function CodingWindowPage() {
     Boolean(myRoundState?.hasSubmitted);
 
   const zenSecondsRemaining =
-    zenRoundStage !== "playing" || zenRoundStartMs === null
-      ? zenRoundDurationSeconds
+    zenRoundStage === "submitted"
+      ? 0
+      : zenRoundStage !== "playing" || zenRoundStartMs === null
+        ? zenRoundDurationSeconds
       : Math.max(
           0,
           Math.ceil(
@@ -586,7 +588,7 @@ export function CodingWindowPage() {
           ),
         );
   const submitDisabled = isZenMode
-    ? zenRoundStage !== "playing" || isSubmitting
+    ? (zenRoundStage !== "playing" && zenRoundStage !== "submitted") || isSubmitting
     : isStandaloneTestingMode
       ? isSubmitting
       : arenaSubmitDisabled;
@@ -1106,6 +1108,26 @@ export function CodingWindowPage() {
         return;
       }
 
+      if (zenRoundStage === "submitted") {
+        if (zenRoundNumber >= 3) {
+          setZenRoundStage("finished");
+          setStatusMessage("Zen practice complete. You can restart whenever you want.");
+          return;
+        }
+
+        const nextRound = zenRoundNumber + 1;
+        setZenRoundNumber(nextRound);
+        setZenRoundStage("intro");
+        setZenRoundDurationSeconds(getRoundDurationSeconds(nextRound));
+        setZenAssignedSabotageId(null);
+        setZenProblemJson(null);
+        setActiveEditorSabotage(null);
+        setJudgeResult(null);
+        setJudgeError(null);
+        setStatusMessage(`Round ${nextRound} is ready. Start whenever you want.`);
+        return;
+      }
+
       try {
         setIsSubmitting(true);
         setJudgeError(null);
@@ -1116,21 +1138,12 @@ export function CodingWindowPage() {
         setActiveEditorSabotage(null);
         setZenAssignedSabotageId(null);
         setZenRoundStartMs(null);
-
-        if (submittedRound >= 3) {
-          setZenRoundStage("finished");
-          setStatusMessage(
-            `Zen practice complete. ${result.passedCount}/${result.totalCount} testcases passed.`,
-          );
-        } else {
-          const nextRound = submittedRound + 1;
-          setZenRoundNumber(nextRound);
-          setZenRoundStage("intro");
-          setZenRoundDurationSeconds(getRoundDurationSeconds(nextRound));
-          setStatusMessage(
-            `Round ${submittedRound} submitted. ${result.passedCount}/${result.totalCount} testcases passed. Start Round ${nextRound} when you're ready.`,
-          );
-        }
+        setZenRoundStage("submitted");
+        setStatusMessage(
+          submittedRound >= 3
+            ? `Round ${submittedRound} submitted. ${result.passedCount}/${result.totalCount} testcases passed. Finish practice when you're ready.`
+            : `Round ${submittedRound} submitted. ${result.passedCount}/${result.totalCount} testcases passed. Move to the next question when you're ready.`,
+        );
       } catch (error) {
         setJudgeResult(null);
         setJudgeError(
@@ -1199,6 +1212,7 @@ export function CodingWindowPage() {
     submitRoundResult,
     totalTestcases,
     zenRoundNumber,
+    zenRoundStage,
   ]);
 
   const handleZenRoundStart = useCallback(() => {
@@ -1287,6 +1301,10 @@ export function CodingWindowPage() {
     setZenProblemJson(null);
     setLatestIncomingSabotage(null);
     setActiveEditorSabotage(null);
+    setSelectedLanguage(DEFAULT_LANGUAGE);
+    setCode(DEFAULT_CODE);
+    setJudgeResult(null);
+    setJudgeError(null);
     setStatusMessage(
       `Zen Mode is on. Start Round ${zenRouteRoundNumber ?? 1} whenever you want.`,
     );
@@ -1320,6 +1338,12 @@ export function CodingWindowPage() {
         ? zenSelfSabotageEnabled
           ? "Zen Mode is ready. A random self-sabotage will apply when the round starts."
           : "Zen Mode is ready. Start whenever you want."
+        : zenRoundStage === "submitted"
+          ? judgeResult
+            ? zenRoundNumber >= 3
+              ? `${judgeResult.passedCount}/${judgeResult.totalCount} testcases passed. Finish practice when you're ready.`
+              : `${judgeResult.passedCount}/${judgeResult.totalCount} testcases passed. Move to the next question when you're ready.`
+            : "Submission complete. Move on when you're ready."
         : zenAssignedSabotageId
           ? `${formatPowerupName(zenAssignedSabotageId)} is active for this round.`
           : statusMessage ?? "Zen round is live."
@@ -1419,6 +1443,10 @@ export function CodingWindowPage() {
           isZenMode
             ? zenRoundStage === "finished"
               ? "Complete"
+              : zenRoundStage === "submitted"
+                ? zenRoundNumber >= 3
+                  ? "Finish Practice"
+                  : "Next Question"
               : "Submit"
             : myRoundState?.hasSubmitted
               ? "Submitted"
@@ -1433,7 +1461,8 @@ export function CodingWindowPage() {
       />
 
       {/* ═══════════════ MAIN CONTENT ═══════════════ */}
-      {isZenMode && zenRoundStage !== "playing" ? (
+      {isZenMode &&
+      (zenRoundStage === "intro" || zenRoundStage === "finished") ? (
         <ZenRoundCard
           roundNumber={zenRoundNumber}
           selfSabotageEnabled={zenSelfSabotageEnabled}
