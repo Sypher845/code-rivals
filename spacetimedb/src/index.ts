@@ -18,3 +18,16 @@ export {
   on_disconnect,
   sign_up,
 } from "./auth/reducers";
+export {
+  accept_friend_request,
+  accept_game_invite,
+  cancel_friend_request,
+  cancel_game_invite,
+  decline_friend_request,
+  decline_game_invite,
+  mark_notification_read,
+  remove_friend,
+  send_friend_request,
+  send_game_invite,
+  set_player_activity,
+} from "./social/reducers";

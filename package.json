@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "docker compose up -d && echo 'Docker port:' && docker compose port api-problemset 8080 && vite",
+    "dev": "docker-compose up -d && echo 'Docker port:' && docker-compose port api-problemset 8080 && vite",
     "build": "tsc -b && vite build",
     "format": "prettier . --write --ignore-path .prettierignore",
     "lint": "prettier . --check --ignore-path .prettierignore",

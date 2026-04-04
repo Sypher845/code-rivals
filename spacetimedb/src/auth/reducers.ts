@@ -11,6 +11,11 @@ import {
   validateLoginInput,
   validateSignUpInput,
 } from "./validation";
+import {
+  PLAYER_ACTIVITY,
+  cancelPendingInvitesForSender,
+  upsertPresence,
+} from "../social/shared";
 
 type AuthReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 
@@ -34,6 +39,7 @@ function ensurePlayerProfile(ctx: AuthReducerCtx, username: string) {
 
 function upsertSession(ctx: AuthReducerCtx, username: string) {
   const session = ctx.db.authSession.sessionIdentity.find(ctx.sender);
+  const existingPresence = ctx.db.playerPresence.playerIdentity.find(ctx.sender);
 
   if (session) {
     ctx.db.authSession.sessionIdentity.update({
@@ -42,6 +48,14 @@ function upsertSession(ctx: AuthReducerCtx, username: string) {
       connected: true,
       lastSeenAt: ctx.timestamp,
     });
+    upsertPresence(
+      ctx,
+      ctx.sender,
+      username,
+      true,
+      existingPresence?.activity ?? PLAYER_ACTIVITY.idle,
+      existingPresence?.currentRoomId,
+    );
     return;
   }
 
@@ -52,6 +66,14 @@ function upsertSession(ctx: AuthReducerCtx, username: string) {
     authenticatedAt: ctx.timestamp,
     lastSeenAt: ctx.timestamp,
   });
+  upsertPresence(
+    ctx,
+    ctx.sender,
+    username,
+    true,
+    existingPresence?.activity ?? PLAYER_ACTIVITY.idle,
+    existingPresence?.currentRoomId,
+  );
 }
 
 export const sign_up = spacetimedb.reducer(
@@ -122,6 +144,13 @@ export const log_in = spacetimedb.reducer(
 export const log_out = spacetimedb.reducer((ctx) => {
   const session = ctx.db.authSession.sessionIdentity.find(ctx.sender);
   if (session) {
+    cancelPendingInvitesForSender(
+      ctx,
+      ctx.sender,
+      "cancelled",
+      `${session.username} is no longer available for that invite.`,
+    );
+    upsertPresence(ctx, ctx.sender, session.username, false, PLAYER_ACTIVITY.offline);
     ctx.db.authSession.sessionIdentity.delete(ctx.sender);
     console.log(`[Auth] log-out success username=${session.username}`);
   }
@@ -156,6 +185,15 @@ export const on_connect = spacetimedb.clientConnected((ctx) => {
     connected: true,
     lastSeenAt: ctx.timestamp,
   });
+  const presence = ctx.db.playerPresence.playerIdentity.find(ctx.sender);
+  upsertPresence(
+    ctx,
+    ctx.sender,
+    account.username,
+    true,
+    presence?.activity ?? PLAYER_ACTIVITY.idle,
+    presence?.currentRoomId,
+  );
 
   console.log(`[Auth] client connected username=${account.username}`);
 });
@@ -171,5 +209,12 @@ export const on_disconnect = spacetimedb.clientDisconnected((ctx) => {
     connected: false,
     lastSeenAt: ctx.timestamp,
   });
+  cancelPendingInvitesForSender(
+    ctx,
+    ctx.sender,
+    "expired",
+    `${session.username} went offline before the match could begin.`,
+  );
+  upsertPresence(ctx, ctx.sender, session.username, false, PLAYER_ACTIVITY.offline);
   console.log(`[Auth] client disconnected username=${session.username}`);
 });

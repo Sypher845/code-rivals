@@ -8,7 +8,14 @@ import {
 import spacetimedb from "../schema";
 import { normalizeUsernameKey } from "../auth/validation";
 import {
-  arena_match_summary,
+  PLAYER_ACTIVITY,
+  cancelPendingInvitesForSender,
+  clearPresenceIfInRoom,
+  expirePendingInviteByRoomId,
+  getDisplayUsername,
+  setPresenceActivity,
+} from "../social/shared";
+import {
   arena_powerup_lock,
   arena_room_timeout_job,
   register_timeout_waiting_room_export,
@@ -325,6 +332,7 @@ export const create_arena_room = spacetimedb.reducer(
       membershipKey: buildMembershipKey(normalizedRoomId, ctx.sender.toHexString()),
       joinedAt: ctx.timestamp,
     });
+    setPresenceActivity(ctx, ctx.sender, PLAYER_ACTIVITY.in_lobby, normalizedRoomId);
 
     console.log(
       `[Arena] room created room_id=${normalizedRoomId} creator=${session.username}`,
@@ -346,7 +354,17 @@ export const delete_arena_room = spacetimedb.reducer(
       throw new SenderError("Only the room creator can delete this room.");
     }
 
+    const roomMembers = listRoomMembers(ctx, normalizedRoomId);
+    expirePendingInviteByRoomId(
+      ctx,
+      normalizedRoomId,
+      "cancelled",
+      `${room.creatorName} cancelled the match invite.`,
+    );
     deleteRoomAndMembers(ctx, normalizedRoomId);
+    for (const member of roomMembers) {
+      clearPresenceIfInRoom(ctx, member.memberIdentity, normalizedRoomId);
+    }
     console.log(`[Arena] room deleted room_id=${normalizedRoomId} by creator`);
   },
 );
@@ -363,7 +381,17 @@ export const timeout_waiting_room = spacetimedb.reducer(
       return;
     }
 
+    const roomMembers = listRoomMembers(ctx, room.roomId);
+    expirePendingInviteByRoomId(
+      ctx,
+      room.roomId,
+      "expired",
+      `${room.creatorName} did not start the room in time.`,
+    );
     deleteRoomAndMembers(ctx, room.roomId);
+    for (const member of roomMembers) {
+      clearPresenceIfInRoom(ctx, member.memberIdentity, room.roomId);
+    }
 
     ctx.db.arenaRoomNotice.insert({
       noticeId: 0n,
@@ -415,6 +443,7 @@ export const join_arena_room = spacetimedb.reducer(
       membershipKey,
       joinedAt: ctx.timestamp,
     });
+    setPresenceActivity(ctx, ctx.sender, PLAYER_ACTIVITY.in_lobby, normalizedRoomId);
 
     console.log(
       `[Arena] member joined room_id=${normalizedRoomId} username=${session.username}`,
@@ -607,6 +636,34 @@ export const begin_playing_round = spacetimedb.reducer(
       roundStartTime: ctx.timestamp,
       roundEndTime: new Timestamp(roundEndMicros),
     });
+    if (room.draftPlayerOneIdentity) {
+      setPresenceActivity(
+        ctx,
+        room.draftPlayerOneIdentity,
+        PLAYER_ACTIVITY.in_match,
+        normalizedRoomId,
+      );
+      cancelPendingInvitesForSender(
+        ctx,
+        room.draftPlayerOneIdentity,
+        "expired",
+        `${getDisplayUsername(ctx, room.draftPlayerOneIdentity)} is already in another match.`,
+      );
+    }
+    if (room.draftPlayerTwoIdentity) {
+      setPresenceActivity(
+        ctx,
+        room.draftPlayerTwoIdentity,
+        PLAYER_ACTIVITY.in_match,
+        normalizedRoomId,
+      );
+      cancelPendingInvitesForSender(
+        ctx,
+        room.draftPlayerTwoIdentity,
+        "expired",
+        `${getDisplayUsername(ctx, room.draftPlayerTwoIdentity)} is already in another match.`,
+      );
+    }
   },
 );
 
@@ -661,7 +718,6 @@ export const submit_round_result = spacetimedb.reducer(
       testcasesPassed,
       totalTestcases,
       pointsEarned: calculatedPointsEarned,
-      pointsEarned: calculatedPointsEarned,
       createdAt: ctx.timestamp,
     });
 
@@ -676,6 +732,9 @@ export const submit_round_result = spacetimedb.reducer(
     if (submittedStates.length < 2) {
       return;
     }
+
+    const playerOneIdentity = room.draftPlayerOneIdentity;
+    const playerTwoIdentity = room.draftPlayerTwoIdentity;
 
     if (room.currentRound >= TOTAL_ROUNDS) {
       const roomMembers = listRoomMembers(ctx, normalizedRoomId);
@@ -840,12 +899,16 @@ export const submit_round_result = spacetimedb.reducer(
         matchState: "finished",
         roundEndTime: ctx.timestamp,
       });
+      if (playerOneIdentity) {
+        clearPresenceIfInRoom(ctx, playerOneIdentity, normalizedRoomId);
+      }
+      if (playerTwoIdentity) {
+        clearPresenceIfInRoom(ctx, playerTwoIdentity, normalizedRoomId);
+      }
       return;
     }
 
     const nextRound = room.currentRound + 1n;
-    const playerOneIdentity = room.draftPlayerOneIdentity;
-    const playerTwoIdentity = room.draftPlayerTwoIdentity;
     if (!playerOneIdentity || !playerTwoIdentity) {
       throw new SenderError("Both players must be assigned before advancing rounds.");
     }
@@ -870,6 +933,8 @@ export const submit_round_result = spacetimedb.reducer(
       roundStartTime: undefined,
       roundEndTime: undefined,
     });
+    setPresenceActivity(ctx, playerOneIdentity, PLAYER_ACTIVITY.in_lobby, normalizedRoomId);
+    setPresenceActivity(ctx, playerTwoIdentity, PLAYER_ACTIVITY.in_lobby, normalizedRoomId);
   },
 );
 
@@ -900,6 +965,7 @@ export const kick_arena_member = spacetimedb.reducer(
     }
 
     ctx.db.arenaRoomMember.memberId.delete(memberId);
+    clearPresenceIfInRoom(ctx, member.memberIdentity, normalizedRoomId);
     console.log(
       `[Arena] member kicked room_id=${normalizedRoomId} member=${member.memberName}`,
     );

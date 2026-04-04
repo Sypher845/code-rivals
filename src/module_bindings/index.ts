@@ -34,14 +34,25 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import AcceptFriendRequestReducer from "./accept_friend_request_reducer";
+import AcceptGameInviteReducer from "./accept_game_invite_reducer";
 import BeginPlayingRoundReducer from "./begin_playing_round_reducer";
+import CancelFriendRequestReducer from "./cancel_friend_request_reducer";
+import CancelGameInviteReducer from "./cancel_game_invite_reducer";
 import CreateArenaRoomReducer from "./create_arena_room_reducer";
+import DeclineFriendRequestReducer from "./decline_friend_request_reducer";
+import DeclineGameInviteReducer from "./decline_game_invite_reducer";
 import DeleteArenaRoomReducer from "./delete_arena_room_reducer";
 import JoinArenaRoomReducer from "./join_arena_room_reducer";
 import KickArenaMemberReducer from "./kick_arena_member_reducer";
 import LockArenaPowerupReducer from "./lock_arena_powerup_reducer";
 import LogInReducer from "./log_in_reducer";
 import LogOutReducer from "./log_out_reducer";
+import MarkNotificationReadReducer from "./mark_notification_read_reducer";
+import RemoveFriendReducer from "./remove_friend_reducer";
+import SendFriendRequestReducer from "./send_friend_request_reducer";
+import SendGameInviteReducer from "./send_game_invite_reducer";
+import SetPlayerActivityReducer from "./set_player_activity_reducer";
 import SignUpReducer from "./sign_up_reducer";
 import StartArenaMatchReducer from "./start_arena_match_reducer";
 import SubmitRoundResultReducer from "./submit_round_result_reducer";
@@ -57,7 +68,12 @@ import ArenaRoomMemberRow from "./arena_room_member_table";
 import ArenaRoomNoticeRow from "./arena_room_notice_table";
 import ArenaRoundResultRow from "./arena_round_result_table";
 import AuthSessionRow from "./auth_session_table";
+import FriendRequestRow from "./friend_request_table";
+import FriendshipRow from "./friendship_table";
+import GameInviteRow from "./game_invite_table";
+import PlayerPresenceRow from "./player_presence_table";
 import PlayerProfileRow from "./player_profile_table";
+import UserNotificationRow from "./user_notification_table";
 
 /** Type-only namespace exports for generated type groups. */
 
@@ -153,6 +169,80 @@ const tablesSchema = __schema({
       { name: 'auth_session_session_identity_key', constraint: 'unique', columns: ['sessionIdentity'] },
     ],
   }, AuthSessionRow),
+  friendRequest: __table({
+    name: 'friend_request',
+    indexes: [
+      { accessor: 'friend_request_from_identity', name: 'friend_request_from_identity_idx_btree', algorithm: 'btree', columns: [
+        'fromIdentity',
+      ] },
+      { accessor: 'requestId', name: 'friend_request_request_id_idx_btree', algorithm: 'btree', columns: [
+        'requestId',
+      ] },
+      { accessor: 'friend_request_status', name: 'friend_request_status_idx_btree', algorithm: 'btree', columns: [
+        'status',
+      ] },
+      { accessor: 'friend_request_to_identity', name: 'friend_request_to_identity_idx_btree', algorithm: 'btree', columns: [
+        'toIdentity',
+      ] },
+    ],
+    constraints: [
+      { name: 'friend_request_request_id_key', constraint: 'unique', columns: ['requestId'] },
+    ],
+  }, FriendRequestRow),
+  friendship: __table({
+    name: 'friendship',
+    indexes: [
+      { accessor: 'friendshipKey', name: 'friendship_friendship_key_idx_btree', algorithm: 'btree', columns: [
+        'friendshipKey',
+      ] },
+      { accessor: 'friendship_user_a', name: 'friendship_user_a_idx_btree', algorithm: 'btree', columns: [
+        'userA',
+      ] },
+      { accessor: 'friendship_user_b', name: 'friendship_user_b_idx_btree', algorithm: 'btree', columns: [
+        'userB',
+      ] },
+    ],
+    constraints: [
+      { name: 'friendship_friendship_key_key', constraint: 'unique', columns: ['friendshipKey'] },
+    ],
+  }, FriendshipRow),
+  gameInvite: __table({
+    name: 'game_invite',
+    indexes: [
+      { accessor: 'game_invite_from_identity', name: 'game_invite_from_identity_idx_btree', algorithm: 'btree', columns: [
+        'fromIdentity',
+      ] },
+      { accessor: 'inviteId', name: 'game_invite_invite_id_idx_btree', algorithm: 'btree', columns: [
+        'inviteId',
+      ] },
+      { accessor: 'game_invite_room_id', name: 'game_invite_room_id_idx_btree', algorithm: 'btree', columns: [
+        'roomId',
+      ] },
+      { accessor: 'game_invite_status', name: 'game_invite_status_idx_btree', algorithm: 'btree', columns: [
+        'status',
+      ] },
+      { accessor: 'game_invite_to_identity', name: 'game_invite_to_identity_idx_btree', algorithm: 'btree', columns: [
+        'toIdentity',
+      ] },
+    ],
+    constraints: [
+      { name: 'game_invite_invite_id_key', constraint: 'unique', columns: ['inviteId'] },
+    ],
+  }, GameInviteRow),
+  playerPresence: __table({
+    name: 'player_presence',
+    indexes: [
+      { accessor: 'player_presence_activity', name: 'player_presence_activity_idx_btree', algorithm: 'btree', columns: [
+        'activity',
+      ] },
+      { accessor: 'playerIdentity', name: 'player_presence_player_identity_idx_btree', algorithm: 'btree', columns: [
+        'playerIdentity',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_presence_player_identity_key', constraint: 'unique', columns: ['playerIdentity'] },
+    ],
+  }, PlayerPresenceRow),
   playerProfile: __table({
     name: 'player_profile',
     indexes: [
@@ -164,18 +254,49 @@ const tablesSchema = __schema({
       { name: 'player_profile_username_key_key', constraint: 'unique', columns: ['usernameKey'] },
     ],
   }, PlayerProfileRow),
+  userNotification: __table({
+    name: 'user_notification',
+    indexes: [
+      { accessor: 'user_notification_friend_request_id', name: 'user_notification_friend_request_id_idx_btree', algorithm: 'btree', columns: [
+        'friendRequestId',
+      ] },
+      { accessor: 'user_notification_invite_id', name: 'user_notification_invite_id_idx_btree', algorithm: 'btree', columns: [
+        'inviteId',
+      ] },
+      { accessor: 'notificationId', name: 'user_notification_notification_id_idx_btree', algorithm: 'btree', columns: [
+        'notificationId',
+      ] },
+      { accessor: 'user_notification_recipient_identity', name: 'user_notification_recipient_identity_idx_btree', algorithm: 'btree', columns: [
+        'recipientIdentity',
+      ] },
+    ],
+    constraints: [
+      { name: 'user_notification_notification_id_key', constraint: 'unique', columns: ['notificationId'] },
+    ],
+  }, UserNotificationRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("accept_friend_request", AcceptFriendRequestReducer),
+  __reducerSchema("accept_game_invite", AcceptGameInviteReducer),
   __reducerSchema("begin_playing_round", BeginPlayingRoundReducer),
+  __reducerSchema("cancel_friend_request", CancelFriendRequestReducer),
+  __reducerSchema("cancel_game_invite", CancelGameInviteReducer),
   __reducerSchema("create_arena_room", CreateArenaRoomReducer),
+  __reducerSchema("decline_friend_request", DeclineFriendRequestReducer),
+  __reducerSchema("decline_game_invite", DeclineGameInviteReducer),
   __reducerSchema("delete_arena_room", DeleteArenaRoomReducer),
   __reducerSchema("join_arena_room", JoinArenaRoomReducer),
   __reducerSchema("kick_arena_member", KickArenaMemberReducer),
   __reducerSchema("lock_arena_powerup", LockArenaPowerupReducer),
   __reducerSchema("log_in", LogInReducer),
   __reducerSchema("log_out", LogOutReducer),
+  __reducerSchema("mark_notification_read", MarkNotificationReadReducer),
+  __reducerSchema("remove_friend", RemoveFriendReducer),
+  __reducerSchema("send_friend_request", SendFriendRequestReducer),
+  __reducerSchema("send_game_invite", SendGameInviteReducer),
+  __reducerSchema("set_player_activity", SetPlayerActivityReducer),
   __reducerSchema("sign_up", SignUpReducer),
   __reducerSchema("start_arena_match", StartArenaMatchReducer),
   __reducerSchema("submit_round_result", SubmitRoundResultReducer),

@@ -9,6 +9,13 @@ import {
   arena_round_result,
   arena_room_timeout_job,
 } from "./arena/tables";
+import {
+  friend_request,
+  friendship,
+  game_invite,
+  player_presence,
+  user_notification,
+} from "./social/tables";
 
 const spacetimedb = schema({
   authAccount: auth_account,
@@ -21,6 +28,11 @@ const spacetimedb = schema({
   arenaMatchSummary: arena_match_summary,
   arenaRoomTimeoutJob: arena_room_timeout_job,
   arenaRoomNotice: arena_room_notice,
+  friendRequest: friend_request,
+  friendship,
+  playerPresence: player_presence,
+  gameInvite: game_invite,
+  userNotification: user_notification,
 });
 
 export default spacetimedb;

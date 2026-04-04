@@ -1,11 +1,11 @@
-import { useMemo } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useMemo } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, ChevronDown, LogOut, User } from "lucide-react";
 import type { Identity } from "spacetimedb";
-import { useTable } from "spacetimedb/react";
+import { useReducer, useTable } from "spacetimedb/react";
 import coderivalsMark from "../assets/coderivals-mark.svg";
+import { reducers, tables } from "../module_bindings";
 import { getLeagueFromElo } from "../lib/ranking";
-import { tables } from "../module_bindings";
 import { StatsTab } from "./arena/StatsTab";
 import { FriendsTab } from "./arena/FriendsTab";
 import { LeaderboardTab } from "./arena/LeaderboardTab";
@@ -27,10 +27,16 @@ export function ArenaPage({
   username,
 }: ArenaPageProps) {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [arenaRoomRows, arenaRoomsReady] = useTable(tables.arenaRoom);
   const [arenaMemberRows, arenaMembersReady] = useTable(tables.arenaRoomMember);
   const [playerProfileRows] = useTable(tables.playerProfile);
+  const [notificationRows] = useTable(tables.userNotification);
+  const [friendRequestRows] = useTable(tables.friendRequest);
+  const [gameInviteRows] = useTable(tables.gameInvite);
+  const [playerPresenceRows] = useTable(tables.playerPresence);
+  const setPlayerActivity = useReducer(reducers.setPlayerActivity);
 
   const arenaReady = useMemo(
     () => arenaRoomsReady && arenaMembersReady,
@@ -46,20 +52,6 @@ export function ArenaPage({
     );
     return roomIds.size;
   }, [arenaMemberRows, identity]);
-
-  const onlineRivalsCount = useMemo(() => {
-    const membersByRoom = new Map<string, number>();
-    for (const member of arenaMemberRows) {
-      membersByRoom.set(member.roomId, (membersByRoom.get(member.roomId) ?? 0) + 1);
-    }
-
-    let count = 0;
-    for (const totalMembers of membersByRoom.values()) {
-      if (totalMembers > 1) count += totalMembers - 1;
-    }
-
-    return count;
-  }, [arenaMemberRows]);
 
   const myProfile = useMemo(
     () => playerProfileRows.find((profile) => profile.username === username) ?? null,
@@ -77,19 +69,89 @@ export function ArenaPage({
     playerProfileRows.length > 0
       ? Math.max(
           1,
-          Math.round(((playerProfileRows.length - Math.max(leaderboardRank - 1, 0)) / playerProfileRows.length) * 100),
+          Math.round(
+            ((playerProfileRows.length - Math.max(leaderboardRank - 1, 0)) /
+              playerProfileRows.length) *
+              100,
+          ),
         )
       : 100;
   const winRate =
     Number(myProfile?.matchesPlayed ?? 0n) > 0
-      ? Math.round((Number(myProfile?.wins ?? 0n) / Number(myProfile?.matchesPlayed ?? 1n)) * 100)
+      ? Math.round(
+          (Number(myProfile?.wins ?? 0n) /
+            Number(myProfile?.matchesPlayed ?? 1n)) *
+            100,
+        )
       : 0;
   const wins = Number(myProfile?.wins ?? 0n);
   const losses = Number(myProfile?.losses ?? 0n);
 
+  const unreadNotifications = useMemo(() => {
+    if (!identity) return 0;
+    return notificationRows.filter(
+      (notification) =>
+        notification.recipientIdentity.isEqual(identity) && !notification.isRead,
+    ).length;
+  }, [identity, notificationRows]);
+
+  const incomingFriendRequestsCount = useMemo(() => {
+    if (!identity) return 0;
+    return friendRequestRows.filter(
+      (request) =>
+        request.toIdentity.isEqual(identity) && request.status === "pending",
+    ).length;
+  }, [friendRequestRows, identity]);
+
+  const incomingInvitesCount = useMemo(() => {
+    if (!identity) return 0;
+    return gameInviteRows.filter(
+      (invite) =>
+        invite.toIdentity.isEqual(identity) && invite.status === "pending",
+    ).length;
+  }, [gameInviteRows, identity]);
+
+  const inboxCount =
+    unreadNotifications + incomingFriendRequestsCount + incomingInvitesCount;
+
+  const currentPresence = useMemo(() => {
+    if (!identity) return null;
+    return (
+      playerPresenceRows.find((presence) =>
+        presence.playerIdentity.isEqual(identity),
+      ) ?? null
+    );
+  }, [identity, playerPresenceRows]);
+
+  const isInActivePlayingRoom = useMemo(() => {
+    if (!identity) return false;
+
+    const myRoomIds = new Set(
+      arenaMemberRows
+        .filter((member) => member.memberIdentity.isEqual(identity))
+        .map((member) => member.roomId),
+    );
+
+    return arenaRoomRows.some(
+      (room) => myRoomIds.has(room.roomId) && room.matchState === "playing",
+    );
+  }, [arenaMemberRows, arenaRoomRows, identity]);
+
+  useEffect(() => {
+    if (!identity || !currentPresence) {
+      return;
+    }
+
+    if (currentPresence.activity !== "in_match" || isInActivePlayingRoom) {
+      return;
+    }
+
+    void setPlayerActivity({ activity: "idle", roomId: undefined });
+  }, [currentPresence, identity, isInActivePlayingRoom, setPlayerActivity]);
+
   const renderTabContent = () => {
     if (location.pathname.endsWith("/friends")) {
-      return <FriendsTab />;
+      return <FriendsTab identity={identity} username={username} />;
     }
     if (location.pathname.endsWith("/leaderboard")) {
       return <LeaderboardTab />;
@@ -161,11 +223,14 @@ export function ArenaPage({
           <div className="inline-flex items-center gap-3">
             <button
               type="button"
+              onClick={() => {
+                navigate(`/${encodeURIComponent(username)}/friends?view=notifications`);
+              }}
               className="relative grid h-9 w-9 place-items-center rounded-lg border border-[rgba(255,255,255,0.1)] text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
             >
               <Bell className="h-4 w-4" />
               <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-(--arena-accent) px-1 text-[10px] font-semibold text-(--arena-bg)">
-                {Math.min(arenaRoomRows.length, 9)}
+                {Math.min(inboxCount, 9)}
               </span>
             </button>
 
@@ -238,25 +303,19 @@ export function ArenaPage({
 
             <div className="relative mt-6 grid grid-cols-3 gap-0 border-t border-[rgba(255,255,255,0.08)] pt-4 sm:max-w-xl">
               <div className="px-2 text-center">
-                <p className="text-4xl font-bold text-(--on-background)">
-                  {winRate}%
-                </p>
+                <p className="text-4xl font-bold text-(--on-background)">{winRate}%</p>
                 <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">
                   Win Rate
                 </p>
               </div>
               <div className="border-l border-[rgba(255,255,255,0.08)] px-2 text-center">
-                <p className="text-4xl font-bold text-(--signal-success)">
-                  {wins}
-                </p>
+                <p className="text-4xl font-bold text-(--signal-success)">{wins}</p>
                 <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">
                   Wins
                 </p>
               </div>
               <div className="border-l border-[rgba(255,255,255,0.08)] px-2 text-center">
-                <p className="text-4xl font-bold text-(--signal-danger)">
-                  {losses}
-                </p>
+                <p className="text-4xl font-bold text-(--signal-danger)">{losses}</p>
                 <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">
                   Losses
                 </p>

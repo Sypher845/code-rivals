@@ -120,6 +120,45 @@ export const AuthSession = __t.object("AuthSession", {
 });
 export type AuthSession = __Infer<typeof AuthSession>;
 
+export const FriendRequest = __t.object("FriendRequest", {
+  requestId: __t.string(),
+  fromIdentity: __t.identity(),
+  toIdentity: __t.identity(),
+  status: __t.string(),
+  createdAt: __t.timestamp(),
+  respondedAt: __t.option(__t.timestamp()),
+});
+export type FriendRequest = __Infer<typeof FriendRequest>;
+
+export const Friendship = __t.object("Friendship", {
+  friendshipKey: __t.string(),
+  userA: __t.identity(),
+  userB: __t.identity(),
+  createdAt: __t.timestamp(),
+});
+export type Friendship = __Infer<typeof Friendship>;
+
+export const GameInvite = __t.object("GameInvite", {
+  inviteId: __t.string(),
+  fromIdentity: __t.identity(),
+  toIdentity: __t.identity(),
+  roomId: __t.option(__t.string()),
+  status: __t.string(),
+  createdAt: __t.timestamp(),
+  respondedAt: __t.option(__t.timestamp()),
+});
+export type GameInvite = __Infer<typeof GameInvite>;
+
+export const PlayerPresence = __t.object("PlayerPresence", {
+  playerIdentity: __t.identity(),
+  username: __t.string(),
+  connected: __t.bool(),
+  activity: __t.string(),
+  currentRoomId: __t.option(__t.string()),
+  lastSeenAt: __t.timestamp(),
+});
+export type PlayerPresence = __Infer<typeof PlayerPresence>;
+
 export const PlayerProfile = __t.object("PlayerProfile", {
   usernameKey: __t.string(),
   username: __t.string(),
@@ -130,4 +169,19 @@ export const PlayerProfile = __t.object("PlayerProfile", {
   updatedAt: __t.timestamp(),
 });
 export type PlayerProfile = __Infer<typeof PlayerProfile>;
+
+export const UserNotification = __t.object("UserNotification", {
+  notificationId: __t.string(),
+  recipientIdentity: __t.identity(),
+  notificationType: __t.string(),
+  actorIdentity: __t.option(__t.identity()),
+  roomId: __t.option(__t.string()),
+  inviteId: __t.option(__t.string()),
+  friendRequestId: __t.option(__t.string()),
+  message: __t.string(),
+  isRead: __t.bool(),
+  createdAt: __t.timestamp(),
+  readAt: __t.option(__t.timestamp()),
+});
+export type UserNotification = __Infer<typeof UserNotification>;
 
