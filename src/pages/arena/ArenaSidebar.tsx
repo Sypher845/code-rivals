@@ -50,6 +50,7 @@ export function ArenaSidebar({
   const [arenaMode, setArenaMode] = useState<"create" | "join">("create");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusTone, setStatusTone] = useState<"neutral" | "error">("neutral");
+  const [timeoutToastMessage, setTimeoutToastMessage] = useState<string | null>(null);
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const [roomCodeInput, setRoomCodeInput] = useState("");
   const [roomCodeCopied, setRoomCodeCopied] = useState(false);
@@ -200,8 +201,22 @@ export function ArenaSidebar({
     }
 
     latestTimeoutNoticeIdRef.current = latestNotice.noticeId;
-    pushStatus(latestNotice.message, "error");
+    setTimeoutToastMessage(latestNotice.message);
   }, [arenaRoomNoticeRows]);
+
+  useEffect(() => {
+    if (!timeoutToastMessage) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setTimeoutToastMessage(null);
+    }, 2800);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [timeoutToastMessage]);
 
   const handleCreateArena = async () => {
     if (!identity) {
@@ -372,6 +387,12 @@ export function ArenaSidebar({
 
   return (
     <aside className="space-y-5">
+      {timeoutToastMessage ? (
+        <div className="pointer-events-none fixed right-6 top-22 z-50 max-w-sm rounded-2xl border border-[rgba(255,92,122,0.28)] bg-[rgba(26,10,14,0.94)] px-4 py-3 text-sm text-[rgba(255,207,214,0.96)] shadow-[0_24px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+          {timeoutToastMessage}
+        </div>
+      ) : null}
+
       <section className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}>
         <div className={panelNoiseClass} />
         <div className="relative z-1 space-y-5">
