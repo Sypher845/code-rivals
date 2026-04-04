@@ -18,12 +18,18 @@ import {
 } from "../social/shared";
 import {
   arena_powerup_lock,
+  arena_round_intro_job,
   arena_room_timeout_job,
+  register_launch_arena_round_export,
   register_timeout_waiting_room_export,
 } from "./tables";
 
 type ArenaReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
+type ArenaRoomRow = NonNullable<
+  ReturnType<ArenaReducerCtx["db"]["arenaRoom"]["roomId"]["find"]>
+>;
 const TOTAL_ROUNDS = 3n;
+const ROUND_INTRO_DURATION_MICROS = 5n * 1_000_000n;
 const ROUND_ONE_DURATION_MICROS = 5n * 60n * 1_000_000n;
 const ROUND_TWO_DURATION_MICROS = 10n * 60n * 1_000_000n;
 const ROUND_THREE_DURATION_MICROS = 15n * 60n * 1_000_000n;
@@ -382,6 +388,13 @@ function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
     ctx.db.arenaRoomTimeoutJob.scheduledId.delete(timeoutJob.scheduledId);
   }
 
+  const roundIntroJobs = [...ctx.db.arenaRoundIntroJob.iter()].filter(
+    (job) => job.roomId === roomId,
+  );
+  for (const roundIntroJob of roundIntroJobs) {
+    ctx.db.arenaRoundIntroJob.scheduledId.delete(roundIntroJob.scheduledId);
+  }
+
   const roundProblems = [
     ...ctx.db.arenaRoundProblem.arena_round_problem_room_id.filter(roomId),
   ];
@@ -397,6 +410,191 @@ function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
   }
 
   ctx.db.arenaRoom.roomId.delete(roomId);
+}
+
+function startPlayingRound(
+  ctx: ArenaReducerCtx,
+  room: ArenaRoomRow,
+  normalizedRoomId: string,
+) {
+  const baseRoundDurationMicros = getRoundDurationMicros(room.currentRound);
+  const roundEndMicros =
+    ctx.timestamp.microsSinceUnixEpoch + baseRoundDurationMicros;
+  const playerOneIdentity = room.draftPlayerOneIdentity;
+  const playerTwoIdentity = room.draftPlayerTwoIdentity;
+  const playerOneState = playerOneIdentity
+    ? ctx.db.arenaPowerupLock.selectionKey.find(
+        buildPowerupSelectionKey(normalizedRoomId, playerOneIdentity.toHexString()),
+      )
+    : undefined;
+  const playerTwoState = playerTwoIdentity
+    ? ctx.db.arenaPowerupLock.selectionKey.find(
+        buildPowerupSelectionKey(normalizedRoomId, playerTwoIdentity.toHexString()),
+      )
+    : undefined;
+
+  let playerOneBonusMicros = 0n;
+  let playerTwoBonusMicros = 0n;
+  const playerOneDebuffs: string[] = [];
+  const playerTwoDebuffs: string[] = [];
+  const timeHeistMicros = getTimeHeistMicros(room.currentRound);
+  const timeKumMicros =
+    getTimeKumPenaltySeconds(room.currentRound) * 1_000_000n;
+  const playerOneHasMirrorShield = hasMirrorShieldActive(
+    playerOneState?.powerupId,
+    playerOneState?.hasLockedPower ?? false,
+  );
+  const playerTwoHasMirrorShield = hasMirrorShieldActive(
+    playerTwoState?.powerupId,
+    playerTwoState?.hasLockedPower ?? false,
+  );
+
+  if (
+    playerOneState?.hasLockedPower &&
+    appliesPowerupAtRoundStart(playerOneState.powerupId) &&
+    playerOneState.powerupId === TIME_HEIST_POWERUP_ID
+  ) {
+    if (playerTwoHasMirrorShield) {
+      playerOneBonusMicros -= timeHeistMicros;
+      playerTwoBonusMicros += timeHeistMicros;
+    } else {
+      playerOneBonusMicros += timeHeistMicros;
+      playerTwoBonusMicros -= timeHeistMicros;
+    }
+  }
+
+  if (
+    playerTwoState?.hasLockedPower &&
+    appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
+    playerTwoState.powerupId === TIME_HEIST_POWERUP_ID
+  ) {
+    if (playerOneHasMirrorShield) {
+      playerTwoBonusMicros -= timeHeistMicros;
+      playerOneBonusMicros += timeHeistMicros;
+    } else {
+      playerTwoBonusMicros += timeHeistMicros;
+      playerOneBonusMicros -= timeHeistMicros;
+    }
+  }
+
+  if (
+    playerOneState?.hasLockedPower &&
+    appliesPowerupAtRoundStart(playerOneState.powerupId) &&
+    playerOneState.powerupId === TIME_KUM_POWERUP_ID
+  ) {
+    if (playerTwoHasMirrorShield) {
+      playerOneBonusMicros -= timeKumMicros;
+    } else {
+      playerTwoBonusMicros -= timeKumMicros;
+    }
+  }
+
+  if (
+    playerTwoState?.hasLockedPower &&
+    appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
+    playerTwoState.powerupId === TIME_KUM_POWERUP_ID
+  ) {
+    if (playerOneHasMirrorShield) {
+      playerTwoBonusMicros -= timeKumMicros;
+    } else {
+      playerOneBonusMicros -= timeKumMicros;
+    }
+  }
+
+  if (
+    playerOneState?.hasLockedPower &&
+    appliesPowerupAtRoundStart(playerOneState.powerupId) &&
+    playerOneState.powerupId === NO_MISTAKES_POWERUP_ID
+  ) {
+    if (playerTwoHasMirrorShield) {
+      playerOneDebuffs.push(NO_MISTAKES_POWERUP_ID);
+    } else {
+      playerTwoDebuffs.push(NO_MISTAKES_POWERUP_ID);
+    }
+  }
+
+  if (
+    playerTwoState?.hasLockedPower &&
+    appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
+    playerTwoState.powerupId === NO_MISTAKES_POWERUP_ID
+  ) {
+    if (playerOneHasMirrorShield) {
+      playerTwoDebuffs.push(NO_MISTAKES_POWERUP_ID);
+    } else {
+      playerOneDebuffs.push(NO_MISTAKES_POWERUP_ID);
+    }
+  }
+
+  if (playerOneState) {
+    ctx.db.arenaPowerupLock.selectionKey.update({
+      ...playerOneState,
+      activeDebuffs: playerOneDebuffs,
+      appliedAtRoundStartAt:
+        appliesPowerupAtRoundStart(playerOneState.powerupId) &&
+        playerOneState.hasLockedPower
+          ? ctx.timestamp
+          : undefined,
+      playerRoundStartTime: ctx.timestamp,
+      playerRoundEndTime: new Timestamp(
+        ctx.timestamp.microsSinceUnixEpoch +
+          baseRoundDurationMicros +
+          playerOneBonusMicros,
+      ),
+    });
+  }
+
+  if (playerTwoState) {
+    ctx.db.arenaPowerupLock.selectionKey.update({
+      ...playerTwoState,
+      activeDebuffs: playerTwoDebuffs,
+      appliedAtRoundStartAt:
+        appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
+        playerTwoState.hasLockedPower
+          ? ctx.timestamp
+          : undefined,
+      playerRoundStartTime: ctx.timestamp,
+      playerRoundEndTime: new Timestamp(
+        ctx.timestamp.microsSinceUnixEpoch +
+          baseRoundDurationMicros +
+          playerTwoBonusMicros,
+      ),
+    });
+  }
+
+  ctx.db.arenaRoom.roomId.update({
+    ...room,
+    matchState: "playing",
+    roundStartTime: ctx.timestamp,
+    roundEndTime: new Timestamp(roundEndMicros),
+  });
+  if (playerOneIdentity) {
+    setPresenceActivity(
+      ctx,
+      playerOneIdentity,
+      PLAYER_ACTIVITY.in_match,
+      normalizedRoomId,
+    );
+    cancelPendingInvitesForSender(
+      ctx,
+      playerOneIdentity,
+      "expired",
+      `${getDisplayUsername(ctx, playerOneIdentity)} is already in another match.`,
+    );
+  }
+  if (playerTwoIdentity) {
+    setPresenceActivity(
+      ctx,
+      playerTwoIdentity,
+      PLAYER_ACTIVITY.in_match,
+      normalizedRoomId,
+    );
+    cancelPendingInvitesForSender(
+      ctx,
+      playerTwoIdentity,
+      "expired",
+      `${getDisplayUsername(ctx, playerTwoIdentity)} is already in another match.`,
+    );
+  }
 }
 
 export const create_arena_room = spacetimedb.reducer(
@@ -727,6 +925,14 @@ export const lock_arena_powerup = spacetimedb.reducer(
         roundStartTime: ctx.timestamp,
         roundEndTime: undefined,
       });
+      ctx.db.arenaRoundIntroJob.insert({
+        scheduledId: 0n,
+        scheduledAt: ScheduleAt.time(
+          ctx.timestamp.microsSinceUnixEpoch + ROUND_INTRO_DURATION_MICROS,
+        ),
+        roomId: normalizedRoomId,
+        roundNumber: room.currentRound,
+      });
     }
   },
 );
@@ -777,186 +983,31 @@ export const begin_playing_round = spacetimedb.reducer(
       return;
     }
 
-    const baseRoundDurationMicros = getRoundDurationMicros(room.currentRound);
-    const roundEndMicros =
-      ctx.timestamp.microsSinceUnixEpoch + baseRoundDurationMicros;
-    const playerOneIdentity = room.draftPlayerOneIdentity;
-    const playerTwoIdentity = room.draftPlayerTwoIdentity;
-    const playerOneState = playerOneIdentity
-      ? ctx.db.arenaPowerupLock.selectionKey.find(
-          buildPowerupSelectionKey(normalizedRoomId, playerOneIdentity.toHexString()),
-        )
-      : undefined;
-    const playerTwoState = playerTwoIdentity
-      ? ctx.db.arenaPowerupLock.selectionKey.find(
-          buildPowerupSelectionKey(normalizedRoomId, playerTwoIdentity.toHexString()),
-        )
-      : undefined;
-
-    let playerOneBonusMicros = 0n;
-    let playerTwoBonusMicros = 0n;
-    const playerOneDebuffs: string[] = [];
-    const playerTwoDebuffs: string[] = [];
-    const timeHeistMicros = getTimeHeistMicros(room.currentRound);
-    const timeKumMicros =
-      getTimeKumPenaltySeconds(room.currentRound) * 1_000_000n;
-    const playerOneHasMirrorShield = hasMirrorShieldActive(
-      playerOneState?.powerupId,
-      playerOneState?.hasLockedPower ?? false,
-    );
-    const playerTwoHasMirrorShield = hasMirrorShieldActive(
-      playerTwoState?.powerupId,
-      playerTwoState?.hasLockedPower ?? false,
-    );
-
-    if (
-      playerOneState?.hasLockedPower &&
-      appliesPowerupAtRoundStart(playerOneState.powerupId) &&
-      playerOneState.powerupId === TIME_HEIST_POWERUP_ID
-    ) {
-      if (playerTwoHasMirrorShield) {
-        playerOneBonusMicros -= timeHeistMicros;
-        playerTwoBonusMicros += timeHeistMicros;
-      } else {
-        playerOneBonusMicros += timeHeistMicros;
-        playerTwoBonusMicros -= timeHeistMicros;
-      }
-    }
-
-    if (
-      playerTwoState?.hasLockedPower &&
-      appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
-      playerTwoState.powerupId === TIME_HEIST_POWERUP_ID
-    ) {
-      if (playerOneHasMirrorShield) {
-        playerTwoBonusMicros -= timeHeistMicros;
-        playerOneBonusMicros += timeHeistMicros;
-      } else {
-        playerTwoBonusMicros += timeHeistMicros;
-        playerOneBonusMicros -= timeHeistMicros;
-      }
-    }
-
-    if (
-      playerOneState?.hasLockedPower &&
-      appliesPowerupAtRoundStart(playerOneState.powerupId) &&
-      playerOneState.powerupId === TIME_KUM_POWERUP_ID
-    ) {
-      if (playerTwoHasMirrorShield) {
-        playerOneBonusMicros -= timeKumMicros;
-      } else {
-        playerTwoBonusMicros -= timeKumMicros;
-      }
-    }
-
-    if (
-      playerTwoState?.hasLockedPower &&
-      appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
-      playerTwoState.powerupId === TIME_KUM_POWERUP_ID
-    ) {
-      if (playerOneHasMirrorShield) {
-        playerTwoBonusMicros -= timeKumMicros;
-      } else {
-        playerOneBonusMicros -= timeKumMicros;
-      }
-    }
-
-    if (
-      playerOneState?.hasLockedPower &&
-      appliesPowerupAtRoundStart(playerOneState.powerupId) &&
-      playerOneState.powerupId === NO_MISTAKES_POWERUP_ID
-    ) {
-      if (playerTwoHasMirrorShield) {
-        playerOneDebuffs.push(NO_MISTAKES_POWERUP_ID);
-      } else {
-        playerTwoDebuffs.push(NO_MISTAKES_POWERUP_ID);
-      }
-    }
-
-    if (
-      playerTwoState?.hasLockedPower &&
-      appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
-      playerTwoState.powerupId === NO_MISTAKES_POWERUP_ID
-    ) {
-      if (playerOneHasMirrorShield) {
-        playerTwoDebuffs.push(NO_MISTAKES_POWERUP_ID);
-      } else {
-        playerOneDebuffs.push(NO_MISTAKES_POWERUP_ID);
-      }
-    }
-
-    if (playerOneState) {
-      ctx.db.arenaPowerupLock.selectionKey.update({
-        ...playerOneState,
-        activeDebuffs: playerOneDebuffs,
-        appliedAtRoundStartAt:
-          appliesPowerupAtRoundStart(playerOneState.powerupId) &&
-          playerOneState.hasLockedPower
-            ? ctx.timestamp
-            : undefined,
-        playerRoundStartTime: ctx.timestamp,
-        playerRoundEndTime: new Timestamp(
-          ctx.timestamp.microsSinceUnixEpoch +
-            baseRoundDurationMicros +
-            playerOneBonusMicros,
-        ),
-      });
-    }
-
-    if (playerTwoState) {
-      ctx.db.arenaPowerupLock.selectionKey.update({
-        ...playerTwoState,
-        activeDebuffs: playerTwoDebuffs,
-        appliedAtRoundStartAt:
-          appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
-          playerTwoState.hasLockedPower
-            ? ctx.timestamp
-            : undefined,
-        playerRoundStartTime: ctx.timestamp,
-        playerRoundEndTime: new Timestamp(
-          ctx.timestamp.microsSinceUnixEpoch +
-            baseRoundDurationMicros +
-            playerTwoBonusMicros,
-        ),
-      });
-    }
-
-    ctx.db.arenaRoom.roomId.update({
-      ...room,
-      matchState: "playing",
-      roundStartTime: ctx.timestamp,
-      roundEndTime: new Timestamp(roundEndMicros),
-    });
-    if (playerOneIdentity) {
-      setPresenceActivity(
-        ctx,
-        playerOneIdentity,
-        PLAYER_ACTIVITY.in_match,
-        normalizedRoomId,
-      );
-      cancelPendingInvitesForSender(
-        ctx,
-        playerOneIdentity,
-        "expired",
-        `${getDisplayUsername(ctx, playerOneIdentity)} is already in another match.`,
-      );
-    }
-    if (playerTwoIdentity) {
-      setPresenceActivity(
-        ctx,
-        playerTwoIdentity,
-        PLAYER_ACTIVITY.in_match,
-        normalizedRoomId,
-      );
-      cancelPendingInvitesForSender(
-        ctx,
-        playerTwoIdentity,
-        "expired",
-        `${getDisplayUsername(ctx, playerTwoIdentity)} is already in another match.`,
-      );
-    }
+    startPlayingRound(ctx, room, normalizedRoomId);
   },
 );
+
+export const launch_arena_round = spacetimedb.reducer(
+  { arg: arena_round_intro_job.rowType },
+  (ctx, { arg }) => {
+    const room = ctx.db.arenaRoom.roomId.find(arg.roomId);
+    if (!room) {
+      return;
+    }
+
+    if (room.matchState !== "round_intro") {
+      return;
+    }
+
+    if (room.currentRound !== arg.roundNumber) {
+      return;
+    }
+
+    startPlayingRound(ctx, room, arg.roomId);
+  },
+);
+
+register_launch_arena_round_export(launch_arena_round);
 
 export const cache_round_problem = spacetimedb.reducer(
   {

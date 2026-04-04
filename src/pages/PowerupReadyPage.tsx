@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
@@ -28,13 +28,11 @@ export function PowerupReadyPage({
   const normalizedRoundNumber = roundSegment?.replace(/^r/i, "") ?? "1";
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const hasNavigatedRef = useRef(false);
 
   const [arenaRoomRows, arenaRoomsReady] = useTable(tables.arenaRoom);
   const [arenaMemberRows] = useTable(tables.arenaRoomMember);
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
 
-  const beginPlayingRound = useReducer(reducers.beginPlayingRound);
   const unlockArenaPowerup = useReducer(reducers.unlockArenaPowerup);
 
   const activeRoom = useMemo(() => {
@@ -98,20 +96,6 @@ export function PowerupReadyPage({
 
     return () => window.clearInterval(intervalId);
   }, [bothPlayersLocked]);
-
-  useEffect(() => {
-    if (!bothPlayersLocked || secondsLeft !== 0 || !normalizedRoomId || hasNavigatedRef.current) {
-      return;
-    }
-
-    hasNavigatedRef.current = true;
-    void beginPlayingRound({ roomId: normalizedRoomId });
-  }, [
-    beginPlayingRound,
-    bothPlayersLocked,
-    normalizedRoomId,
-    secondsLeft,
-  ]);
 
   useEffect(() => {
     if (!normalizedRoomId || !activeRoom) {

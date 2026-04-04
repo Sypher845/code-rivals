@@ -43,6 +43,10 @@ export function listRoomTimeoutJobs(ctx: SharedReducerCtx, roomId: string) {
   return [...ctx.db.arenaRoomTimeoutJob.iter()].filter((job) => job.roomId === roomId);
 }
 
+export function listRoundIntroJobs(ctx: SharedReducerCtx, roomId: string) {
+  return [...ctx.db.arenaRoundIntroJob.iter()].filter((job) => job.roomId === roomId);
+}
+
 export function listRoundResults(ctx: SharedReducerCtx, roomId: string) {
   return [...ctx.db.arenaRoundResult.arena_round_result_room_id.filter(roomId)];
 }
@@ -75,6 +79,11 @@ export function deleteArenaRoomState(ctx: SharedReducerCtx, roomId: string) {
   const timeoutJobs = listRoomTimeoutJobs(ctx, roomId);
   for (const timeoutJob of timeoutJobs) {
     ctx.db.arenaRoomTimeoutJob.scheduledId.delete(timeoutJob.scheduledId);
+  }
+
+  const roundIntroJobs = listRoundIntroJobs(ctx, roomId);
+  for (const roundIntroJob of roundIntroJobs) {
+    ctx.db.arenaRoundIntroJob.scheduledId.delete(roundIntroJob.scheduledId);
   }
 
   ctx.db.arenaRoom.roomId.delete(roomId);

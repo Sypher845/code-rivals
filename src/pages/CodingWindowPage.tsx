@@ -87,6 +87,22 @@ function parseStoredProblem(problemJson: string | null | undefined) {
   }
 }
 
+function microsTimestampToMs(
+  timestamp?: { microsSinceUnixEpoch: bigint } | null,
+) {
+  if (!timestamp || timestamp.microsSinceUnixEpoch <= 0n) {
+    return null;
+  }
+
+  return Number(timestamp.microsSinceUnixEpoch / 1000n);
+}
+
+function hasRealTimestamp(
+  timestamp?: { microsSinceUnixEpoch: bigint } | null,
+) {
+  return microsTimestampToMs(timestamp) !== null;
+}
+
 /* ══════════════════════════ RESIZABLE DIVIDER ════════════════════════ */
 
 function useDragResize(

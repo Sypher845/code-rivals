@@ -2,9 +2,14 @@ import { Timestamp } from "spacetimedb";
 import { t, table } from "spacetimedb/server";
 
 let timeoutWaitingRoomReducerExport: unknown;
+let launchArenaRoundReducerExport: unknown;
 
 export function register_timeout_waiting_room_export(reducerExport: unknown) {
   timeoutWaitingRoomReducerExport = reducerExport;
+}
+
+export function register_launch_arena_round_export(reducerExport: unknown) {
+  launchArenaRoundReducerExport = reducerExport;
 }
 
 export const arena_room = table(
@@ -222,6 +227,24 @@ export const arena_room_timeout_job = table(
     scheduledId: t.u64().primaryKey().autoInc(),
     scheduledAt: t.scheduleAt(),
     roomId: t.string(),
+  },
+);
+
+export const arena_round_intro_job = table(
+  {
+    name: "arena_round_intro_job",
+    scheduled: () => {
+      if (!launchArenaRoundReducerExport) {
+        throw new Error("Scheduled reducer export for arena round intro is not registered.");
+      }
+      return launchArenaRoundReducerExport as never;
+    },
+  },
+  {
+    scheduledId: t.u64().primaryKey().autoInc(),
+    scheduledAt: t.scheduleAt(),
+    roomId: t.string(),
+    roundNumber: t.u64(),
   },
 );
 
