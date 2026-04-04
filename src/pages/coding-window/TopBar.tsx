@@ -7,6 +7,7 @@ import {
   Keyboard,
 } from "lucide-react";
 import { POWER_CARD_REGISTRY } from "../powerups/powerupRegistry";
+import { formatPowerupName } from "../../utils/arenaPowerEffects";
 
 function powerupRequiresManualActivation(powerupId: string) {
   return powerupId !== "TimeKumCard";
@@ -95,10 +96,6 @@ function OpponentCard({
 
 /* ═══════════════════════════ SABOTAGE BUTTON ═════════════════════════ */
 
-function formatCardName(key: string): string {
-  return key.replace(/Card$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
-}
-
 type SabotageButtonProps = {
   cardName: string;
   isSabotaged: boolean;
@@ -116,7 +113,7 @@ function SabotageButton({
   if (!descriptor) return null;
 
   const CardComponent = descriptor.Card;
-  const displayName = formatCardName(cardName);
+  const displayName = formatPowerupName(cardName);
   const actionLabel = isSabotaged ? "Sabotaged" : "Sabotage";
   const handleClick = () => {
     if (isSabotaged || !onClick) {

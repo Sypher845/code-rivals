@@ -91,16 +91,20 @@ function defineFlashbangTheme(monaco: Parameters<OnMount>[1]) {
 
 type EditorPanelProps = {
   editorThemeId?: EditorThemeId;
+  noRetreatActive?: boolean;
 };
 
 export function EditorPanel({
   editorThemeId = DEFAULT_EDITOR_THEME_ID,
+  noRetreatActive = false,
 }: EditorPanelProps) {
   const [language, setLanguage] = useState("cpp");
   const [code, setCode] = useState(DEFAULT_CODE);
   const [showLangMenu, setShowLangMenu] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
+  const acceptedCodeRef = useRef(DEFAULT_CODE);
+  const revertingDeletionRef = useRef(false);
 
   const handleMount: OnMount = (editor, monaco) => {
     defineNeonTheme(monaco);
@@ -108,10 +112,14 @@ export function EditorPanel({
     monaco.editor.setTheme(editorThemeId);
     editorRef.current = editor;
     monacoRef.current = monaco;
+    acceptedCodeRef.current = editor.getValue();
     editor.focus();
   };
 
-  const handleReset = () => setCode(DEFAULT_CODE);
+  const handleReset = () => {
+    acceptedCodeRef.current = DEFAULT_CODE;
+    setCode(DEFAULT_CODE);
+  };
 
   const currentLang = LANGUAGES.find((l) => l.value === language);
 
@@ -122,6 +130,66 @@ export function EditorPanel({
 
     monacoRef.current.editor.setTheme(editorThemeId);
   }, [editorThemeId]);
+
+  useEffect(() => {
+    if (!editorRef.current || !noRetreatActive) {
+      return;
+    }
+
+    const editor = editorRef.current;
+    const editorDomNode = editor.getDomNode();
+    const blockDeletionKeys = (event: KeyboardEvent) => {
+      if (event.key === "Backspace" || event.key === "Delete") {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+    };
+    editorDomNode?.addEventListener("keydown", blockDeletionKeys, true);
+
+    const disposable = editorRef.current.onDidChangeModelContent((event) => {
+      if (revertingDeletionRef.current) {
+        revertingDeletionRef.current = false;
+        acceptedCodeRef.current = editorRef.current?.getValue() ?? acceptedCodeRef.current;
+        return;
+      }
+
+      const hasDeletion = event.changes.some(
+        (change) => change.rangeLength > 0 && change.text.length < change.rangeLength,
+      );
+
+      if (hasDeletion) {
+        const editor = editorRef.current;
+        if (!editor) {
+          return;
+        }
+
+        const currentSelection = editor.getSelection();
+        revertingDeletionRef.current = true;
+        editor.setValue(acceptedCodeRef.current);
+        if (currentSelection) {
+          editor.setSelection(currentSelection);
+        }
+        setCode(acceptedCodeRef.current);
+        return;
+      }
+
+      acceptedCodeRef.current = editorRef.current?.getValue() ?? acceptedCodeRef.current;
+    });
+
+    return () => {
+      editorDomNode?.removeEventListener("keydown", blockDeletionKeys, true);
+      disposable.dispose();
+    };
+  }, [noRetreatActive]);
+
+  useEffect(() => {
+    if (revertingDeletionRef.current) {
+      return;
+    }
+
+    acceptedCodeRef.current = code;
+  }, [code]);
 
   return (
     <div
@@ -202,6 +270,11 @@ export function EditorPanel({
 
         {/* right: reset only */}
         <div className="flex items-center">
+          {noRetreatActive ? (
+            <span className="mr-3 rounded-md border border-[rgba(255,112,112,0.24)] bg-[rgba(255,112,112,0.08)] px-2.5 py-1 text-[0.68rem] font-semibold tracking-[0.12em] text-[var(--signal-danger)] uppercase">
+              No Retreat
+            </span>
+          ) : null}
           <button
             onClick={handleReset}
             title="Reset"
@@ -222,7 +295,13 @@ export function EditorPanel({
           height="100%"
           language={language}
           value={code}
-          onChange={(val) => setCode(val ?? "")}
+          onChange={(val) => {
+            const nextCode = val ?? "";
+            if (!revertingDeletionRef.current) {
+              acceptedCodeRef.current = nextCode;
+            }
+            setCode(nextCode);
+          }}
           onMount={handleMount}
           theme={editorThemeId}
           options={{

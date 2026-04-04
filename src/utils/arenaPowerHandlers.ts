@@ -10,6 +10,7 @@ export type EditorThemeId =
 export type EditorSabotageEffect = {
   expiresAtMs: number | null;
   flashbangActive: boolean;
+  noRetreatActive: boolean;
   powerupId: string;
   themeId: EditorThemeId;
 };
@@ -36,14 +37,36 @@ function applyFlashbangEffect({
     editorEffect: {
       expiresAtMs,
       flashbangActive: true,
+      noRetreatActive: false,
       powerupId: effect.powerupId,
       themeId: FLASHBANG_EDITOR_THEME_ID,
     },
   };
 }
 
+function applyNoRetreatEffect({
+  effect,
+  emittedAtMs,
+}: PowerupHandlerInput): PowerupHandlerOutput {
+  const expiresAtMs =
+    effect.durationMinutes === null
+      ? null
+      : emittedAtMs + effect.durationMinutes * 60_000;
+
+  return {
+    editorEffect: {
+      expiresAtMs,
+      flashbangActive: false,
+      noRetreatActive: true,
+      powerupId: effect.powerupId,
+      themeId: DEFAULT_EDITOR_THEME_ID,
+    },
+  };
+}
+
 const POWERUP_HANDLER_MAP = {
   applyFlashbangEffect,
+  applyNoRetreatEffect,
 } as const;
 
 export function executePowerupHandler(

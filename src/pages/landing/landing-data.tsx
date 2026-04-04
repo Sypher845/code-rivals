@@ -127,7 +127,7 @@ export const powers: Power[] = [
   {
     name: "No Retreat",
     description:
-      "Backspace and delete disabled. Every keystroke is permanent, no second chances.",
+      "On activation, the opponent loses Backspace and Delete for the rest of the round. Every keystroke is permanent.",
     tag: "Restrict",
     tagClassName:
       "border-[rgba(255,112,112,0.18)] bg-[rgba(255,112,112,0.1)] text-[var(--signal-danger)]",

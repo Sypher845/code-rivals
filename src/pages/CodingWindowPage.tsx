@@ -274,6 +274,7 @@ export function CodingWindowPage() {
   const editorThemeId =
     activeEditorSabotage?.themeId ?? DEFAULT_EDITOR_THEME_ID;
   const flashbangActive = activeEditorSabotage?.flashbangActive ?? false;
+  const noRetreatActive = activeEditorSabotage?.noRetreatActive ?? false;
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
   const totalTestcases = BigInt(Math.max(testCases.length, 1));
   const submitDisabled =
@@ -689,7 +690,10 @@ export function CodingWindowPage() {
         >
           {/* editor */}
           <div style={{ height: `${vRatio * 100}%` }} className="min-h-0">
-            <EditorPanel editorThemeId={editorThemeId} />
+            <EditorPanel
+              editorThemeId={editorThemeId}
+              noRetreatActive={noRetreatActive}
+            />
           </div>
 
           <DragHandle direction="vertical" onMouseDown={vMouseDown} />

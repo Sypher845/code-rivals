@@ -41,11 +41,12 @@ export const POWER_CARD_REGISTRY: Record<string, Omit<PowerupDescriptor, "id">> 
   },
   NoMistakesCard: {
     Card: NoMistakesCard,
-    description: "Backspace and delete disabled. Every keystroke is permanent.",
+    description: "No Mistakes.",
   },
   SkullCard: {
     Card: SkullCard,
-    description: "Opponent cannot run test cases. Submit blind or not at all.",
+    description:
+      "On activation, the opponent loses Backspace and Delete for the rest of the round. Every keystroke becomes permanent.",
   },
   TimeHeistCard: {
     Card: TimeHeistCard,

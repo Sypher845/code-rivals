@@ -6,7 +6,9 @@ export type PowerupRoundTime = readonly [
 
 export type PowerupEffectTarget = "editor";
 
-export type PowerupEffectHandlerKey = "applyFlashbangEffect";
+export type PowerupEffectHandlerKey =
+  | "applyFlashbangEffect"
+  | "applyNoRetreatEffect";
 
 export type PowerupEffectConfig = {
   fullRound: boolean;
@@ -26,7 +28,25 @@ export const POWERUP_EFFECTS_MAP = {
     roundTime: [2, 4, 7],
     target: "editor",
   },
+  SkullCard: {
+    fullRound: false,
+    handlerKey: "applyNoRetreatEffect",
+    roundTime: [2, 4, 7],
+    target: "editor",
+  },
 } as const satisfies PowerupEffectMap;
+
+const POWERUP_DISPLAY_NAMES: Record<string, string> = {
+  FlashbangCard: "Flashbang",
+  KeySwapCard: "Key Swap",
+  LineJumperCard: "Line Jumper",
+  MirrorShieldCard: "Mirror Shield",
+  NoMistakesCard: "No Mistakes",
+  SkullCard: "No Retreat",
+  TimeHeistCard: "Time Heist",
+  TimeKumCard: "Time Kum",
+  VisuallyImpairedCard: "Visually Impaired",
+};
 
 export function getPowerupEffectConfig(powerupId: string) {
   if (!(powerupId in POWERUP_EFFECTS_MAP)) {
@@ -37,6 +57,10 @@ export function getPowerupEffectConfig(powerupId: string) {
 }
 
 export function formatPowerupName(powerupId: string) {
+  if (powerupId in POWERUP_DISPLAY_NAMES) {
+    return POWERUP_DISPLAY_NAMES[powerupId];
+  }
+
   return powerupId.replace(/Card$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
 }
 
