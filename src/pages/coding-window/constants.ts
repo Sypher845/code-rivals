@@ -63,7 +63,10 @@ export const EXECUTION_LANGUAGE_CONFIG = {
     boilerplate: `#include <bits/stdc++.h>
 using namespace std;
 
-// #region Driver Helpers
+// ─────────────────────────────────────────────
+//  Internal helpers
+// ─────────────────────────────────────────────
+
 string trim(const string& s) {
     size_t start = 0;
     while (start < s.size() && isspace((unsigned char)s[start])) start++;
@@ -72,6 +75,7 @@ string trim(const string& s) {
     return s.substr(start, end - start);
 }
 
+// Split on commas at depth 0 (respects [], {}, () nesting and "strings")
 vector<string> splitTopLevel(const string& s) {
     vector<string> parts;
     string current;
@@ -79,7 +83,7 @@ vector<string> splitTopLevel(const string& s) {
     bool inString = false;
     for (size_t i = 0; i < s.size(); i++) {
         char c = s[i];
-        if (c == '"' && (i == 0 || s[i - 1] != '\\\\')) inString = !inString;
+        if (c == '"' && (i == 0 || s[i - 1] != '\\')) inString = !inString;
         if (!inString) {
             if (c == '[' || c == '(' || c == '{') depth++;
             if (c == ']' || c == ')' || c == '}') depth--;
@@ -95,39 +99,96 @@ vector<string> splitTopLevel(const string& s) {
     return parts;
 }
 
+// Strip a single layer of brackets/braces/parens
 string stripOuter(const string& s, char open, char close) {
     string t = trim(s);
-    if (t.size() >= 2 && t.front() == open && t.back() == close) {
+    if (t.size() >= 2 && t.front() == open && t.back() == close)
         return t.substr(1, t.size() - 2);
-    }
     return t;
 }
 
-int parseIntValue(string s) { return stoi(trim(s)); }
-long long parseLongValue(string s) { return stoll(trim(s)); }
-double parseDoubleValue(string s) { return stod(trim(s)); }
+// ─────────────────────────────────────────────
+//  Safe numeric converters (never throw on bad input)
+// ─────────────────────────────────────────────
+
+static bool isNumericStr(const string& s) {
+    if (s.empty()) return false;
+    size_t i = 0;
+    if (s[i] == '-' || s[i] == '+') i++;
+    if (i == s.size()) return false;
+    bool hasDot = false, hasDigit = false;
+    for (; i < s.size(); i++) {
+        if (s[i] == '.') {
+            if (hasDot) return false;
+            hasDot = true;
+        } else if (s[i] == 'e' || s[i] == 'E') {
+            // allow scientific notation tail: optional sign + digits
+            i++;
+            if (i < s.size() && (s[i] == '+' || s[i] == '-')) i++;
+            if (i == s.size()) return false;
+            for (; i < s.size(); i++)
+                if (!isdigit((unsigned char)s[i])) return false;
+            return hasDigit;
+        } else if (isdigit((unsigned char)s[i])) {
+            hasDigit = true;
+        } else {
+            return false;
+        }
+    }
+    return hasDigit;
+}
+
+// ─────────────────────────────────────────────
+//  Primitive parsers
+// ─────────────────────────────────────────────
+
+int parseIntValue(string s) {
+    s = trim(s);
+    if (!isNumericStr(s)) return 0;
+    try { return stoi(s); } catch (...) { return 0; }
+}
+
+long long parseLongValue(string s) {
+    s = trim(s);
+    if (!isNumericStr(s)) return 0LL;
+    try { return stoll(s); } catch (...) { return 0LL; }
+}
+
+double parseDoubleValue(string s) {
+    s = trim(s);
+    if (!isNumericStr(s)) return 0.0;
+    try { return stod(s); } catch (...) { return 0.0; }
+}
+
 bool parseBoolValue(string s) { s = trim(s); return s == "true"; }
 
+// char: accepts 'a' or just a
 char parseCharValue(string s) {
     s = trim(s);
-    if (s.size() >= 2 && s.front() == '\\'' && s.back() == '\\'') return s[1];
+    if (s.size() >= 2 && s.front() == '\'' && s.back() == '\'')
+        return s[1];
     return s[0];
 }
 
+// string: strips surrounding quotes
 string parseStringValue(string s) {
     s = trim(s);
-    if (s.size() >= 2 && s.front() == '"' && s.back() == '"') {
+    if (s.size() >= 2 && s.front() == '"' && s.back() == '"')
         return s.substr(1, s.size() - 2);
-    }
     return s;
 }
+
+// ─────────────────────────────────────────────
+//  1-D array parsers
+// ─────────────────────────────────────────────
 
 vector<int> parseIntArray(string s) {
     s = trim(s);
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<int> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseIntValue(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseIntValue(p));
     return res;
 }
 
@@ -136,7 +197,8 @@ vector<long long> parseLongArray(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<long long> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseLongValue(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseLongValue(p));
     return res;
 }
 
@@ -145,7 +207,8 @@ vector<double> parseDoubleArray(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<double> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseDoubleValue(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseDoubleValue(p));
     return res;
 }
 
@@ -154,7 +217,8 @@ vector<bool> parseBoolArray(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<bool> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseBoolValue(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseBoolValue(p));
     return res;
 }
 
@@ -163,7 +227,8 @@ vector<char> parseCharArray(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<char> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseCharValue(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseCharValue(p));
     return res;
 }
 
@@ -172,16 +237,22 @@ vector<string> parseStringArray(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<string> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseStringValue(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseStringValue(p));
     return res;
 }
+
+// ─────────────────────────────────────────────
+//  2-D array parsers
+// ─────────────────────────────────────────────
 
 vector<vector<int>> parseIntMatrix(string s) {
     s = trim(s);
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<vector<int>> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseIntArray(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseIntArray(p));
     return res;
 }
 
@@ -190,7 +261,8 @@ vector<vector<long long>> parseLongMatrix(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<vector<long long>> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseLongArray(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseLongArray(p));
     return res;
 }
 
@@ -199,7 +271,8 @@ vector<vector<double>> parseDoubleMatrix(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<vector<double>> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseDoubleArray(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseDoubleArray(p));
     return res;
 }
 
@@ -208,7 +281,8 @@ vector<vector<string>> parseStringMatrix(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<vector<string>> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseStringArray(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseStringArray(p));
     return res;
 }
 
@@ -217,19 +291,30 @@ vector<vector<char>> parseCharMatrix(string s) {
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<vector<char>> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseCharArray(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseCharArray(p));
     return res;
 }
+
+// ─────────────────────────────────────────────
+//  3-D array parser
+// ─────────────────────────────────────────────
 
 vector<vector<vector<int>>> parseInt3D(string s) {
     s = trim(s);
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
     vector<vector<vector<int>>> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseIntMatrix(p));
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseIntMatrix(p));
     return res;
 }
 
+// ─────────────────────────────────────────────
+//  Set parsers
+// ─────────────────────────────────────────────
+
+// LeetCode passes sets as plain arrays like [1,2,3]; we read and deduplicate.
 set<int> parseIntSet(string s) {
     auto v = parseIntArray(s);
     return set<int>(v.begin(), v.end());
@@ -245,6 +330,11 @@ unordered_set<int> parseIntUnorderedSet(string s) {
     return unordered_set<int>(v.begin(), v.end());
 }
 
+// ─────────────────────────────────────────────
+//  Pair / tuple parsers
+// ─────────────────────────────────────────────
+
+// Pair: "[a,b]" or two separate lines
 pair<int, int> parseIntPair(string s) {
     s = stripOuter(s, '[', ']');
     auto parts = splitTopLevel(s);
@@ -257,14 +347,20 @@ pair<string, int> parseStringIntPair(string s) {
     return {parseStringValue(parts[0]), parseIntValue(parts[1])};
 }
 
-vector<pair<int, int>> parseIntPairArray(string s) {
+// Array of [int,int] pairs: [[a,b],[c,d],...]
+vector<pair<int,int>> parseIntPairArray(string s) {
     s = trim(s);
     if (s == "[]") return {};
     s = stripOuter(s, '[', ']');
-    vector<pair<int, int>> res;
-    for (auto& p : splitTopLevel(s)) if (!p.empty()) res.push_back(parseIntPair(p));
+    vector<pair<int,int>> res;
+    for (auto& p : splitTopLevel(s))
+        if (!p.empty()) res.push_back(parseIntPair(p));
     return res;
 }
+
+// ─────────────────────────────────────────────
+//  Linked List
+// ─────────────────────────────────────────────
 
 struct ListNode {
     int val;
@@ -272,6 +368,7 @@ struct ListNode {
     ListNode(int v = 0) : val(v), next(nullptr) {}
 };
 
+// "[1,2,3,4,5]" → linked list; returns head
 ListNode* parseLinkedList(string s) {
     auto vals = parseIntArray(s);
     if (vals.empty()) return nullptr;
@@ -285,12 +382,12 @@ ListNode* parseLinkedList(string s) {
 }
 
 void freeList(ListNode* head) {
-    while (head) {
-        auto next = head->next;
-        delete head;
-        head = next;
-    }
+    while (head) { auto t = head->next; delete head; head = t; }
 }
+
+// ─────────────────────────────────────────────
+//  Binary Tree
+// ─────────────────────────────────────────────
 
 struct TreeNode {
     int val;
@@ -298,6 +395,7 @@ struct TreeNode {
     TreeNode(int v = 0) : val(v), left(nullptr), right(nullptr) {}
 };
 
+// "[1,null,2,3]" level-order BFS serialization (LeetCode format)
 TreeNode* parseBinaryTree(string s) {
     s = trim(s);
     if (s == "[]") return nullptr;
@@ -310,8 +408,7 @@ TreeNode* parseBinaryTree(string s) {
     q.push(root);
     size_t i = 1;
     while (!q.empty() && i < parts.size()) {
-        TreeNode* node = q.front();
-        q.pop();
+        TreeNode* node = q.front(); q.pop();
         if (i < parts.size() && parts[i] != "null") {
             node->left = new TreeNode(parseIntValue(parts[i]));
             q.push(node->left);
@@ -333,12 +430,16 @@ void freeTree(TreeNode* root) {
     delete root;
 }
 
-void printInt(int v) { cout << v; }
-void printLong(long long v) { cout << v; }
-void printDouble(double v) { cout << v; }
-void printBool(bool v) { cout << (v ? "true" : "false"); }
-void printChar(char v) { cout << v; }
-void printString(const string& v) { cout << '"' << v << '"'; }
+// ─────────────────────────────────────────────
+//  Output / print helpers
+// ─────────────────────────────────────────────
+
+void printInt(int v)               { cout << v; }
+void printLong(long long v)        { cout << v; }
+void printDouble(double v)         { cout << v; }
+void printBool(bool v)             { cout << (v ? "true" : "false"); }
+void printChar(char v)             { cout << v; }
+void printString(const string& v)  { cout << '"' << v << '"'; }
 
 void printIntArray(const vector<int>& v) {
     cout << "[";
@@ -384,7 +485,10 @@ void printIntMatrix(const vector<vector<int>>& v) {
 
 void printStringMatrix(const vector<vector<string>>& v) {
     cout << "[";
-    for (size_t i = 0; i < v.size(); i++) { if (i) cout << ","; printStringArray(v[i]); }
+    for (size_t i = 0; i < v.size(); i++) {
+        if (i) cout << ",";
+        printStringArray(v[i]);
+    }
     cout << "]";
 }
 
@@ -394,9 +498,9 @@ void printInt3D(const vector<vector<vector<int>>>& v) {
     cout << "]";
 }
 
-void printIntPair(pair<int, int> p) { cout << "[" << p.first << "," << p.second << "]"; }
+void printIntPair(pair<int,int> p) { cout << "[" << p.first << "," << p.second << "]"; }
 
-void printIntPairArray(const vector<pair<int, int>>& v) {
+void printIntPairArray(const vector<pair<int,int>>& v) {
     cout << "[";
     for (size_t i = 0; i < v.size(); i++) { if (i) cout << ","; printIntPair(v[i]); }
     cout << "]";
@@ -412,7 +516,7 @@ void printIntSet(const set<int>& s) {
 void printStringSet(const set<string>& s) {
     cout << "[";
     bool first = true;
-    for (const auto& x : s) { if (!first) cout << ","; cout << '"' << x << '"'; first = false; }
+    for (auto& x : s) { if (!first) cout << ","; cout << '"' << x << '"'; first = false; }
     cout << "]";
 }
 
@@ -424,14 +528,14 @@ void printLinkedList(ListNode* head) {
 }
 
 void printBinaryTree(TreeNode* root) {
+    // BFS level-order, LeetCode style (trailing nulls omitted)
     if (!root) { cout << "[]"; return; }
     cout << "[";
     queue<TreeNode*> q;
     q.push(root);
     bool first = true;
     while (!q.empty()) {
-        TreeNode* node = q.front();
-        q.pop();
+        TreeNode* node = q.front(); q.pop();
         if (!first) cout << ",";
         first = false;
         if (!node) { cout << "null"; continue; }
@@ -443,7 +547,10 @@ void printBinaryTree(TreeNode* root) {
     }
     cout << "]";
 }
-// #endregion
+
+// ─────────────────────────────────────────────
+//  main
+// ─────────────────────────────────────────────
 
 int main() {
     ios::sync_with_stdio(false);
@@ -451,282 +558,63 @@ int main() {
 
     string line;
     vector<string> input;
+    while (getline(cin, line)) input.push_back(line);
 
-    while (getline(cin, line)) {
-        input.push_back(line);
-    }
+    // ── Primitive examples ─────────────────────────────────────────
+    // int x          = parseIntValue(input[0]);
+    // long long x    = parseLongValue(input[0]);
+    // double x       = parseDoubleValue(input[0]);
+    // bool x         = parseBoolValue(input[0]);     // "true"/"false"
+    // char x         = parseCharValue(input[0]);     // 'a' or a
+    // string x       = parseStringValue(input[0]);   // "hello"
 
-    // Common parsers:
-    // parseIntValue(input[i]), parseLongValue(input[i]), parseDoubleValue(input[i])
-    // parseBoolValue(input[i]), parseCharValue(input[i]), parseStringValue(input[i])
-    // parseIntArray(input[i]), parseLongArray(input[i]), parseDoubleArray(input[i])
-    // parseBoolArray(input[i]), parseCharArray(input[i]), parseStringArray(input[i])
-    // parseIntMatrix(input[i]), parseLongMatrix(input[i]), parseDoubleMatrix(input[i])
-    // parseStringMatrix(input[i]), parseCharMatrix(input[i]), parseInt3D(input[i])
-    // parseIntSet(input[i]), parseStringSet(input[i]), parseIntUnorderedSet(input[i])
-    // parseIntPair(input[i]), parseStringIntPair(input[i]), parseIntPairArray(input[i])
-    // parseLinkedList(input[i]), parseBinaryTree(input[i])
-    //
-    // Common printers:
-    // printInt(...), printLong(...), printDouble(...), printBool(...), printChar(...), printString(...)
-    // printIntArray(...), printLongArray(...), printDoubleArray(...), printBoolArray(...)
-    // printCharArray(...), printStringArray(...), printIntMatrix(...), printStringMatrix(...)
-    // printInt3D(...), printIntPair(...), printIntPairArray(...), printIntSet(...)
-    // printStringSet(...), printLinkedList(...), printBinaryTree(...)
-    //
-    // Example:
+    // ── 1-D array examples ─────────────────────────────────────────
+    // vector<int>    nums = parseIntArray(input[0]);      // [1,2,3]
+    // vector<ll>     nums = parseLongArray(input[0]);
+    // vector<double> nums = parseDoubleArray(input[0]);
+    // vector<bool>   bits = parseBoolArray(input[0]);     // [true,false]
+    // vector<char>   chs  = parseCharArray(input[0]);     // ["a","b"]
+    // vector<string> strs = parseStringArray(input[0]);   // ["foo","bar"]
+
+    // ── 2-D array examples ─────────────────────────────────────────
+    // vector<vector<int>>    mat = parseIntMatrix(input[0]);    // [[1,2],[3,4]]
+    // vector<vector<ll>>     mat = parseLongMatrix(input[0]);
+    // vector<vector<double>> mat = parseDoubleMatrix(input[0]);
+    // vector<vector<string>> mat = parseStringMatrix(input[0]);
+    // vector<vector<char>>   mat = parseCharMatrix(input[0]);   // board problems
+
+    // ── 3-D array example ─────────────────────────────────────────
+    // vector<vector<vector<int>>> arr = parseInt3D(input[0]);
+
+    // ── Set examples ───────────────────────────────────────────────
+    // set<int>    s = parseIntSet(input[0]);       // [1,2,3] → deduplicated
+    // set<string> s = parseStringSet(input[0]);
+
+    // ── Pair examples ──────────────────────────────────────────────
+    // pair<int,int>           p  = parseIntPair(input[0]);        // [2,7]
+    // pair<string,int>        p  = parseStringIntPair(input[0]);  // ["a",1]
+    // vector<pair<int,int>>   ps = parseIntPairArray(input[0]);   // [[0,1],[2,3]]
+
+    // ── Linked list example ────────────────────────────────────────
+    // ListNode* head = parseLinkedList(input[0]);   // [1,2,3,4,5]
+    // printLinkedList(head);
+    // freeList(head);
+
+    // ── Binary tree example ────────────────────────────────────────
+    // TreeNode* root = parseBinaryTree(input[0]);   // [1,null,2,3]
+    // printBinaryTree(root);
+    // freeTree(root);
+
+    // ── Multi-input example ────────────────────────────────────────
     // if (input.size() >= 2) {
     //     vector<int> nums = parseIntArray(input[0]);
-    //     int target = parseIntValue(input[1]);
+    //     int target       = parseIntValue(input[1]);
     //     printIntArray(nums);
-    //     cout << '\\n' << target << '\\n';
+    //     cout << '\n' << target << '\n';
     // }
 
     return 0;
 }
-`,
-  },
-  java: {
-    label: "Java",
-    monacoLanguage: "java",
-    pistonLanguage: "java",
-    version: "15.0.2",
-    fileName: "Main.java",
-    boilerplate: `import java.io.*;
-import java.util.*;
-
-public class Main {
-    // #region Driver Helpers
-    static String trim(String s) {
-        return s == null ? "" : s.trim();
-    }
-
-    static List<String> splitTopLevel(String s) {
-        List<String> parts = new ArrayList<>();
-        StringBuilder current = new StringBuilder();
-        int depth = 0;
-        boolean inString = false;
-
-        for (int i = 0; i < s.length(); i++) {
-            char c = s.charAt(i);
-
-            if (c == '"' && (i == 0 || s.charAt(i - 1) != '\\\\')) {
-                inString = !inString;
-            }
-
-            if (!inString) {
-                if (c == '[') depth++;
-                if (c == ']') depth--;
-                if (c == ',' && depth == 0) {
-                    parts.add(trim(current.toString()));
-                    current.setLength(0);
-                    continue;
-                }
-            }
-
-            current.append(c);
-        }
-
-        if (current.length() > 0) {
-            parts.add(trim(current.toString()));
-        }
-
-        return parts;
-    }
-
-    static int parseIntValue(String s) {
-        return Integer.parseInt(trim(s));
-    }
-
-    static long parseLongValue(String s) {
-        return Long.parseLong(trim(s));
-    }
-
-    static String parseStringValue(String s) {
-        s = trim(s);
-        if (s.length() >= 2 && s.charAt(0) == '"' && s.charAt(s.length() - 1) == '"') {
-            return s.substring(1, s.length() - 1);
-        }
-        return s;
-    }
-
-    static boolean parseBoolValue(String s) {
-        return "true".equals(trim(s));
-    }
-
-    static int[] parseIntArray(String s) {
-        s = trim(s);
-        if ("[]".equals(s)) return new int[0];
-        if (!s.isEmpty() && s.charAt(0) == '[' && s.charAt(s.length() - 1) == ']') {
-            s = s.substring(1, s.length() - 1);
-        }
-        if (trim(s).isEmpty()) return new int[0];
-
-        List<String> parts = splitTopLevel(s);
-        int[] result = new int[parts.size()];
-        for (int i = 0; i < parts.size(); i++) {
-            result[i] = parseIntValue(parts.get(i));
-        }
-        return result;
-    }
-
-    static String[] parseStringArray(String s) {
-        s = trim(s);
-        if ("[]".equals(s)) return new String[0];
-        if (!s.isEmpty() && s.charAt(0) == '[' && s.charAt(s.length() - 1) == ']') {
-            s = s.substring(1, s.length() - 1);
-        }
-        if (trim(s).isEmpty()) return new String[0];
-
-        List<String> parts = splitTopLevel(s);
-        String[] result = new String[parts.size()];
-        for (int i = 0; i < parts.size(); i++) {
-            result[i] = parseStringValue(parts.get(i));
-        }
-        return result;
-    }
-
-    static int[][] parseIntMatrix(String s) {
-        s = trim(s);
-        if ("[]".equals(s)) return new int[0][];
-        if (!s.isEmpty() && s.charAt(0) == '[' && s.charAt(s.length() - 1) == ']') {
-            s = s.substring(1, s.length() - 1);
-        }
-        if (trim(s).isEmpty()) return new int[0][];
-
-        List<String> parts = splitTopLevel(s);
-        int[][] result = new int[parts.size()][];
-        for (int i = 0; i < parts.size(); i++) {
-            result[i] = parseIntArray(parts.get(i));
-        }
-        return result;
-    }
-
-    static void printIntArray(int[] values) {
-        System.out.print("[");
-        for (int i = 0; i < values.length; i++) {
-            if (i > 0) System.out.print(",");
-            System.out.print(values[i]);
-        }
-        System.out.print("]");
-    }
-    // #endregion
-
-    public static void main(String[] args) throws Exception {
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        List<String> input = new ArrayList<>();
-        String line;
-
-        while ((line = br.readLine()) != null) {
-            input.add(line);
-        }
-
-        // Helpers available:
-        // parseIntValue("42")
-        // parseLongValue("42")
-        // parseStringValue(""abc"")
-        // parseBoolValue("true")
-        // parseIntArray("[1,2,3]")
-        // parseStringArray("["a","b"]")
-        // parseIntMatrix("[[1,2],[3,4]]")
-        //
-        // Example for LeetCode-style stdin:
-        // [2,7,11,15]
-        // 9
-        // if (input.size() >= 2) {
-        //     int[] nums = parseIntArray(input.get(0));
-        //     int target = parseIntValue(input.get(1));
-        //     printIntArray(nums);
-        //     System.out.println();
-        //     System.out.println(target);
-        // }
-    }
-}
-`,
-  },
-  python: {
-    label: "Python",
-    monacoLanguage: "python",
-    pistonLanguage: "python",
-    version: "3.10.0",
-    fileName: "main.py",
-    boilerplate: `import ast
-import sys
-
-
-# region Driver Helpers
-def parse_value(line: str):
-    line = line.strip()
-    if not line:
-        return None
-    try:
-        return ast.literal_eval(line)
-    except Exception:
-        lowered = line.lower()
-        if lowered == "true":
-            return True
-        if lowered == "false":
-            return False
-        if lowered == "null":
-            return None
-        return line
-
-
-def parse_int(line: str) -> int:
-    return int(line.strip())
-
-
-def parse_str(line: str) -> str:
-    value = parse_value(line)
-    return value if isinstance(value, str) else str(value)
-
-
-def parse_bool(line: str) -> bool:
-    value = parse_value(line)
-    return bool(value)
-
-
-def parse_int_array(line: str) -> list[int]:
-    value = parse_value(line)
-    return list(value) if isinstance(value, list) else []
-
-
-def parse_str_array(line: str) -> list[str]:
-    value = parse_value(line)
-    return list(value) if isinstance(value, list) else []
-
-
-def parse_int_matrix(line: str) -> list[list[int]]:
-    value = parse_value(line)
-    return list(value) if isinstance(value, list) else []
-# endregion
-
-
-def main():
-    data = sys.stdin.read()
-    lines = [line for line in data.splitlines() if line.strip()]
-
-    # Helpers available:
-    # parse_value("[1,2,3]"), parse_value(""abc""), parse_value("42")
-    # parse_int("42")
-    # parse_str(""abc"")
-    # parse_bool("true")
-    # parse_int_array("[1,2,3]")
-    # parse_str_array("["a","b"]")
-    # parse_int_matrix("[[1,2],[3,4]]")
-    #
-    # Example for LeetCode-style stdin:
-    # [2,7,11,15]
-    # 9
-    # if len(lines) >= 2:
-    #     nums = parse_int_array(lines[0])
-    #     target = parse_int(lines[1])
-    #     print(nums)
-    #     print(target)
-
-
-if __name__ == "__main__":
-    main()
 `,
   },
 } as const;
