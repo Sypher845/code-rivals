@@ -10,6 +10,7 @@ import {
   DEFAULT_CODE,
   DEFAULT_LANGUAGE,
   EXECUTION_LANGUAGE_CONFIG,
+  getEditorBoilerplate,
   P,
   type SupportedEditorLanguage,
 } from "./coding-window/constants";
@@ -17,7 +18,10 @@ import {
   judgeCodeAgainstTestCases,
   type JudgeRunResult,
 } from "./coding-window/judge";
-import { getParsedTestCases } from "./coding-window/problemContent";
+import {
+  getJudgeTestCases,
+  getVisibleTestCases,
+} from "./coding-window/problemContent";
 import { reducers, tables } from "../module_bindings";
 import type { ArenaSabotageEvent } from "../module_bindings/types";
 import {
@@ -349,6 +353,8 @@ export function CodingWindowPage() {
   const [zenRoundNumber, setZenRoundNumber] = useState(fallbackRoundNumber);
   const [zenRoundStage, setZenRoundStage] = useState<ZenRoundStage>("intro");
   const [zenRoundStartMs, setZenRoundStartMs] = useState<number | null>(null);
+  const [zenSubmittedSecondsRemaining, setZenSubmittedSecondsRemaining] =
+    useState<number | null>(null);
   const [zenRoundDurationSeconds, setZenRoundDurationSeconds] = useState(() =>
     getRoundDurationSeconds(1),
   );
@@ -573,8 +579,9 @@ export function CodingWindowPage() {
           0,
           Math.ceil((activeOutgoingSabotage.expiresAtMs - nowMs) / 1000),
         );
-  const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
-  const totalTestcases = BigInt(Math.max(testCases.length, 1));
+  const visibleTestCases = useMemo(() => getVisibleTestCases(problem), [problem]);
+  const judgeTestCases = useMemo(() => getJudgeTestCases(problem), [problem]);
+  const totalTestcases = BigInt(Math.max(judgeTestCases.length, 1));
   const problemError =
     (isZenMode ? parsedZenProblem.error : parsedProblem.error) ??
     problemRequestError;
@@ -593,7 +600,7 @@ export function CodingWindowPage() {
 
   const zenSecondsRemaining =
     zenRoundStage === "submitted"
-      ? 0
+      ? zenSubmittedSecondsRemaining ?? zenRoundDurationSeconds
       : zenRoundStage !== "playing" || zenRoundStartMs === null
         ? zenRoundDurationSeconds
       : Math.max(
@@ -900,6 +907,7 @@ export function CodingWindowPage() {
         setStatusMessage("Timer expired. Submitting your round result...");
         await submitRoundResult({
           roomId: normalizedRoomId,
+          submittedCode: code,
           timeTakenSeconds: BigInt(myRoundDurationSeconds),
           testcasesPassed: 0n,
           totalTestcases,
@@ -1006,29 +1014,40 @@ export function CodingWindowPage() {
 
   const handleLanguageChange = useCallback((language: SupportedEditorLanguage) => {
     setSelectedLanguage(language);
-    setCode(EXECUTION_LANGUAGE_CONFIG[language].boilerplate);
+    setCode(getEditorBoilerplate(language));
     setJudgeResult(null);
     setJudgeError(null);
     setStatusMessage(null);
   }, []);
 
   const handleResetCode = useCallback(() => {
-    setCode(EXECUTION_LANGUAGE_CONFIG[selectedLanguage].boilerplate);
+    setCode(getEditorBoilerplate(selectedLanguage));
     setJudgeResult(null);
     setJudgeError(null);
     setStatusMessage("Editor reset to the default boilerplate.");
   }, [selectedLanguage]);
 
-  const runJudge = useCallback(async () => {
+  const runVisibleJudge = useCallback(async () => {
     setJudgeError(null);
     const executionResult = await judgeCodeAgainstTestCases(
       selectedLanguage,
       code,
-      testCases,
+      visibleTestCases,
     );
     setJudgeResult(executionResult);
     return executionResult;
-  }, [code, selectedLanguage, testCases]);
+  }, [code, selectedLanguage, visibleTestCases]);
+
+  const runSubmissionJudge = useCallback(async () => {
+    setJudgeError(null);
+    const executionResult = await judgeCodeAgainstTestCases(
+      selectedLanguage,
+      code,
+      judgeTestCases,
+    );
+    setJudgeResult(executionResult);
+    return executionResult;
+  }, [code, judgeTestCases, selectedLanguage]);
 
   const handleRun = useCallback(async () => {
     if (isZenMode && zenRoundStage !== "playing") {
@@ -1046,7 +1065,7 @@ export function CodingWindowPage() {
       setIsRunning(true);
       setJudgeError(null);
       setStatusMessage("Running your code against all visible testcases...");
-      const result = await runJudge();
+      const result = await runVisibleJudge();
       setStatusMessage(
         `Run completed. ${result.passedCount}/${result.totalCount} testcases passed.`,
       );
@@ -1065,7 +1084,7 @@ export function CodingWindowPage() {
     } finally {
       setIsRunning(false);
     }
-  }, [isZenMode, noMistakesActive, runJudge, zenRoundStage]);
+  }, [isZenMode, noMistakesActive, runVisibleJudge, zenRoundStage]);
 
   const handleSabotage = useCallback(async () => {
     if (!normalizedRoomId) {
@@ -1137,6 +1156,7 @@ export function CodingWindowPage() {
         setZenAssignedSabotageId(null);
         setZenProblemJson(null);
         setActiveEditorSabotage(null);
+        setZenSubmittedSecondsRemaining(null);
         setJudgeResult(null);
         setJudgeError(null);
         setStatusMessage(`Round ${nextRound} is ready. Start whenever you want.`);
@@ -1147,12 +1167,14 @@ export function CodingWindowPage() {
         setIsSubmitting(true);
         setJudgeError(null);
         setStatusMessage("Judging your latest code against all testcases...");
-        const result = await runJudge();
+        const submittedSecondsRemaining = zenSecondsRemaining;
+        const result = await runSubmissionJudge();
         const submittedRound = zenRoundNumber;
 
         setActiveEditorSabotage(null);
         setZenAssignedSabotageId(null);
         setZenRoundStartMs(null);
+        setZenSubmittedSecondsRemaining(submittedSecondsRemaining);
         setZenRoundStage("submitted");
         setStatusMessage(
           submittedRound >= 3
@@ -1181,7 +1203,8 @@ export function CodingWindowPage() {
       setIsSubmitting(true);
       setJudgeError(null);
       setStatusMessage("Judging your latest code against all testcases...");
-      const result = await runJudge();
+      const submittedSecondsRemaining = secondsRemaining;
+      const result = await runSubmissionJudge();
 
       if (isStandaloneTestingMode) {
         setStatusMessage(
@@ -1196,8 +1219,9 @@ export function CodingWindowPage() {
 
       await submitRoundResult({
         roomId: normalizedRoomId,
+        submittedCode: code,
         timeTakenSeconds: BigInt(
-          Math.max(0, myRoundDurationSeconds - secondsRemaining),
+          Math.max(0, myRoundDurationSeconds - submittedSecondsRemaining),
         ),
         testcasesPassed: BigInt(result.passedCount),
         totalTestcases,
@@ -1221,13 +1245,14 @@ export function CodingWindowPage() {
     isZenMode,
     myRoundDurationSeconds,
     normalizedRoomId,
-    runJudge,
+    runSubmissionJudge,
     secondsRemaining,
     submitDisabled,
     submitRoundResult,
     totalTestcases,
     zenRoundNumber,
     zenRoundStage,
+    zenSecondsRemaining,
   ]);
 
   const handleZenRoundStart = useCallback(() => {
@@ -1275,6 +1300,7 @@ export function CodingWindowPage() {
     setZenAssignedSabotageId(selectedSabotageId);
     setZenRoundDurationSeconds(nextDurationSeconds);
     setZenRoundStartMs(emittedAtMs);
+    setZenSubmittedSecondsRemaining(null);
     setZenRoundStage("playing");
     setStatusMessage(
       selectedSabotageId
@@ -1301,6 +1327,7 @@ export function CodingWindowPage() {
       setZenRoundNumber(1);
       setZenRoundStage("intro");
       setZenRoundStartMs(null);
+      setZenSubmittedSecondsRemaining(null);
       setZenRoundDurationSeconds(getRoundDurationSeconds(1));
       setZenAssignedSabotageId(null);
       setZenProblemJson(null);
@@ -1311,6 +1338,7 @@ export function CodingWindowPage() {
     setZenRoundNumber(zenRouteRoundNumber ?? 1);
     setZenRoundStage("intro");
     setZenRoundStartMs(null);
+    setZenSubmittedSecondsRemaining(null);
     setZenRoundDurationSeconds(getRoundDurationSeconds(zenRouteRoundNumber ?? 1));
     setZenAssignedSabotageId(null);
     setZenProblemJson(null);

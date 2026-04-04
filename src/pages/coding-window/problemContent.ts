@@ -236,11 +236,11 @@ export function getExampleBlocks(problem?: RemoteProblemData | null) {
   return parseBodyContent(descriptionBody).examples;
 }
 
-export function getParsedTestCases(problem?: RemoteProblemData | null) {
+function parseExampleTestCases(problem?: RemoteProblemData | null) {
   const examples = getExampleBlocks(problem);
 
   if (examples.length > 0) {
-    const parsedCases = examples
+    return examples
       .map((example, index) => {
         const inputField = example.fields.find(
           (field) => field.label.toLowerCase() === "input",
@@ -260,14 +260,14 @@ export function getParsedTestCases(problem?: RemoteProblemData | null) {
         };
       })
       .filter((testCase): testCase is ParsedTestCase => testCase !== null);
-
-    if (parsedCases.length > 0) {
-      return parsedCases;
-    }
   }
 
+  return [];
+}
+
+function parseApiTestCases(problem?: RemoteProblemData | null) {
   if (Array.isArray(problem?.input_output) && problem.input_output.length > 0) {
-    const apiCases = problem.input_output
+    return problem.input_output
       .map((testCase, index) => {
         const input =
           typeof testCase.input === "string" ? testCase.input.trim() : "";
@@ -285,15 +285,47 @@ export function getParsedTestCases(problem?: RemoteProblemData | null) {
         };
       })
       .filter((testCase): testCase is ParsedTestCase => testCase !== null);
-
-    if (apiCases.length > 0) {
-      return apiCases;
-    }
   }
 
+  return [];
+}
+
+function getFallbackTestCases() {
   return PROBLEM.testCases.map((testCase, index) => ({
     label: `Example ${index + 1}:`,
     input: normalizeQuestionInputToStdin(testCase.input),
     expectedOutput: testCase.expectedOutput,
   }));
+}
+
+export function getVisibleTestCases(problem?: RemoteProblemData | null) {
+  const exampleCases = parseExampleTestCases(problem);
+  if (exampleCases.length > 0) {
+    return exampleCases;
+  }
+
+  const apiCases = parseApiTestCases(problem);
+  if (apiCases.length > 0) {
+    return apiCases;
+  }
+
+  return getFallbackTestCases();
+}
+
+export function getJudgeTestCases(problem?: RemoteProblemData | null) {
+  const apiCases = parseApiTestCases(problem);
+  if (apiCases.length > 0) {
+    return apiCases;
+  }
+
+  const exampleCases = parseExampleTestCases(problem);
+  if (exampleCases.length > 0) {
+    return exampleCases;
+  }
+
+  return getFallbackTestCases();
+}
+
+export function getParsedTestCases(problem?: RemoteProblemData | null) {
+  return getVisibleTestCases(problem);
 }

@@ -126,6 +126,7 @@ export const ArenaRoundResult = __t.object("ArenaRoundResult", {
   totalTestcases: __t.u64(),
   pointsEarned: __t.u64(),
   createdAt: __t.timestamp(),
+  submittedCode: __t.option(__t.string()),
 });
 export type ArenaRoundResult = __Infer<typeof ArenaRoundResult>;
 

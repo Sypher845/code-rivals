@@ -83,7 +83,7 @@ vector<string> splitTopLevel(const string& s) {
     bool inString = false;
     for (size_t i = 0; i < s.size(); i++) {
         char c = s[i];
-        if (c == '"' && (i == 0 || s[i - 1] != '\\')) inString = !inString;
+        if (c == '"' && (i == 0 || s[i - 1] != '\\\\')) inString = !inString;
         if (!inString) {
             if (c == '[' || c == '(' || c == '{') depth++;
             if (c == ']' || c == ')' || c == '}') depth--;
@@ -162,11 +162,84 @@ double parseDoubleValue(string s) {
 
 bool parseBoolValue(string s) { s = trim(s); return s == "true"; }
 
+void appendUtf8Codepoint(string& out, unsigned int codepoint) {
+    if (codepoint <= 0x7F) {
+        out += static_cast<char>(codepoint);
+    } else if (codepoint <= 0x7FF) {
+        out += static_cast<char>(0xC0 | ((codepoint >> 6) & 0x1F));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    } else if (codepoint <= 0xFFFF) {
+        out += static_cast<char>(0xE0 | ((codepoint >> 12) & 0x0F));
+        out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    } else {
+        out += static_cast<char>(0xF0 | ((codepoint >> 18) & 0x07));
+        out += static_cast<char>(0x80 | ((codepoint >> 12) & 0x3F));
+        out += static_cast<char>(0x80 | ((codepoint >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (codepoint & 0x3F));
+    }
+}
+
+string decodeEscapedString(const string& s) {
+    string result;
+    for (size_t i = 0; i < s.size(); i++) {
+        char c = s[i];
+        if (c != '\\\\' || i + 1 >= s.size()) {
+            result += c;
+            continue;
+        }
+
+        char next = s[++i];
+        switch (next) {
+            case 'n': result += '\\n'; break;
+            case 'r': result += '\\r'; break;
+            case 't': result += '\\t'; break;
+            case 'b': result += '\\b'; break;
+            case 'f': result += '\\f'; break;
+            case '\\\\': result += '\\\\'; break;
+            case '"': result += '"'; break;
+            case '\\'': result += '\\''; break;
+            case 'u': {
+                if (i + 4 >= s.size()) {
+                    result += "\\\\u";
+                    break;
+                }
+                unsigned int codepoint = 0;
+                bool valid = true;
+                for (int j = 0; j < 4; j++) {
+                    char hex = s[i + 1 + j];
+                    codepoint <<= 4;
+                    if (hex >= '0' && hex <= '9') codepoint |= static_cast<unsigned int>(hex - '0');
+                    else if (hex >= 'a' && hex <= 'f') codepoint |= static_cast<unsigned int>(hex - 'a' + 10);
+                    else if (hex >= 'A' && hex <= 'F') codepoint |= static_cast<unsigned int>(hex - 'A' + 10);
+                    else {
+                        valid = false;
+                        break;
+                    }
+                }
+                if (!valid) {
+                    result += "\\\\u";
+                    break;
+                }
+                i += 4;
+                appendUtf8Codepoint(result, codepoint);
+                break;
+            }
+            default:
+                result += next;
+                break;
+        }
+    }
+    return result;
+}
+
 // char: accepts 'a' or just a
 char parseCharValue(string s) {
     s = trim(s);
-    if (s.size() >= 2 && s.front() == '\'' && s.back() == '\'')
-        return s[1];
+    if (s.size() >= 2 && s.front() == '\\'' && s.back() == '\\'') {
+        string inner = decodeEscapedString(s.substr(1, s.size() - 2));
+        return inner.empty() ? '\\0' : inner[0];
+    }
     return s[0];
 }
 
@@ -174,7 +247,7 @@ char parseCharValue(string s) {
 string parseStringValue(string s) {
     s = trim(s);
     if (s.size() >= 2 && s.front() == '"' && s.back() == '"')
-        return s.substr(1, s.size() - 2);
+        return decodeEscapedString(s.substr(1, s.size() - 2));
     return s;
 }
 
@@ -622,8 +695,47 @@ export type SupportedEditorLanguage = keyof typeof EXECUTION_LANGUAGE_CONFIG;
 
 export const DEFAULT_LANGUAGE: SupportedEditorLanguage = "cpp";
 
-export const DEFAULT_CODE: string =
-  EXECUTION_LANGUAGE_CONFIG[DEFAULT_LANGUAGE].boilerplate;
+const CPP_MAIN_SIGNATURE = "int main() {";
+
+function splitCppDriverSource(source: string) {
+  const mainStartIndex = source.indexOf(CPP_MAIN_SIGNATURE);
+  if (mainStartIndex === -1) {
+    return {
+      hiddenPrefix: source,
+      editorBoilerplate: source,
+    };
+  }
+
+  return {
+    hiddenPrefix: source.slice(0, mainStartIndex).trimEnd(),
+    editorBoilerplate: source.slice(mainStartIndex).trimStart(),
+  };
+}
+
+const cppDriverParts = splitCppDriverSource(
+  EXECUTION_LANGUAGE_CONFIG.cpp.boilerplate,
+);
+
+export function getEditorBoilerplate(language: SupportedEditorLanguage) {
+  if (language !== "cpp") {
+    throw new Error(`Unsupported editor language: ${language}`);
+  }
+
+  return cppDriverParts.editorBoilerplate;
+}
+
+export function buildExecutableSource(
+  language: SupportedEditorLanguage,
+  editorSource: string,
+) {
+  if (language !== "cpp") {
+    throw new Error(`Unsupported execution language: ${language}`);
+  }
+
+  return `${cppDriverParts.hiddenPrefix}\n\n${editorSource.trimStart()}`;
+}
+
+export const DEFAULT_CODE: string = getEditorBoilerplate(DEFAULT_LANGUAGE);
 
 export const LANGUAGES = (
   Object.entries(EXECUTION_LANGUAGE_CONFIG) as Array<

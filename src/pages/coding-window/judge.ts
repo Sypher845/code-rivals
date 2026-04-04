@@ -1,4 +1,5 @@
 import {
+  buildExecutableSource,
   EXECUTION_LANGUAGE_CONFIG,
   type SupportedEditorLanguage,
 } from "./constants";
@@ -113,6 +114,7 @@ async function executeSingleTestCase(
   index: number,
 ): Promise<JudgeCaseResult> {
   const config = EXECUTION_LANGUAGE_CONFIG[language];
+  const executableSource = buildExecutableSource(language, sourceCode);
   let response: Response;
   try {
     response = await fetch(EXECUTE_API_URL, {
@@ -127,7 +129,7 @@ async function executeSingleTestCase(
         files: [
           {
             name: config.fileName,
-            content: sourceCode,
+            content: executableSource,
           },
         ],
       }),
@@ -171,11 +173,16 @@ async function executeSingleTestCase(
     normalizedExpectedOutput,
   } = outputsMatch(actualOutput, testCase.expectedOutput);
 
+  const hasRuntimeFailure =
+    Boolean(runtimeError) || (data.run?.code ?? 0) !== 0 || Boolean(data.run?.signal);
+  const normalizedCompileOutput =
+    hasRuntimeFailure && compileOutput === runtimeError ? "" : compileOutput;
+
   let status: JudgeStatus = "accepted";
-  if (compileOutput) {
-    status = "compile_error";
-  } else if (runtimeError || (data.run?.code ?? 0) !== 0 || data.run?.signal) {
+  if (hasRuntimeFailure) {
     status = "runtime_error";
+  } else if (normalizedCompileOutput) {
+    status = "compile_error";
   } else if (!matches) {
     status = "wrong_answer";
   }
@@ -188,7 +195,7 @@ async function executeSingleTestCase(
     actualOutput,
     normalizedExpectedOutput,
     normalizedActualOutput,
-    compileOutput,
+    compileOutput: normalizedCompileOutput,
     errorOutput: runtimeError,
     status,
     passed: status === "accepted",
@@ -213,11 +220,11 @@ export async function judgeCodeAgainstTestCases(
           },
         ];
 
-  const results = await Promise.all(
-    casesToRun.map((testCase, index) =>
-      executeSingleTestCase(language, sourceCode, testCase, index),
-    ),
-  );
+  const results: JudgeCaseResult[] = [];
+  for (const [index, testCase] of casesToRun.entries()) {
+    const result = await executeSingleTestCase(language, sourceCode, testCase, index);
+    results.push(result);
+  }
 
   return {
     results,

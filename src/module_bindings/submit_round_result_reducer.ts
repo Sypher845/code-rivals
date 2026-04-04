@@ -12,6 +12,7 @@ import {
 
 export default {
   roomId: __t.string(),
+  submittedCode: __t.string(),
   timeTakenSeconds: __t.u64(),
   testcasesPassed: __t.u64(),
   totalTestcases: __t.u64(),

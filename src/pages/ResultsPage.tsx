@@ -26,6 +26,7 @@ type RoundResult = {
     accuracy: number;
     testsPassed: number;
     totalTests: number;
+    submittedCode: string | null;
   };
   opponent: {
     duration: string;
@@ -34,6 +35,7 @@ type RoundResult = {
     accuracy: number;
     testsPassed: number;
     totalTests: number;
+    submittedCode: string | null;
   };
   verdict: "Won" | "Lost";
 };
@@ -143,6 +145,10 @@ export function ResultsPage() {
   const { username = "player", roomSegment } = useParams();
   const roomId = roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? "";
   const [isContinuing, setIsContinuing] = useState(false);
+  const [selectedOpponentCodeRound, setSelectedOpponentCodeRound] = useState<{
+    roundTitle: string;
+    code: string;
+  } | null>(null);
 
   const [sessionRows] = useTable(tables.authSession);
   const [playerProfileRows] = useTable(tables.playerProfile);
@@ -206,6 +212,7 @@ export function ResultsPage() {
           accuracy: myTotal > 0 ? Math.round((myPassed / myTotal) * 100) : 0,
           testsPassed: myPassed,
           totalTests: myTotal,
+          submittedCode: mine?.submittedCode ?? null,
         };
 
         const opponent = {
@@ -216,6 +223,7 @@ export function ResultsPage() {
             theirTotal > 0 ? Math.round((theirPassed / theirTotal) * 100) : 0,
           testsPassed: theirPassed,
           totalTests: theirTotal,
+          submittedCode: theirs?.submittedCode ?? null,
         };
 
         return {
@@ -611,10 +619,27 @@ export function ResultsPage() {
                   </div>
 
                   <div className="mt-4 flex justify-end">
-                    <span className="inline-flex items-center gap-1 font-(--font-mono) text-[0.58rem] tracking-[0.14em] text-[rgba(241,243,252,0.42)] uppercase">
-                      <Swords className="h-3.5 w-3.5" />
-                      User vs Opponent
-                    </span>
+                    <div className="flex items-center gap-3">
+                      {round.opponent.submittedCode ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSelectedOpponentCodeRound({
+                              roundTitle: round.title,
+                              code: round.opponent.submittedCode ?? "",
+                            })
+                          }
+                          className="inline-flex items-center justify-center rounded-md border border-[rgba(255,112,112,0.18)] bg-[rgba(255,112,112,0.08)] px-3 py-1.5 font-(--font-mono) text-[0.58rem] tracking-[0.14em] text-[var(--signal-danger)] uppercase transition hover:border-[rgba(255,112,112,0.34)] hover:bg-[rgba(255,112,112,0.14)]"
+                        >
+                          Show {opponentName} Code
+                        </button>
+                      ) : null}
+
+                      <span className="inline-flex items-center gap-1 font-(--font-mono) text-[0.58rem] tracking-[0.14em] text-[rgba(241,243,252,0.42)] uppercase">
+                        <Swords className="h-3.5 w-3.5" />
+                        User vs Opponent
+                      </span>
+                    </div>
                   </div>
 
                   <div className="mt-5 grid gap-3">
@@ -770,6 +795,35 @@ export function ResultsPage() {
           </div>
         </section>
       </div>
+
+      {selectedOpponentCodeRound ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(5,9,14,0.76)] p-4 backdrop-blur-sm">
+          <div className="w-full max-w-4xl rounded-2xl border border-[rgba(255,255,255,0.1)] bg-[rgba(9,14,22,0.96)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="font-(--font-mono) text-[0.58rem] tracking-[0.16em] text-[var(--signal-danger)] uppercase">
+                  Opponent Submission
+                </p>
+                <h3 className="mt-2 font-(--font-heading) text-3xl leading-none tracking-[-0.04em] text-(--on-background)">
+                  {selectedOpponentCodeRound.roundTitle}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedOpponentCodeRound(null)}
+                className="inline-flex min-h-10 items-center justify-center rounded-md border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.03)] px-4 text-sm font-semibold text-(--on-background) transition hover:border-[rgba(0,229,204,0.35)] hover:bg-[rgba(0,229,204,0.08)]"
+              >
+                Close
+              </button>
+            </div>
+
+            <pre className="mt-5 max-h-[70vh] overflow-auto rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(0,0,0,0.42)] p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 whitespace-pre-wrap break-words text-(--on-background)">
+              {selectedOpponentCodeRound.code}
+            </pre>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

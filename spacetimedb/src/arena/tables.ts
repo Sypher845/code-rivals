@@ -134,6 +134,7 @@ export const arena_round_result = table(
     totalTestcases: t.u64(),
     pointsEarned: t.u64(),
     createdAt: t.timestamp(),
+    submittedCode: t.string().optional(),
   },
 );
 

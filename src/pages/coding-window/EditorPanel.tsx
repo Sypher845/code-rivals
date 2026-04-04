@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { RotateCcw } from "lucide-react";
 import {
   EXECUTION_LANGUAGE_CONFIG,
-  LANGUAGES,
+  getEditorBoilerplate,
   type SupportedEditorLanguage,
 } from "./constants";
 import {
@@ -163,7 +163,6 @@ export function EditorPanel({
   onLanguageChange,
   onReset,
 }: EditorPanelProps) {
-  const [showLangMenu, setShowLangMenu] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
   const acceptedCodeRef = useRef(code);
@@ -181,11 +180,9 @@ export function EditorPanel({
   };
 
   const handleReset = () => {
-    acceptedCodeRef.current = EXECUTION_LANGUAGE_CONFIG[language].boilerplate;
+    acceptedCodeRef.current = getEditorBoilerplate(language);
     onReset();
   };
-
-  const availableLanguages = LANGUAGES;
 
   useEffect(() => {
     if (!monacoRef.current) {
@@ -200,7 +197,7 @@ export function EditorPanel({
       return;
     }
 
-    if (code !== EXECUTION_LANGUAGE_CONFIG[language].boilerplate) {
+    if (code !== getEditorBoilerplate(language)) {
       return;
     }
 
@@ -402,58 +399,17 @@ export function EditorPanel({
             Code
           </span>
 
-          {zenMode ? (
-            <div className="inline-flex items-center rounded-md border border-[#303030] bg-[#171717] px-3 py-2 text-sm font-medium text-[#c8c8c8]">
-              C++
-            </div>
-          ) : (
-            <div className="relative">
-              <button
-                onClick={() => setShowLangMenu(!showLangMenu)}
-                className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium transition ${
-                  editorThemeId === FLASHBANG_EDITOR_THEME_ID
-                    ? "border-[#fbf8f4] bg-white text-[#efebe6] hover:border-[#f6f2ed] hover:bg-[#fffefd]"
-                    : "border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)] hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.06)]"
-                }`}
-              >
-                Language
-                <svg className="h-3.5 w-3.5 opacity-50" viewBox="0 0 12 12">
-                  <path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                </svg>
-              </button>
-
-              {showLangMenu && (
-                <div
-                  className={`absolute left-0 top-full z-50 mt-1 min-w-[9rem] overflow-hidden rounded-lg border shadow-xl ${
-                    editorThemeId === FLASHBANG_EDITOR_THEME_ID
-                      ? "border-[#fbf8f4] bg-white"
-                      : "border-[var(--ghost-border)] bg-[#0d1017]"
-                  }`}
-                >
-                  {availableLanguages.map((lang) => (
-                    <button
-                      key={lang.value}
-                      onClick={() => {
-                        onLanguageChange(lang.value);
-                        setShowLangMenu(false);
-                      }}
-                      className={`block w-full px-4 py-2.5 text-left text-sm transition ${
-                        editorThemeId === FLASHBANG_EDITOR_THEME_ID
-                          ? lang.value === language
-                            ? "bg-[#fefcf9] text-[#e8e3dd]"
-                            : "text-[#f0ece7] hover:bg-[#fffefd]"
-                          : lang.value === language
-                            ? "bg-[rgba(224,141,255,0.1)] text-[var(--primary)]"
-                            : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)]"
-                      }`}
-                    >
-                      {lang.label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          <div
+            className={`inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium ${
+              editorThemeId === FLASHBANG_EDITOR_THEME_ID
+                ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                : zenMode
+                  ? "border-[#303030] bg-[#171717] text-[#c8c8c8]"
+                  : "border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)]"
+            }`}
+          >
+            C++
+          </div>
         </div>
 
         {/* right: reset only */}

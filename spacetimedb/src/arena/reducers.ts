@@ -1138,12 +1138,13 @@ export const trigger_arena_sabotage = spacetimedb.reducer(
 export const submit_round_result = spacetimedb.reducer(
   {
     roomId: t.string(),
+    submittedCode: t.string(),
     timeTakenSeconds: t.u64(),
     testcasesPassed: t.u64(),
     totalTestcases: t.u64(),
     pointsEarned: t.u64(),
   },
-  (ctx, { roomId, timeTakenSeconds, testcasesPassed, totalTestcases, pointsEarned: _pointsEarned }) => {
+  (ctx, { roomId, submittedCode, timeTakenSeconds, testcasesPassed, totalTestcases, pointsEarned: _pointsEarned }) => {
     requireSession(ctx);
     const normalizedRoomId = normalizeRoomId(roomId);
     const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
@@ -1200,6 +1201,7 @@ export const submit_round_result = spacetimedb.reducer(
       roomId: normalizedRoomId,
       playerIdentity: ctx.sender,
       roundNumber: room.currentRound,
+      submittedCode,
       powerUsed: playerState.powerupId,
       timeTakenSeconds: finalTimeTakenSeconds,
       testcasesPassed: finalTestcasesPassed,

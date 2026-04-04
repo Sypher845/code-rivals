@@ -21,4 +21,5 @@ export default __t.row({
   totalTestcases: __t.u64().name("total_testcases"),
   pointsEarned: __t.u64().name("points_earned"),
   createdAt: __t.timestamp().name("created_at"),
+  submittedCode: __t.option(__t.string()).name("submitted_code"),
 });

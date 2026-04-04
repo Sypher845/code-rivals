@@ -28,6 +28,15 @@ export function TestCasesPanel({
   const [activeCase, setActiveCase] = useState(0);
   const testCases = getParsedTestCases(problem);
   const hasRun = results.length > 0;
+  const resultCases = hasRun
+    ? results.map((result) => ({
+        label: result.label,
+        input: result.input,
+        expectedOutput: result.expectedOutput,
+      }))
+    : [];
+  const displayedCases =
+    activeMainTab === "result" && resultCases.length > 0 ? resultCases : testCases;
   const currentResult = results[activeCase] ?? null;
   const passedCount = results.filter((result) => result.passed).length;
   const failedCount = results.length - passedCount;
@@ -52,12 +61,12 @@ export function TestCasesPanel({
   }, [hasRun, results]);
 
   useEffect(() => {
-    if (activeCase >= testCases.length) {
+    if (activeCase >= displayedCases.length) {
       setActiveCase(0);
     }
-  }, [activeCase, testCases.length]);
+  }, [activeCase, displayedCases.length]);
 
-  const currentCase = testCases[activeCase] ?? PROBLEM.testCases[0];
+  const currentCase = displayedCases[activeCase] ?? PROBLEM.testCases[0];
 
   return (
     <div
