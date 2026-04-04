@@ -97,6 +97,38 @@ export const arena_round_result = table(
   },
 );
 
+export const arena_match_summary = table(
+  {
+    name: "arena_match_summary",
+    public: true,
+    indexes: [
+      {
+        accessor: "arena_match_summary_player_username_key",
+        name: "arena_match_summary_player_username_key",
+        algorithm: "btree",
+        columns: ["playerUsernameKey"],
+      },
+    ],
+  },
+  {
+    summaryKey: t.string().primaryKey(),
+    roomId: t.string(),
+    playerUsernameKey: t.string(),
+    playerUsername: t.string(),
+    opponentUsernameKey: t.string(),
+    opponentUsername: t.string(),
+    opponentEloBefore: t.u64(),
+    opponentLeague: t.string(),
+    winner: t.string(),
+    pointsScored: t.u64(),
+    deltaRating: t.i64(),
+    playerEloBefore: t.u64(),
+    playerEloAfter: t.u64(),
+    playerLeagueAfter: t.string(),
+    createdAt: t.timestamp(),
+  },
+);
+
 export const arena_room_timeout_job = table(
   {
     name: "arena_room_timeout_job",

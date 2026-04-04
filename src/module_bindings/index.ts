@@ -50,17 +50,33 @@ import UnlockArenaPowerupReducer from "./unlock_arena_powerup_reducer";
 // Import all procedure arg schemas
 
 // Import all table schema definitions
+import ArenaMatchSummaryRow from "./arena_match_summary_table";
 import ArenaPowerupLockRow from "./arena_powerup_lock_table";
 import ArenaRoomRow from "./arena_room_table";
 import ArenaRoomMemberRow from "./arena_room_member_table";
 import ArenaRoomNoticeRow from "./arena_room_notice_table";
 import ArenaRoundResultRow from "./arena_round_result_table";
 import AuthSessionRow from "./auth_session_table";
+import PlayerProfileRow from "./player_profile_table";
 
 /** Type-only namespace exports for generated type groups. */
 
 /** The schema information for all tables in this module. This is defined the same was as the tables would have been defined in the server. */
 const tablesSchema = __schema({
+  arenaMatchSummary: __table({
+    name: 'arena_match_summary',
+    indexes: [
+      { accessor: 'arena_match_summary_player_username_key', name: 'arena_match_summary_player_username_key_idx_btree', algorithm: 'btree', columns: [
+        'playerUsernameKey',
+      ] },
+      { accessor: 'summaryKey', name: 'arena_match_summary_summary_key_idx_btree', algorithm: 'btree', columns: [
+        'summaryKey',
+      ] },
+    ],
+    constraints: [
+      { name: 'arena_match_summary_summary_key_key', constraint: 'unique', columns: ['summaryKey'] },
+    ],
+  }, ArenaMatchSummaryRow),
   arenaPowerupLock: __table({
     name: 'arena_powerup_lock',
     indexes: [
@@ -137,6 +153,17 @@ const tablesSchema = __schema({
       { name: 'auth_session_session_identity_key', constraint: 'unique', columns: ['sessionIdentity'] },
     ],
   }, AuthSessionRow),
+  playerProfile: __table({
+    name: 'player_profile',
+    indexes: [
+      { accessor: 'usernameKey', name: 'player_profile_username_key_idx_btree', algorithm: 'btree', columns: [
+        'usernameKey',
+      ] },
+    ],
+    constraints: [
+      { name: 'player_profile_username_key_key', constraint: 'unique', columns: ['usernameKey'] },
+    ],
+  }, PlayerProfileRow),
 });
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */

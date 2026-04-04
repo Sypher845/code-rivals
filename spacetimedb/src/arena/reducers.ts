@@ -6,7 +6,9 @@ import {
   type ReducerCtx,
 } from "spacetimedb/server";
 import spacetimedb from "../schema";
+import { normalizeUsernameKey } from "../auth/validation";
 import {
+  arena_match_summary,
   arena_powerup_lock,
   arena_room_timeout_job,
   register_timeout_waiting_room_export,
@@ -173,6 +175,50 @@ function listRoundResults(ctx: ArenaReducerCtx, roomId: string) {
   return [...ctx.db.arenaRoundResult.arena_round_result_room_id.filter(roomId)];
 }
 
+function listMatchSummaries(ctx: ArenaReducerCtx, roomId: string) {
+  return [...ctx.db.arenaMatchSummary.iter()].filter(
+    (summary) => summary.roomId === roomId,
+  );
+}
+
+function getLeagueFromElo(eloRating: bigint) {
+  if (eloRating <= 500n) {
+    if (eloRating <= 200n) return "Bronze I";
+    if (eloRating <= 400n) return "Bronze II";
+    return "Bronze III";
+  }
+
+  if (eloRating <= 1000n) {
+    if (eloRating <= 700n) return "Silver I";
+    if (eloRating <= 900n) return "Silver II";
+    return "Silver III";
+  }
+
+  if (eloRating <= 1500n) {
+    if (eloRating <= 1200n) return "Gold I";
+    if (eloRating <= 1400n) return "Gold II";
+    return "Gold III";
+  }
+
+  if (eloRating <= 1700n) return "Diamond I";
+  if (eloRating <= 1900n) return "Diamond II";
+  return "Diamond III";
+}
+
+function calculateEloDelta(
+  playerEloRating: bigint,
+  opponentEloRating: bigint,
+  actualScore: number,
+) {
+  const ratingGap = Number(opponentEloRating - playerEloRating);
+  const expectedScore = 1 / (1 + 10 ** (ratingGap / 400));
+  return BigInt(Math.round(32 * (actualScore - expectedScore)));
+}
+
+function buildMatchSummaryKey(roomId: string, usernameKey: string) {
+  return `${roomId}:${usernameKey}`;
+}
+
 function upsertPlayerRoundState(
   ctx: ArenaReducerCtx,
   roomId: string,
@@ -227,6 +273,11 @@ function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
   const timeoutJobs = listRoomTimeoutJobs(ctx, roomId);
   for (const timeoutJob of timeoutJobs) {
     ctx.db.arenaRoomTimeoutJob.scheduledId.delete(timeoutJob.scheduledId);
+  }
+
+  const matchSummaries = listMatchSummaries(ctx, roomId);
+  for (const matchSummary of matchSummaries) {
+    ctx.db.arenaMatchSummary.summaryKey.delete(matchSummary.summaryKey);
   }
 
   ctx.db.arenaRoom.roomId.delete(roomId);
@@ -626,6 +677,163 @@ export const submit_round_result = spacetimedb.reducer(
     }
 
     if (room.currentRound >= TOTAL_ROUNDS) {
+      const roomMembers = listRoomMembers(ctx, normalizedRoomId);
+      const allRoundResults = listRoundResults(ctx, normalizedRoomId);
+      const [playerOne, playerTwo] = roomMembers;
+
+      if (playerOne && playerTwo) {
+        const playerOneUsernameKey = normalizeUsernameKey(playerOne.memberName);
+        const playerTwoUsernameKey = normalizeUsernameKey(playerTwo.memberName);
+        const playerOneProfile =
+          ctx.db.playerProfile.usernameKey.find(playerOneUsernameKey);
+        const playerTwoProfile =
+          ctx.db.playerProfile.usernameKey.find(playerTwoUsernameKey);
+
+        if (playerOneProfile && playerTwoProfile) {
+          const playerOneResults = allRoundResults.filter((result) =>
+            result.playerIdentity.isEqual(playerOne.memberIdentity),
+          );
+          const playerTwoResults = allRoundResults.filter((result) =>
+            result.playerIdentity.isEqual(playerTwo.memberIdentity),
+          );
+
+          const aggregate = (
+            results: typeof playerOneResults,
+          ) =>
+            results.reduce(
+              (accumulator, resultRow) => ({
+                points: accumulator.points + resultRow.pointsEarned,
+                testsPassed: accumulator.testsPassed + resultRow.testcasesPassed,
+                totalTests: accumulator.totalTests + resultRow.totalTestcases,
+                durationSeconds:
+                  accumulator.durationSeconds + resultRow.timeTakenSeconds,
+              }),
+              {
+                points: 0n,
+                testsPassed: 0n,
+                totalTests: 0n,
+                durationSeconds: 0n,
+              },
+            );
+
+          const playerOneAggregate = aggregate(playerOneResults);
+          const playerTwoAggregate = aggregate(playerTwoResults);
+
+          let playerOneActualScore = 0.5;
+          let playerTwoActualScore = 0.5;
+
+          if (playerOneAggregate.points > playerTwoAggregate.points) {
+            playerOneActualScore = 1;
+            playerTwoActualScore = 0;
+          } else if (playerOneAggregate.points < playerTwoAggregate.points) {
+            playerOneActualScore = 0;
+            playerTwoActualScore = 1;
+          } else if (playerOneAggregate.testsPassed > playerTwoAggregate.testsPassed) {
+            playerOneActualScore = 1;
+            playerTwoActualScore = 0;
+          } else if (playerOneAggregate.testsPassed < playerTwoAggregate.testsPassed) {
+            playerOneActualScore = 0;
+            playerTwoActualScore = 1;
+          } else if (
+            playerOneAggregate.durationSeconds < playerTwoAggregate.durationSeconds
+          ) {
+            playerOneActualScore = 1;
+            playerTwoActualScore = 0;
+          } else if (
+            playerOneAggregate.durationSeconds > playerTwoAggregate.durationSeconds
+          ) {
+            playerOneActualScore = 0;
+            playerTwoActualScore = 1;
+          }
+
+          const playerOneDelta = calculateEloDelta(
+            playerOneProfile.eloRating,
+            playerTwoProfile.eloRating,
+            playerOneActualScore,
+          );
+          const playerTwoDelta = calculateEloDelta(
+            playerTwoProfile.eloRating,
+            playerOneProfile.eloRating,
+            playerTwoActualScore,
+          );
+
+          const playerOneNextElo =
+            playerOneProfile.eloRating + playerOneDelta < 0n
+              ? 0n
+              : playerOneProfile.eloRating + playerOneDelta;
+          const playerTwoNextElo =
+            playerTwoProfile.eloRating + playerTwoDelta < 0n
+              ? 0n
+              : playerTwoProfile.eloRating + playerTwoDelta;
+
+          ctx.db.playerProfile.usernameKey.update({
+            ...playerOneProfile,
+            eloRating: playerOneNextElo,
+            matchesPlayed: playerOneProfile.matchesPlayed + 1n,
+            wins:
+              playerOneActualScore === 1
+                ? playerOneProfile.wins + 1n
+                : playerOneProfile.wins,
+            losses:
+              playerOneActualScore === 0
+                ? playerOneProfile.losses + 1n
+                : playerOneProfile.losses,
+            updatedAt: ctx.timestamp,
+          });
+
+          ctx.db.playerProfile.usernameKey.update({
+            ...playerTwoProfile,
+            eloRating: playerTwoNextElo,
+            matchesPlayed: playerTwoProfile.matchesPlayed + 1n,
+            wins:
+              playerTwoActualScore === 1
+                ? playerTwoProfile.wins + 1n
+                : playerTwoProfile.wins,
+            losses:
+              playerTwoActualScore === 0
+                ? playerTwoProfile.losses + 1n
+                : playerTwoProfile.losses,
+            updatedAt: ctx.timestamp,
+          });
+
+          ctx.db.arenaMatchSummary.insert({
+            summaryKey: buildMatchSummaryKey(normalizedRoomId, playerOneUsernameKey),
+            roomId: normalizedRoomId,
+            playerUsernameKey: playerOneUsernameKey,
+            playerUsername: playerOne.memberName,
+            opponentUsernameKey: playerTwoUsernameKey,
+            opponentUsername: playerTwo.memberName,
+            opponentEloBefore: playerTwoProfile.eloRating,
+            opponentLeague: getLeagueFromElo(playerTwoProfile.eloRating),
+            winner: playerOneActualScore === 1 ? "user" : playerOneActualScore === 0 ? "opponent" : "draw",
+            pointsScored: playerOneAggregate.points,
+            deltaRating: playerOneDelta,
+            playerEloBefore: playerOneProfile.eloRating,
+            playerEloAfter: playerOneNextElo,
+            playerLeagueAfter: getLeagueFromElo(playerOneNextElo),
+            createdAt: ctx.timestamp,
+          });
+
+          ctx.db.arenaMatchSummary.insert({
+            summaryKey: buildMatchSummaryKey(normalizedRoomId, playerTwoUsernameKey),
+            roomId: normalizedRoomId,
+            playerUsernameKey: playerTwoUsernameKey,
+            playerUsername: playerTwo.memberName,
+            opponentUsernameKey: playerOneUsernameKey,
+            opponentUsername: playerOne.memberName,
+            opponentEloBefore: playerOneProfile.eloRating,
+            opponentLeague: getLeagueFromElo(playerOneProfile.eloRating),
+            winner: playerTwoActualScore === 1 ? "user" : playerTwoActualScore === 0 ? "opponent" : "draw",
+            pointsScored: playerTwoAggregate.points,
+            deltaRating: playerTwoDelta,
+            playerEloBefore: playerTwoProfile.eloRating,
+            playerEloAfter: playerTwoNextElo,
+            playerLeagueAfter: getLeagueFromElo(playerTwoNextElo),
+            createdAt: ctx.timestamp,
+          });
+        }
+      }
+
       ctx.db.arenaRoom.roomId.update({
         ...room,
         matchState: "finished",

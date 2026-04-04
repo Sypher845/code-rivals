@@ -23,3 +23,16 @@ export const auth_session = table(
     lastSeenAt: t.timestamp(),
   },
 );
+
+export const player_profile = table(
+  { name: "player_profile", public: true },
+  {
+    usernameKey: t.string().primaryKey().unique(),
+    username: t.string(),
+    eloRating: t.u64(),
+    matchesPlayed: t.u64(),
+    wins: t.u64(),
+    losses: t.u64(),
+    updatedAt: t.timestamp(),
+  },
+);
