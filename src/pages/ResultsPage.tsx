@@ -7,14 +7,14 @@ import {
   Target,
   TestTubeDiagonal,
 } from "lucide-react";
-import { useReducer, useSpacetimeDB, useTable } from "spacetimedb/react";
+import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import {
   arenaActionClass,
   panelFrameClass,
   panelNoiseClass,
 } from "../components/uiClasses";
-import { getAdjacentLeaguesForElo } from "../lib/ranking";
-import { reducers, tables } from "../module_bindings";
+import { getAdjacentLeaguesForElo, getLeagueInfoFromElo } from "../lib/ranking";
+import { tables } from "../module_bindings";
 
 type RoundResult = {
   roundNumber: number;
@@ -47,6 +47,14 @@ type LeagueProgressConfig = {
   nextRating: number;
   delta: number;
   progressPercent: number;
+};
+
+type LeagueTransitionConfig = {
+  previousLeague: string;
+  nextLeague: string;
+  previousRating: number;
+  nextRating: number;
+  delta: number;
 };
 
 function formatDuration(totalSeconds: number) {
@@ -109,6 +117,19 @@ function getLeagueProgress(
   };
 }
 
+function getLeagueTransition(
+  previousRating: number,
+  nextRating: number,
+): LeagueTransitionConfig {
+  return {
+    previousLeague: getLeagueInfoFromElo(previousRating).league,
+    nextLeague: getLeagueInfoFromElo(nextRating).league,
+    previousRating,
+    nextRating,
+    delta: nextRating - previousRating,
+  };
+}
+
 function getRoundTitle(roundNumber: number) {
   if (roundNumber === 1) return "Round 1 / Warmup Breach";
   if (roundNumber === 2) return "Round 2 / Pressure Spike";
@@ -122,12 +143,10 @@ export function ResultsPage() {
   const { username = "player", roomSegment } = useParams();
   const roomId = roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? "";
   const [isContinuing, setIsContinuing] = useState(false);
-  const continueAfterArenaMatch = useReducer(reducers.continueAfterArenaMatch);
 
   const [sessionRows] = useTable(tables.authSession);
   const [playerProfileRows] = useTable(tables.playerProfile);
   const [matchSummaryRows] = useTable(tables.arenaMatchSummary);
-  const [matchContinueRows] = useTable(tables.arenaMatchContinue);
   const [roundResultRows] = useTable(tables.arenaRoundResult);
   const [roomMemberRows] = useTable(tables.arenaRoomMember);
 
@@ -146,12 +165,6 @@ export function ResultsPage() {
   );
   const opponentProfile = playerProfileRows.find(
     (row) => row.username === opponentName,
-  );
-  const roomContinueRows = matchContinueRows.filter((row) => row.roomId === roomId);
-  const continuedCount = roomContinueRows.length;
-  const totalPlayers = roomMembers.length;
-  const hasCurrentPlayerContinued = roomContinueRows.some((row) =>
-    identity ? row.playerIdentity.isEqual(identity) : false,
   );
 
   const playerSummary = matchSummaryRows.find(
@@ -290,6 +303,14 @@ export function ResultsPage() {
       opponentSummary?.playerEloAfter ?? opponentProfile?.eloRating ?? 400n,
     ),
   );
+  const opponentLeagueTransition = getLeagueTransition(
+    Number(
+      opponentSummary?.playerEloBefore ?? opponentProfile?.eloRating ?? 400n,
+    ),
+    Number(
+      opponentSummary?.playerEloAfter ?? opponentProfile?.eloRating ?? 400n,
+    ),
+  );
 
   const missionLabel = isVictory ? "Mission Accomplished" : "Mission Failed";
   const heroSubtitle = isVictory
@@ -321,9 +342,6 @@ export function ResultsPage() {
 
     try {
       setIsContinuing(true);
-
-      await continueAfterArenaMatch({ roomId });
-
       navigate(`/${encodeURIComponent(playerName)}`);
     } finally {
       setIsContinuing(false);
@@ -380,8 +398,8 @@ export function ResultsPage() {
                   {opponentName}
                 </p>
                 <p className="mt-3 text-sm text-[rgba(241,243,252,0.66)]">
-                  {opponentLeagueProgress.previousLeague} to{" "}
-                  {opponentLeagueProgress.nextLeague}
+                  {opponentLeagueTransition.previousLeague} to{" "}
+                  {opponentLeagueTransition.nextLeague}
                 </p>
               </div>
 
@@ -418,14 +436,24 @@ export function ResultsPage() {
                   </div>
 
                   <div
-                    className={`rounded-full border px-3 py-1.5 font-(--font-mono) text-[0.72rem] tracking-[0.16em] uppercase ${
-                      leagueProgress.delta >= 0
-                        ? "border-[rgba(124,216,124,0.28)] bg-[rgba(124,216,124,0.1)] text-[var(--signal-success)]"
-                        : "border-[rgba(255,112,112,0.28)] bg-[rgba(255,112,112,0.1)] text-[var(--signal-danger)]"
-                    }`}
+                    className="flex items-center gap-3"
                   >
-                    {leagueProgress.delta >= 0 ? "+" : ""}
-                    {leagueProgress.delta} ELO
+                    <span className="font-(--font-mono) text-[0.72rem] tracking-[0.12em] text-[rgba(241,243,252,0.62)] uppercase">
+                      New Rating:
+                    </span>
+                    <span className="font-(--font-heading) text-2xl leading-none text-(--on-background)">
+                      {leagueProgress.nextRating}
+                    </span>
+                    <span
+                      className={`rounded-full border px-3 py-1.5 font-(--font-mono) text-[0.72rem] tracking-[0.16em] uppercase ${
+                        leagueProgress.delta >= 0
+                          ? "border-[rgba(124,216,124,0.28)] bg-[rgba(124,216,124,0.1)] text-[var(--signal-success)]"
+                          : "border-[rgba(255,112,112,0.28)] bg-[rgba(255,112,112,0.1)] text-[var(--signal-danger)]"
+                      }`}
+                    >
+                      {leagueProgress.delta >= 0 ? "+" : ""}
+                      {leagueProgress.delta} ELO
+                    </span>
                   </div>
 
                   <div className="text-right">
@@ -480,14 +508,6 @@ export function ResultsPage() {
                     </span>
                     <span className="font-(--font-mono) text-[rgba(241,243,252,0.42)]">
                       {leagueProgress.currentLeagueMaxElo}
-                    </span>
-                    <span
-                      className="absolute left-0 top-0 -translate-x-1/2 -translate-y-[0.15rem] font-(--font-mono) text-[var(--signal-success)]"
-                      style={{
-                        left: `clamp(10px, ${leagueProgress.progressPercent}%, calc(100% - 10px))`,
-                      }}
-                    >
-                      {leagueProgress.nextRating}
                     </span>
                   </div>
                 </div>
@@ -754,11 +774,6 @@ export function ResultsPage() {
               Share Log
             </button>
           </div>
-          <p className="mt-4 font-(--font-mono) text-[0.7rem] tracking-[0.14em] text-[rgba(241,243,252,0.48)] uppercase">
-            {hasCurrentPlayerContinued
-              ? `${continuedCount}/${Math.max(totalPlayers, 1)} players confirmed results`
-              : "Room closes after both players press continue"}
-          </p>
         </section>
       </div>
     </div>

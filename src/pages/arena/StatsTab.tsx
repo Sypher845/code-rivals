@@ -83,11 +83,9 @@ export function StatsTab() {
             <div className="space-y-2.5">
               <p className="text-[0.7rem] font-medium tracking-[0.14em] text-[rgba(241,243,252,0.56)] uppercase">Win Streak</p>
               <p className="text-5xl font-bold tracking-tight text-(--on-background)">{winStreak}</p>
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className={winStreak > 0 ? "text-(--signal-success)" : "text-[rgba(241,243,252,0.52)]"}>
-                  {winStreak > 0 ? `${winStreak} straight wins` : "No active streak"}
-                </span>
-              </div>
+              <p className={`text-xs uppercase tracking-[0.14em] ${winStreak > 0 ? "text-(--signal-success)" : "text-[rgba(241,243,252,0.52)]"}`}>
+                straight wins
+              </p>
             </div>
             <div className="grid h-10 w-10 place-items-center rounded-xl bg-[rgba(241,243,252,0.06)] text-[rgba(241,243,252,0.42)] transition group-hover:bg-[rgba(0,229,204,0.12)] group-hover:text-(--arena-accent)"><Target className="h-5 w-5" /></div>
           </div>

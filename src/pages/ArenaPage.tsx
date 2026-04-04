@@ -60,22 +60,6 @@ export function ArenaPage({
   const myElo = Number(myProfile?.eloRating ?? 400n);
   const myLeague = getLeagueFromElo(myElo);
   const myDivision = myLeague.split(" ")[1] ?? "I";
-  const leaderboardRank =
-    playerProfileRows
-      .slice()
-      .sort((left, right) => Number(right.eloRating - left.eloRating))
-      .findIndex((profile) => profile.username === username) + 1;
-  const percentile =
-    playerProfileRows.length > 0
-      ? Math.max(
-          1,
-          Math.round(
-            ((playerProfileRows.length - Math.max(leaderboardRank - 1, 0)) /
-              playerProfileRows.length) *
-              100,
-          ),
-        )
-      : 100;
   const winRate =
     Number(myProfile?.matchesPlayed ?? 0n) > 0
       ? Math.round(
@@ -289,10 +273,6 @@ export function ArenaPage({
                     <span className="text-[rgba(241,243,252,0.4)]">|</span>
                     <span className="font-(--font-mono) text-3xl text-(--arena-accent)">
                       {myElo.toLocaleString()} ELO
-                    </span>
-                    <span className="text-[rgba(241,243,252,0.4)]">|</span>
-                    <span className="text-sm text-[rgba(241,243,252,0.56)]">
-                      Top {percentile}%
                     </span>
                   </div>
                 </div>
