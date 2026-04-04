@@ -213,20 +213,20 @@ export function ArenaPage({
               onClick={() =>
                 navigate(zenModeActive ? `/${encodeURIComponent(username)}` : zenModePath)
               }
-              className="inline-flex items-center p-0.5 transition"
+              className="inline-flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
             >
+              <Moon className="h-4 w-4" />
+              <span className="text-xs font-medium">Zen</span>
               <span
                 className={`relative inline-flex h-7 w-14 items-center rounded-full transition ${
                   zenModeActive ? "bg-[rgba(224,224,224,0.75)]" : "bg-[rgba(255,255,255,0.12)]"
                 }`}
               >
                 <span
-                  className={`absolute grid h-6 w-6 place-items-center rounded-full bg-[#e6e6e6] transition ${
+                  className={`absolute h-6 w-6 rounded-full bg-[#e6e6e6] transition ${
                     zenModeActive ? "right-0.5" : "left-0.5"
                   }`}
-                >
-                  <Moon className="h-3.5 w-3.5 text-[rgba(8,9,10,0.82)]" />
-                </span>
+                />
               </span>
             </button>
 
@@ -274,9 +274,7 @@ export function ArenaPage({
                 </div>
 
                 <div className="pt-1">
-                  <p className="font-(--font-mono) text-[0.62rem] tracking-[0.24em] text-[rgba(241,243,252,0.52)] uppercase">
-                    /{username}
-                  </p>
+                  
                   <h1 className="mt-1 font-(--font-heading) text-4xl tracking-[0.01em] text-(--on-background)">
                     Ready for battle,{" "}
                     <span className="text-(--arena-accent)">{username}</span>?

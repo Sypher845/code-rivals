@@ -329,6 +329,7 @@ export function CodingWindowPage() {
   const [problemRequestError, setProblemRequestError] = useState<string | null>(null);
   const [zenProblemJson, setZenProblemJson] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [zenToastMessage, setZenToastMessage] = useState<string | null>(null);
   const [isZenMode, setIsZenMode] = useState(zenRequested);
   const [zenSelfSabotageEnabled, setZenSelfSabotageEnabled] = useState(false);
   const [zenRoundNumber, setZenRoundNumber] = useState(fallbackRoundNumber);
@@ -1331,22 +1332,31 @@ export function CodingWindowPage() {
     void handleSubmit();
   }, [handleSubmit, isZenMode, zenRoundStage, zenSecondsRemaining]);
 
+  useEffect(() => {
+    if (!isZenMode || !statusMessage) {
+      return;
+    }
+
+    setZenToastMessage(statusMessage);
+    const timeoutId = window.setTimeout(() => {
+      setZenToastMessage(null);
+    }, 2800);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isZenMode, statusMessage]);
+
   const topBarStatusMessage = isZenMode
     ? zenRoundStage === "finished"
-      ? "Three quiet rounds completed."
+      ? null
       : zenRoundStage === "intro"
-        ? zenSelfSabotageEnabled
-          ? "Zen Mode is ready. A random self-sabotage will apply when the round starts."
-          : "Zen Mode is ready. Start whenever you want."
+        ? null
         : zenRoundStage === "submitted"
-          ? judgeResult
-            ? zenRoundNumber >= 3
-              ? `${judgeResult.passedCount}/${judgeResult.totalCount} testcases passed. Finish practice when you're ready.`
-              : `${judgeResult.passedCount}/${judgeResult.totalCount} testcases passed. Move to the next question when you're ready.`
-            : "Submission complete. Move on when you're ready."
+          ? null
         : zenAssignedSabotageId
-          ? `${formatPowerupName(zenAssignedSabotageId)} is active for this round.`
-          : statusMessage ?? "Zen round is live."
+          ? null
+          : null
     : !normalizedRoomId
       ? statusMessage ??
         "Testing mode: run or submit code against the current problem at /coding-window."
@@ -1383,6 +1393,14 @@ export function CodingWindowPage() {
       className="flex h-screen flex-col overflow-hidden"
       style={{ background: isZenMode ? "#0d0d0d" : P.bg }}
     >
+      {isZenMode && zenToastMessage ? (
+        <div className="pointer-events-none fixed top-22 right-6 z-120">
+          <div className="rounded-xl border border-[#353535] bg-[#121212] px-4 py-2.5 text-sm text-[#e0e0e0] shadow-[0_18px_48px_rgba(0,0,0,0.55)]">
+            {zenToastMessage}
+          </div>
+        </div>
+      ) : null}
+
       {/* ambient glow background */}
       {!isZenMode ? (
         <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_10%,rgba(0,255,255,0.06),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(224,141,255,0.07),transparent_24%)]" />

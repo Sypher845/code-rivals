@@ -109,9 +109,11 @@ function OpponentCard({
       </div>
 
       <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-semibold text-[var(--on-background)]">
-          {zenMode ? "Zen Practice" : username}
-        </span>
+        {!zenMode ? (
+          <span className="text-sm font-semibold text-[var(--on-background)]">
+            {username}
+          </span>
+        ) : null}
 
         {activeDebuffLabel ? (
           <span className="text-xs text-[#ffd27a]">
@@ -125,11 +127,7 @@ function OpponentCard({
         ) : null}
 
         <div className="flex items-center gap-2.5">
-          {zenMode && (
-            <span className="inline-flex items-center rounded-full border border-[#3a3a3a] bg-[#1a1a1a] px-2 py-0.5 text-[0.7rem] font-medium text-[#b8b8b8]">
-              Solo run
-            </span>
-          )}
+            
           {/* typing indicator */}
           {!zenMode && isTyping && (
             <span className="inline-flex items-center gap-1 text-xs text-[var(--secondary)]">
@@ -294,24 +292,35 @@ export function TopBar({
 }: TopBarProps) {
   return (
     <nav
-      className={`flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b px-6 py-3 ${
+      className={`flex min-h-16 shrink-0 items-center justify-between gap-3 border-b px-6 py-3 ${
         zenMode
           ? "border-[#2b2b2b] bg-[#101010]"
-          : "border-[var(--ghost-border)] bg-[rgba(10,14,20,0.96)]"
+          : "flex-wrap border-[var(--ghost-border)] bg-[rgba(10,14,20,0.96)]"
       }`}
     >
+      <div
+        className={`mx-auto flex w-full items-center justify-between gap-3 ${
+          zenMode ? "relative flex-wrap" : "flex-wrap"
+        }`}
+      >
       {/* LEFT — Opponent status card */}
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-        <OpponentCard
-          activeDebuffLabel={opponentActiveDebuffLabel}
-          activeDebuffSecondsRemaining={opponentActiveDebuffSecondsRemaining}
-          activeDebuffUsesRoundTimer={opponentActiveDebuffUsesRoundTimer}
-          cardUsed={opponentCardUsed}
-          hasSubmitted={opponentHasSubmitted}
-          isTyping={opponentIsTyping}
-          username={opponentName}
-          zenMode={zenMode}
-        />
+      <div
+        className={`flex min-w-0 flex-1 items-center gap-3 ${
+          zenMode ? "overflow-hidden" : "flex-wrap"
+        }`}
+      >
+        {!zenMode ? (
+          <OpponentCard
+            activeDebuffLabel={opponentActiveDebuffLabel}
+            activeDebuffSecondsRemaining={opponentActiveDebuffSecondsRemaining}
+            activeDebuffUsesRoundTimer={opponentActiveDebuffUsesRoundTimer}
+            cardUsed={opponentCardUsed}
+            hasSubmitted={opponentHasSubmitted}
+            isTyping={opponentIsTyping}
+            username={opponentName}
+            zenMode={zenMode}
+          />
+        ) : null}
         <div
           className={`rounded-lg border px-3 py-2 text-xs uppercase tracking-[0.16em] ${
             zenMode
@@ -324,7 +333,11 @@ export function TopBar({
       </div>
 
       {/* CENTER — Timer */}
-      <div className="flex items-center justify-center px-6">
+      <div
+        className={`flex shrink-0 items-center justify-center px-6 ${
+          zenMode ? "absolute left-1/2 -translate-x-1/2" : ""
+        }`}
+      >
         <MatchTimer secondsRemaining={secondsRemaining} zenMode={zenMode} />
       </div>
 
@@ -335,14 +348,24 @@ export function TopBar({
             type="button"
             role="switch"
             aria-checked={zenMode}
-            aria-label="Disable Zen Mode"
+            aria-label={zenMode ? "Disable Zen Mode" : "Enable Zen Mode"}
             onClick={onToggleZenMode}
-            className="inline-flex items-center gap-2 rounded-lg border border-[#2b2b2b] px-3 py-1.5 text-[#efefef] transition hover:border-[#454545]"
+            className="inline-flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
           >
             <Moon className="h-4 w-4" />
             <span className="text-xs font-medium">Zen</span>
-            <span className="relative inline-flex h-5 w-9 items-center rounded-full bg-[rgba(224,224,224,0.75)] transition">
-              <span className="absolute right-0.5 h-4 w-4 rounded-full bg-[#e6e6e6] transition" />
+            <span
+              className={`relative inline-flex h-7 w-14 items-center rounded-full transition ${
+                zenMode
+                  ? "bg-[rgba(224,224,224,0.75)]"
+                  : "bg-[rgba(255,255,255,0.12)]"
+              }`}
+            >
+              <span
+                className={`absolute h-6 w-6 rounded-full bg-[#e6e6e6] transition ${
+                  zenMode ? "right-0.5" : "left-0.5"
+                }`}
+              />
             </span>
           </button>
         ) : null}
@@ -351,7 +374,7 @@ export function TopBar({
           <button
             type="button"
             onClick={onToggleZenSelfSabotage}
-            className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition ${
+            className={`inline-flex items-center gap-2 whitespace-nowrap rounded-lg border px-4 py-2 text-sm font-medium transition ${
               zenSelfSabotageEnabled
                 ? "border-[#5a5a5a] bg-[#232323] text-[#efefef]"
                 : "border-[#2b2b2b] bg-[#181818] text-[#9f9f9f] hover:border-[#4a4a4a] hover:text-[#efefef]"
@@ -424,6 +447,7 @@ export function TopBar({
               : ""}
         </div>
       ) : null}
+      </div>
     </nav>
   );
 }

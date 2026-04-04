@@ -116,15 +116,7 @@ export function CTASection({ isAuthenticated, username }: CTASectionProps) {
             <Swords className="h-4 w-4" />
             <span>{footerCtaLabel}</span>
           </Link>
-          <Link
-            to={isAuthenticated ? userArenaPath : "/login"}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-subtle)] px-5 text-sm text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:bg-[var(--surface-elevated)] hover:text-[var(--on-background)]"
-          >
-            <Play className="h-4 w-4" />
-            <span>
-              {isAuthenticated ? "View lobby" : "Watch a match first"}
-            </span>
-          </Link>
+          
         </div>
       </div>
     </section>
@@ -138,17 +130,6 @@ export function Footer() {
         <div className="flex items-center gap-3 text-sm text-[var(--text-tertiary)]">
           <BrandMark />
           <span>CodeRivals · © 2026</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          {["Privacy", "Terms", "GitHub", "Discord"].map((link) => (
-            <a
-              key={link}
-              href="#"
-              className="text-sm text-[var(--text-tertiary)] transition hover:text-[var(--text-secondary)]"
-            >
-              {link}
-            </a>
-          ))}
         </div>
       </div>
     </footer>
