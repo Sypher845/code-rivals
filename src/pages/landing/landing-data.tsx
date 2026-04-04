@@ -187,7 +187,7 @@ export const powers: Power[] = [
   {
     name: "Mirror Shield",
     description:
-      "Blocks all incoming sabotage. Their attacks bounce right off you.",
+      "Activates silently from round start and reflects incoming sabotage back onto the attacker.",
     tag: "Defense",
     tagClassName:
       "border-[rgba(77,143,255,0.18)] bg-[rgba(77,143,255,0.1)] text-[var(--tertiary)]",

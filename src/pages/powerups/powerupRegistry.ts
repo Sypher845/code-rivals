@@ -37,7 +37,8 @@ export const POWER_CARD_REGISTRY: Record<string, Omit<PowerupDescriptor, "id">> 
   },
   MirrorShieldCard: {
     Card: MirrorShieldCard,
-    description: "Blocks all incoming sabotage. Their attacks bounce right off you.",
+    description:
+      "Activates from round start without revealing itself. Any sabotage the opponent sends gets reflected back onto them.",
   },
   NoMistakesCard: {
     Card: NoMistakesCard,

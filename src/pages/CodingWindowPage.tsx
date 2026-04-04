@@ -11,7 +11,6 @@ import { reducers, tables } from "../module_bindings";
 import type { ArenaSabotageEvent } from "../module_bindings/types";
 import {
   formatPowerupName,
-  getPassiveTimePenaltySeconds,
   powerupRequiresManualActivation,
   resolvePowerupEffect,
   type ResolvedPowerupEffect,
@@ -242,13 +241,6 @@ export function CodingWindowPage() {
 
     return roomLocks.find((lock) => !lock.playerIdentity.isEqual(identity)) ?? null;
   }, [identity, roomLocks]);
-  const passiveTimePenaltySeconds =
-    opponentRoundState?.hasLockedPower && opponentRoundState.powerupId
-      ? getPassiveTimePenaltySeconds(
-          opponentRoundState.powerupId,
-          activeRoundNumber,
-        )
-      : 0;
   const opponentMember = useMemo(() => {
     if (!identity) {
       return null;
@@ -271,16 +263,15 @@ export function CodingWindowPage() {
     myRoundStartMs !== null && myBaseRoundDeadlineMs !== null
       ? Math.max(0, Math.floor((myBaseRoundDeadlineMs - myRoundStartMs) / 1000))
       : baseRoundDurationSeconds;
-  const effectiveRoundDurationSeconds = Math.max(
-    0,
-    myBaseRoundDurationSeconds - passiveTimePenaltySeconds,
-  );
+  const effectiveRoundDurationSeconds = myBaseRoundDurationSeconds;
   const personalRoundDeadlineMs =
-    myRoundStartMs !== null && activeRoom?.matchState === "playing"
-      ? myRoundStartMs + effectiveRoundDurationSeconds * 1000
-      : roundStartMs !== null && activeRoom?.matchState === "playing"
-        ? roundStartMs + effectiveRoundDurationSeconds * 1000
-        : null;
+    myBaseRoundDeadlineMs !== null && activeRoom?.matchState === "playing"
+      ? myBaseRoundDeadlineMs
+      : myRoundStartMs !== null && activeRoom?.matchState === "playing"
+        ? myRoundStartMs + effectiveRoundDurationSeconds * 1000
+        : roundStartMs !== null && activeRoom?.matchState === "playing"
+          ? roundStartMs + effectiveRoundDurationSeconds * 1000
+          : null;
   const roundDeadlineMs =
     sharedRoundDeadlineMs === null
       ? personalRoundDeadlineMs
@@ -675,9 +666,6 @@ export function CodingWindowPage() {
       : myRoundState?.hasSubmitted
         ? "Submission synced. Redirecting when the room advances."
         : statusMessage ??
-          (passiveTimePenaltySeconds > 0
-            ? `Time Kum is active. ${Math.floor(passiveTimePenaltySeconds / 60)} minute${passiveTimePenaltySeconds === 60 ? "" : "s"} removed from your timer.`
-            : null) ??
           (latestIncomingSabotage
             ? `Incoming sabotage queued: ${formatPowerupName(latestIncomingSabotage.powerupId)}.`
             : null);

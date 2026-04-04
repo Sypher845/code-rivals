@@ -34,6 +34,8 @@ const ROUND_ONE_TIME_HEIST_MICROS = 90n * 1_000_000n;
 const ROUND_TWO_TIME_HEIST_MICROS = 150n * 1_000_000n;
 const ROUND_THREE_TIME_HEIST_MICROS = 210n * 1_000_000n;
 const TIME_HEIST_POWERUP_ID = "TimeHeistCard";
+const TIME_KUM_POWERUP_ID = "TimeKumCard";
+const MIRROR_SHIELD_POWERUP_ID = "MirrorShieldCard";
 
 const POWER_CARD_NAMES = [
   "FlashbangCard",
@@ -107,7 +109,15 @@ function getTimeHeistMicros(roundNumber: bigint) {
 }
 
 function appliesPowerupAtRoundStart(powerupId: string | undefined) {
-  return powerupId === TIME_HEIST_POWERUP_ID;
+  return (
+    powerupId === TIME_HEIST_POWERUP_ID ||
+    powerupId === TIME_KUM_POWERUP_ID ||
+    powerupId === MIRROR_SHIELD_POWERUP_ID
+  );
+}
+
+function hasMirrorShieldActive(powerupId: string | undefined, hasLockedPower: boolean) {
+  return hasLockedPower && powerupId === MIRROR_SHIELD_POWERUP_ID;
 }
 
 function getRoundDurationSeconds(roundNumber: bigint) {
@@ -154,15 +164,17 @@ function getEffectiveRoundDurationSeconds(
     (lock) => !lock.playerIdentity.isEqual(playerIdentity),
   );
 
+  if (playerSpecificDurationSeconds !== undefined) {
+    return playerSpecificDurationSeconds;
+  }
+
   if (opponentState?.powerupId !== "TimeKumCard") {
-    return playerSpecificDurationSeconds ?? baseRoundDurationSeconds;
+    return baseRoundDurationSeconds;
   }
 
   const penaltySeconds = getTimeKumPenaltySeconds(roundNumber);
-  const effectiveBaseDuration =
-    playerSpecificDurationSeconds ?? baseRoundDurationSeconds;
-  return effectiveBaseDuration > penaltySeconds
-    ? effectiveBaseDuration - penaltySeconds
+  return baseRoundDurationSeconds > penaltySeconds
+    ? baseRoundDurationSeconds - penaltySeconds
     : 0n;
 }
 
@@ -771,14 +783,29 @@ export const begin_playing_round = spacetimedb.reducer(
     let playerOneBonusMicros = 0n;
     let playerTwoBonusMicros = 0n;
     const timeHeistMicros = getTimeHeistMicros(room.currentRound);
+    const timeKumMicros =
+      getTimeKumPenaltySeconds(room.currentRound) * 1_000_000n;
+    const playerOneHasMirrorShield = hasMirrorShieldActive(
+      playerOneState?.powerupId,
+      playerOneState?.hasLockedPower ?? false,
+    );
+    const playerTwoHasMirrorShield = hasMirrorShieldActive(
+      playerTwoState?.powerupId,
+      playerTwoState?.hasLockedPower ?? false,
+    );
 
     if (
       playerOneState?.hasLockedPower &&
       appliesPowerupAtRoundStart(playerOneState.powerupId) &&
       playerOneState.powerupId === TIME_HEIST_POWERUP_ID
     ) {
-      playerOneBonusMicros += timeHeistMicros;
-      playerTwoBonusMicros -= timeHeistMicros;
+      if (playerTwoHasMirrorShield) {
+        playerOneBonusMicros -= timeHeistMicros;
+        playerTwoBonusMicros += timeHeistMicros;
+      } else {
+        playerOneBonusMicros += timeHeistMicros;
+        playerTwoBonusMicros -= timeHeistMicros;
+      }
     }
 
     if (
@@ -786,8 +813,37 @@ export const begin_playing_round = spacetimedb.reducer(
       appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
       playerTwoState.powerupId === TIME_HEIST_POWERUP_ID
     ) {
-      playerTwoBonusMicros += timeHeistMicros;
-      playerOneBonusMicros -= timeHeistMicros;
+      if (playerOneHasMirrorShield) {
+        playerTwoBonusMicros -= timeHeistMicros;
+        playerOneBonusMicros += timeHeistMicros;
+      } else {
+        playerTwoBonusMicros += timeHeistMicros;
+        playerOneBonusMicros -= timeHeistMicros;
+      }
+    }
+
+    if (
+      playerOneState?.hasLockedPower &&
+      appliesPowerupAtRoundStart(playerOneState.powerupId) &&
+      playerOneState.powerupId === TIME_KUM_POWERUP_ID
+    ) {
+      if (playerTwoHasMirrorShield) {
+        playerOneBonusMicros -= timeKumMicros;
+      } else {
+        playerTwoBonusMicros -= timeKumMicros;
+      }
+    }
+
+    if (
+      playerTwoState?.hasLockedPower &&
+      appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
+      playerTwoState.powerupId === TIME_KUM_POWERUP_ID
+    ) {
+      if (playerOneHasMirrorShield) {
+        playerTwoBonusMicros -= timeKumMicros;
+      } else {
+        playerOneBonusMicros -= timeKumMicros;
+      }
     }
 
     if (playerOneState) {
@@ -899,6 +955,13 @@ export const trigger_arena_sabotage = spacetimedb.reducer(
       throw new SenderError("Lock a powerup before triggering sabotage.");
     }
 
+    const targetState = ctx.db.arenaPowerupLock.selectionKey.find(
+      buildPowerupSelectionKey(
+        normalizedRoomId,
+        targetMember.memberIdentity.toHexString(),
+      ),
+    );
+
     if (appliesPowerupAtRoundStart(playerState.powerupId)) {
       throw new SenderError("This powerup is applied automatically when the round begins.");
     }
@@ -908,7 +971,13 @@ export const trigger_arena_sabotage = spacetimedb.reducer(
       roomId: normalizedRoomId,
       roundNumber: room.currentRound,
       sourcePlayerIdentity: ctx.sender,
-      targetPlayerIdentity: targetMember.memberIdentity,
+      targetPlayerIdentity:
+        hasMirrorShieldActive(
+          targetState?.powerupId,
+          targetState?.hasLockedPower ?? false,
+        )
+          ? ctx.sender
+          : targetMember.memberIdentity,
       powerupId: playerState.powerupId,
       createdAt: ctx.timestamp,
     });
