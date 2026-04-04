@@ -13,7 +13,7 @@ import { reducers, tables } from "./module_bindings";
 import { ArenaPage } from "./pages/ArenaPage";
 import { LandingPage } from "./pages/LandingPage";
 import { LoginPage } from "./pages/LoginPage";
-import { MatchLaunchPage } from "./pages/MatchLaunchPage";
+
 import { PowerupReadyPage } from "./pages/PowerupReadyPage";
 import { PowerupSelectionPage } from "./pages/PowerSelectionPage";
 import { CodingWindowPage } from "./pages/CodingWindowPage";
@@ -151,24 +151,6 @@ function UserPowerupReadyRoute({
   return <PowerupReadyPage identity={identity} username={username} />;
 }
 
-function UserMatchRoute({
-  expectedUsername,
-  identity,
-  username,
-}: UserPowerupRouteProps) {
-  const params = useParams();
-  const requestedUsername = params.username;
-
-  if (!requestedUsername) {
-    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
-  }
-
-  if (requestedUsername !== expectedUsername) {
-    return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
-  }
-
-  return <MatchLaunchPage identity={identity} username={username} />;
-}
 
 function App() {
   const [loginForm, setLoginForm] = useState(defaultLoginForm);
