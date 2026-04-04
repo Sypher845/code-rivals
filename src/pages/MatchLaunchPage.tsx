@@ -1,9 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Identity } from "spacetimedb";
-import { Link, useSearchParams } from "react-router-dom";
-import { useTable } from "spacetimedb/react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useReducer, useTable } from "spacetimedb/react";
 import { panelFrameClass, panelNoiseClass } from "../components/uiClasses";
-import { tables } from "../module_bindings";
+import { reducers, tables } from "../module_bindings";
 
 type MatchLaunchPageProps = {
   identity: Identity | undefined;
@@ -14,12 +14,17 @@ export function MatchLaunchPage({
   identity,
   username,
 }: MatchLaunchPageProps) {
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const roomId = searchParams.get("room");
   const normalizedRoomId = roomId?.trim().toUpperCase() ?? null;
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const [arenaRoomRows] = useTable(tables.arenaRoom);
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
+  const [arenaRoundResultRows] = useTable(tables.arenaRoundResult);
+  const submitRoundResult = useReducer(reducers.submitRoundResult);
 
   const activeRoom = useMemo(() => {
     if (!normalizedRoomId) return null;
@@ -35,6 +40,68 @@ export function MatchLaunchPage({
       ) ?? null
     );
   }, [arenaPowerupLockRows, identity, normalizedRoomId]);
+
+  const myRoundResults = useMemo(() => {
+    if (!normalizedRoomId || !identity) return [];
+    return arenaRoundResultRows.filter(
+      (row) => row.roomId === normalizedRoomId && row.playerIdentity.isEqual(identity),
+    );
+  }, [arenaRoundResultRows, identity, normalizedRoomId]);
+
+  useEffect(() => {
+    if (!normalizedRoomId || !activeRoom) {
+      return;
+    }
+
+    if (activeRoom.matchState === "drafting") {
+      navigate(
+        `/${encodeURIComponent(username)}/powerups?room=${normalizedRoomId}`,
+        { replace: true },
+      );
+      return;
+    }
+
+    if (activeRoom.matchState === "round_intro") {
+      navigate(
+        `/${encodeURIComponent(username)}/powerups/ready?room=${normalizedRoomId}`,
+        { replace: true },
+      );
+      return;
+    }
+
+    if (activeRoom.matchState === "finished") {
+      setSubmitMessage("All three rounds are complete.");
+    }
+  }, [activeRoom, navigate, normalizedRoomId, username]);
+
+  const handleSubmitRound = async () => {
+    if (!normalizedRoomId || !activeRoom) {
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitMessage(null);
+    try {
+      await submitRoundResult({
+        roomId: normalizedRoomId,
+        timeTakenSeconds: 42n,
+        testcasesPassed: 8n,
+        totalTestcases: 10n,
+        pointsEarned: 80n,
+      });
+      setSubmitMessage(
+        activeRoom.currentRound >= 3n
+          ? "Round submitted. Match finishing up."
+          : `Round ${activeRoom.currentRound.toString()} submitted. Waiting for the next draft.`,
+      );
+    } catch (error) {
+      setSubmitMessage(
+        error instanceof Error ? error.message : "Unable to submit this round.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-(--arena-page-bg) px-4 py-8 text-(--on-background) sm:px-8">
@@ -82,9 +149,42 @@ export function MatchLaunchPage({
               <p className="mt-3 text-3xl font-semibold tracking-[-0.03em]">
                 {activeRoom?.matchState?.toUpperCase() ?? "UNKNOWN"}
               </p>
+              <p className="mt-2 text-sm text-[rgba(241,243,252,0.62)]">
+                Round {activeRoom?.currentRound?.toString() ?? "-"} of 3
+                {activeRoom?.currentQuestionId ? ` • ${activeRoom.currentQuestionId}` : ""}
+              </p>
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <article className="rounded-2xl border border-[rgba(241,243,252,0.12)] bg-[rgba(7,12,19,0.84)] p-4">
+                <p className="font-(--font-mono) text-[0.6rem] tracking-[0.16em] text-[rgba(241,243,252,0.5)] uppercase">
+                  Round Log
+                </p>
+                <p className="mt-2 text-lg font-semibold">
+                  {myRoundResults.length} / 3 submitted
+                </p>
+              </article>
+              <article className="rounded-2xl border border-[rgba(241,243,252,0.12)] bg-[rgba(7,12,19,0.84)] p-4">
+                <p className="font-(--font-mono) text-[0.6rem] tracking-[0.16em] text-[rgba(241,243,252,0.5)] uppercase">
+                  Typing State
+                </p>
+                <p className="mt-2 text-lg font-semibold">
+                  {myLock?.hasSubmitted ? "Submitted" : "In Progress"}
+                </p>
+              </article>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  void handleSubmitRound();
+                }}
+                disabled={submitting || activeRoom?.matchState !== "playing" || Boolean(myLock?.hasSubmitted)}
+                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[rgba(224,141,255,0.34)] bg-[rgba(24,14,33,0.82)] px-6 font-(--font-mono) text-xs tracking-[0.16em] uppercase transition hover:border-[rgba(224,141,255,0.54)] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {myLock?.hasSubmitted ? "Round Submitted" : submitting ? "Submitting..." : "Submit Round Result"}
+              </button>
               <Link
                 to={`/${encodeURIComponent(username)}`}
                 className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[rgba(0,255,255,0.28)] px-6 font-(--font-mono) text-xs tracking-[0.16em] text-(--secondary) uppercase transition hover:bg-[rgba(0,255,255,0.08)]"
@@ -98,6 +198,9 @@ export function MatchLaunchPage({
                 Review Lock Screen
               </Link>
             </div>
+            {submitMessage ? (
+              <p className="mt-4 text-sm text-[rgba(241,243,252,0.68)]">{submitMessage}</p>
+            ) : null}
           </div>
         </section>
       </div>

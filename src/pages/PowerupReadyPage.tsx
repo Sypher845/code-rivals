@@ -34,6 +34,7 @@ export function PowerupReadyPage({
   const [arenaMemberRows] = useTable(tables.arenaRoomMember);
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
 
+  const beginPlayingRound = useReducer(reducers.beginPlayingRound);
   const unlockArenaPowerup = useReducer(reducers.unlockArenaPowerup);
 
   const activeRoom = useMemo(() => {
@@ -73,13 +74,10 @@ export function PowerupReadyPage({
     return roomMembers.find((member) => !member.memberIdentity.isEqual(identity)) ?? null;
   }, [identity, roomMembers]);
 
-  const myPowerupDescriptor = myLock ? POWER_CARD_REGISTRY[myLock.powerupId] : null;
-  const countdownAnchorMicros = useMemo(() => {
-    if (!myLock || !opponentLock) return null;
-    return myLock.lockedAt.microsSinceUnixEpoch > opponentLock.lockedAt.microsSinceUnixEpoch
-      ? myLock.lockedAt.microsSinceUnixEpoch
-      : opponentLock.lockedAt.microsSinceUnixEpoch;
-  }, [myLock, opponentLock]);
+  const myPowerupDescriptor = myLock?.powerupId
+    ? POWER_CARD_REGISTRY[myLock.powerupId]
+    : null;
+  const countdownAnchorMicros = activeRoom?.roundStartTime?.microsSinceUnixEpoch ?? null;
 
   const countdownDeadlineMs = countdownAnchorMicros
     ? Number((countdownAnchorMicros + BigInt(COUNTDOWN_SECONDS) * 1_000_000n) / 1000n)
@@ -87,7 +85,7 @@ export function PowerupReadyPage({
   const secondsLeft = countdownDeadlineMs
     ? Math.max(0, Math.ceil((countdownDeadlineMs - nowMs) / 1000))
     : null;
-  const bothPlayersLocked = Boolean(myLock && opponentLock);
+  const bothPlayersLocked = Boolean(myLock?.hasLockedPower && opponentLock?.hasLockedPower);
 
   useEffect(() => {
     if (!bothPlayersLocked) {
@@ -107,15 +105,28 @@ export function PowerupReadyPage({
     }
 
     hasNavigatedRef.current = true;
-    const params = new URLSearchParams({ room: normalizedRoomId });
-    const timeoutId = window.setTimeout(() => {
-      navigate(`/${encodeURIComponent(username)}/match?${params.toString()}`, {
-        replace: true,
-      });
-    }, 400);
+    void beginPlayingRound({ roomId: normalizedRoomId });
+  }, [
+    beginPlayingRound,
+    bothPlayersLocked,
+    normalizedRoomId,
+    secondsLeft,
+  ]);
 
-    return () => window.clearTimeout(timeoutId);
-  }, [bothPlayersLocked, navigate, normalizedRoomId, secondsLeft, username]);
+  useEffect(() => {
+    if (!normalizedRoomId || !activeRoom) {
+      return;
+    }
+
+    if (activeRoom.matchState !== "playing") {
+      return;
+    }
+
+    const params = new URLSearchParams({ room: normalizedRoomId });
+    navigate(`/${encodeURIComponent(username)}/match?${params.toString()}`, {
+      replace: true,
+    });
+  }, [activeRoom, navigate, normalizedRoomId, username]);
 
   const missingRoomMessage = !normalizedRoomId
     ? "Open this screen from an active room to wait for lock-in."
@@ -123,8 +134,8 @@ export function PowerupReadyPage({
       ? "Loading room state..."
       : !activeRoom
         ? `Room ${normalizedRoomId} was not found.`
-        : activeRoom.matchState !== "started"
-          ? "This room has not started drafting yet."
+        : activeRoom.matchState !== "round_intro"
+          ? "This room is not in the round intro countdown yet."
           : !isAssignedPlayer
             ? "Only assigned players can wait on this screen."
             : null;
@@ -231,7 +242,7 @@ export function PowerupReadyPage({
                         <div className="mt-2 flex items-center justify-between gap-3">
                           <p className="text-sm font-semibold">{username}</p>
                           <span className="rounded-full border border-[rgba(0,255,255,0.28)] px-2.5 py-1 text-[0.62rem] font-semibold tracking-[0.08em] text-(--secondary) uppercase">
-                            {myLock ? "Locked" : "Pending"}
+                            {myLock?.hasLockedPower ? "Locked" : "Pending"}
                           </span>
                         </div>
                       </div>
@@ -243,7 +254,7 @@ export function PowerupReadyPage({
                         <div className="mt-2 flex items-center justify-between gap-3">
                           <p className="text-sm font-semibold">{opponentMember?.memberName ?? "Connecting..."}</p>
                           <span className="rounded-full border border-[rgba(224,141,255,0.3)] px-2.5 py-1 text-[0.62rem] font-semibold tracking-[0.08em] uppercase">
-                            {opponentLock ? "Locked" : "Waiting"}
+                            {opponentLock?.hasLockedPower ? "Locked" : "Waiting"}
                           </span>
                         </div>
                       </div>

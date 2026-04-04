@@ -11,14 +11,14 @@ import {
 } from "spacetimedb";
 
 export default __t.row({
-  selectionKey: __t.string().primaryKey().name("selection_key"),
+  resultKey: __t.string().primaryKey().name("result_key"),
   roomId: __t.string().name("room_id"),
   playerIdentity: __t.identity().name("player_identity"),
-  powerupId: __t.option(__t.string()).name("powerup_id"),
-  isReady: __t.bool().name("is_ready"),
-  hasLockedPower: __t.bool().name("has_locked_power"),
-  activeDebuffs: __t.array(__t.string()).name("active_debuffs"),
-  hasSubmitted: __t.bool().name("has_submitted"),
-  isTyping: __t.bool().name("is_typing"),
-  lockedAt: __t.option(__t.timestamp()).name("locked_at"),
+  roundNumber: __t.u64().name("round_number"),
+  powerUsed: __t.string().name("power_used"),
+  timeTakenSeconds: __t.u64().name("time_taken_seconds"),
+  testcasesPassed: __t.u64().name("testcases_passed"),
+  totalTestcases: __t.u64().name("total_testcases"),
+  pointsEarned: __t.u64().name("points_earned"),
+  createdAt: __t.timestamp().name("created_at"),
 });

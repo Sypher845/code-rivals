@@ -14,8 +14,13 @@ export const ArenaPowerupLock = __t.object("ArenaPowerupLock", {
   selectionKey: __t.string(),
   roomId: __t.string(),
   playerIdentity: __t.identity(),
-  powerupId: __t.string(),
-  lockedAt: __t.timestamp(),
+  powerupId: __t.option(__t.string()),
+  isReady: __t.bool(),
+  hasLockedPower: __t.bool(),
+  activeDebuffs: __t.array(__t.string()),
+  hasSubmitted: __t.bool(),
+  isTyping: __t.bool(),
+  lockedAt: __t.option(__t.timestamp()),
 });
 export type ArenaPowerupLock = __Infer<typeof ArenaPowerupLock>;
 
@@ -24,9 +29,13 @@ export const ArenaRoom = __t.object("ArenaRoom", {
   creatorIdentity: __t.identity(),
   creatorName: __t.string(),
   matchState: __t.string(),
+  currentRound: __t.u64(),
+  currentQuestionId: __t.option(__t.string()),
   draftPlayerOneIdentity: __t.option(__t.identity()),
   draftPlayerTwoIdentity: __t.option(__t.identity()),
   rolledPowers: __t.array(__t.string()),
+  roundStartTime: __t.option(__t.timestamp()),
+  roundEndTime: __t.option(__t.timestamp()),
   createdAt: __t.timestamp(),
   startedAt: __t.option(__t.timestamp()),
 });
@@ -57,6 +66,20 @@ export const ArenaRoomTimeoutJob = __t.object("ArenaRoomTimeoutJob", {
   roomId: __t.string(),
 });
 export type ArenaRoomTimeoutJob = __Infer<typeof ArenaRoomTimeoutJob>;
+
+export const ArenaRoundResult = __t.object("ArenaRoundResult", {
+  resultKey: __t.string(),
+  roomId: __t.string(),
+  playerIdentity: __t.identity(),
+  roundNumber: __t.u64(),
+  powerUsed: __t.string(),
+  timeTakenSeconds: __t.u64(),
+  testcasesPassed: __t.u64(),
+  totalTestcases: __t.u64(),
+  pointsEarned: __t.u64(),
+  createdAt: __t.timestamp(),
+});
+export type ArenaRoundResult = __Infer<typeof ArenaRoundResult>;
 
 export const AuthAccount = __t.object("AuthAccount", {
   id: __t.u64(),

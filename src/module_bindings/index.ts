@@ -34,6 +34,7 @@ import {
 } from "spacetimedb";
 
 // Import all reducer arg schemas
+import BeginPlayingRoundReducer from "./begin_playing_round_reducer";
 import CreateArenaRoomReducer from "./create_arena_room_reducer";
 import DeleteArenaRoomReducer from "./delete_arena_room_reducer";
 import JoinArenaRoomReducer from "./join_arena_room_reducer";
@@ -43,6 +44,7 @@ import LogInReducer from "./log_in_reducer";
 import LogOutReducer from "./log_out_reducer";
 import SignUpReducer from "./sign_up_reducer";
 import StartArenaMatchReducer from "./start_arena_match_reducer";
+import SubmitRoundResultReducer from "./submit_round_result_reducer";
 import UnlockArenaPowerupReducer from "./unlock_arena_powerup_reducer";
 
 // Import all procedure arg schemas
@@ -52,6 +54,7 @@ import ArenaPowerupLockRow from "./arena_powerup_lock_table";
 import ArenaRoomRow from "./arena_room_table";
 import ArenaRoomMemberRow from "./arena_room_member_table";
 import ArenaRoomNoticeRow from "./arena_room_notice_table";
+import ArenaRoundResultRow from "./arena_round_result_table";
 import AuthSessionRow from "./auth_session_table";
 
 /** Type-only namespace exports for generated type groups. */
@@ -109,6 +112,20 @@ const tablesSchema = __schema({
       { name: 'arena_room_notice_notice_id_key', constraint: 'unique', columns: ['noticeId'] },
     ],
   }, ArenaRoomNoticeRow),
+  arenaRoundResult: __table({
+    name: 'arena_round_result',
+    indexes: [
+      { accessor: 'resultKey', name: 'arena_round_result_result_key_idx_btree', algorithm: 'btree', columns: [
+        'resultKey',
+      ] },
+      { accessor: 'arena_round_result_room_id', name: 'arena_round_result_room_id_idx_btree', algorithm: 'btree', columns: [
+        'roomId',
+      ] },
+    ],
+    constraints: [
+      { name: 'arena_round_result_result_key_key', constraint: 'unique', columns: ['resultKey'] },
+    ],
+  }, ArenaRoundResultRow),
   authSession: __table({
     name: 'auth_session',
     indexes: [
@@ -124,6 +141,7 @@ const tablesSchema = __schema({
 
 /** The schema information for all reducers in this module. This is defined the same way as the reducers would have been defined in the server, except the body of the reducer is omitted in code generation. */
 const reducersSchema = __reducers(
+  __reducerSchema("begin_playing_round", BeginPlayingRoundReducer),
   __reducerSchema("create_arena_room", CreateArenaRoomReducer),
   __reducerSchema("delete_arena_room", DeleteArenaRoomReducer),
   __reducerSchema("join_arena_room", JoinArenaRoomReducer),
@@ -133,6 +151,7 @@ const reducersSchema = __reducers(
   __reducerSchema("log_out", LogOutReducer),
   __reducerSchema("sign_up", SignUpReducer),
   __reducerSchema("start_arena_match", StartArenaMatchReducer),
+  __reducerSchema("submit_round_result", SubmitRoundResultReducer),
   __reducerSchema("unlock_arena_powerup", UnlockArenaPowerupReducer),
 );
 

@@ -131,11 +131,11 @@ export function ArenaRoomModal({
             type="button"
             className={actionButtonClass}
             onClick={onStartMatch}
-            disabled={!isArenaAdmin}
+            disabled={!isArenaAdmin || activeRoom.matchState !== "waiting"}
           >
-            {activeRoom.matchState === "started"
-              ? "Match Started"
-              : "Start Match"}
+            {activeRoom.matchState === "waiting"
+              ? "Start Match"
+              : "Match In Progress"}
           </button>
 
           {!isArenaAdmin && (

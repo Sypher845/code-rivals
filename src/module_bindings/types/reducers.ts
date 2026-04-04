@@ -6,6 +6,7 @@
 import { type Infer as __Infer } from "spacetimedb";
 
 // Import all reducer arg schemas
+import BeginPlayingRoundReducer from "../begin_playing_round_reducer";
 import CreateArenaRoomReducer from "../create_arena_room_reducer";
 import DeleteArenaRoomReducer from "../delete_arena_room_reducer";
 import JoinArenaRoomReducer from "../join_arena_room_reducer";
@@ -15,8 +16,10 @@ import LogInReducer from "../log_in_reducer";
 import LogOutReducer from "../log_out_reducer";
 import SignUpReducer from "../sign_up_reducer";
 import StartArenaMatchReducer from "../start_arena_match_reducer";
+import SubmitRoundResultReducer from "../submit_round_result_reducer";
 import UnlockArenaPowerupReducer from "../unlock_arena_powerup_reducer";
 
+export type BeginPlayingRoundParams = __Infer<typeof BeginPlayingRoundReducer>;
 export type CreateArenaRoomParams = __Infer<typeof CreateArenaRoomReducer>;
 export type DeleteArenaRoomParams = __Infer<typeof DeleteArenaRoomReducer>;
 export type JoinArenaRoomParams = __Infer<typeof JoinArenaRoomReducer>;
@@ -26,5 +29,6 @@ export type LogInParams = __Infer<typeof LogInReducer>;
 export type LogOutParams = __Infer<typeof LogOutReducer>;
 export type SignUpParams = __Infer<typeof SignUpReducer>;
 export type StartArenaMatchParams = __Infer<typeof StartArenaMatchReducer>;
+export type SubmitRoundResultParams = __Infer<typeof SubmitRoundResultReducer>;
 export type UnlockArenaPowerupParams = __Infer<typeof UnlockArenaPowerupReducer>;
 

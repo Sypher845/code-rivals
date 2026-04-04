@@ -92,6 +92,7 @@ export function PowerupSelectionPage({
     );
   }, [arenaPowerupLockRows, identity, normalizedRoomId]);
   const isLocked = lockedPowerupId !== null;
+  const isDraftingRound = activeRoom?.matchState === "drafting";
 
   useEffect(() => {
     const lockedId = currentLock?.powerupId ?? null;
@@ -199,12 +200,34 @@ export function PowerupSelectionPage({
     });
   }, [activeIndex]);
 
+  useEffect(() => {
+    if (!normalizedRoomId || !activeRoom) {
+      return;
+    }
+
+    const query = new URLSearchParams({ room: normalizedRoomId }).toString();
+    if (activeRoom.matchState === "round_intro") {
+      navigate(`/${encodeURIComponent(username)}/powerups/ready?${query}`, {
+        replace: true,
+      });
+      return;
+    }
+
+    if (activeRoom.matchState === "playing") {
+      navigate(`/${encodeURIComponent(username)}/match?${query}`, {
+        replace: true,
+      });
+    }
+  }, [activeRoom, navigate, normalizedRoomId, username]);
+
   const missingRoomMessage = !normalizedRoomId
     ? "Open this screen from an active room to load your draft cards."
     : !arenaRoomsReady
       ? "Loading room data..."
       : !activeRoom
         ? `Room ${normalizedRoomId} was not found.`
+        : !isDraftingRound
+          ? "This round is not currently in the drafting phase."
         : powerups.length === 0
           ? "Your cards are not assigned yet. Wait for match start or verify room membership."
           : null;

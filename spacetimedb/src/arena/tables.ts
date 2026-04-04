@@ -16,9 +16,13 @@ export const arena_room = table(
     creatorIdentity: t.identity(),
     creatorName: t.string(),
     matchState: t.string(),
+    currentRound: t.u64(),
+    currentQuestionId: t.string().optional(),
     draftPlayerOneIdentity: t.identity().optional(),
     draftPlayerTwoIdentity: t.identity().optional(),
     rolledPowers: t.array(t.string()),
+    roundStartTime: t.timestamp().optional(),
+    roundEndTime: t.timestamp().optional(),
     createdAt: t.timestamp(),
     startedAt: t.timestamp().optional(),
   },
@@ -56,8 +60,40 @@ export const arena_powerup_lock = table(
     selectionKey: t.string().primaryKey(),
     roomId: t.string(),
     playerIdentity: t.identity(),
-    powerupId: t.string(),
-    lockedAt: t.timestamp(),
+    powerupId: t.string().optional(),
+    isReady: t.bool(),
+    hasLockedPower: t.bool(),
+    activeDebuffs: t.array(t.string()),
+    hasSubmitted: t.bool(),
+    isTyping: t.bool(),
+    lockedAt: t.timestamp().optional(),
+  },
+);
+
+export const arena_round_result = table(
+  {
+    name: "arena_round_result",
+    public: true,
+    indexes: [
+      {
+        accessor: "arena_round_result_room_id",
+        name: "arena_round_result_room_id",
+        algorithm: "btree",
+        columns: ["roomId"],
+      },
+    ],
+  },
+  {
+    resultKey: t.string().primaryKey(),
+    roomId: t.string(),
+    playerIdentity: t.identity(),
+    roundNumber: t.u64(),
+    powerUsed: t.string(),
+    timeTakenSeconds: t.u64(),
+    testcasesPassed: t.u64(),
+    totalTestcases: t.u64(),
+    pointsEarned: t.u64(),
+    createdAt: t.timestamp(),
   },
 );
 

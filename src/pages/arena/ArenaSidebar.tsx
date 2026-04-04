@@ -249,14 +249,18 @@ export function ArenaSidebar({
       return;
     }
 
-    if (activeRoom.matchState !== "started") {
+    if (activeRoom.matchState === "waiting") {
       return;
     }
 
-    if (
-      location.pathname.includes("/powerups") ||
-      location.pathname.includes("/match")
-    ) {
+    const targetPath =
+      activeRoom.matchState === "playing"
+        ? `/${encodeURIComponent(username)}/match`
+        : activeRoom.matchState === "round_intro"
+          ? `/${encodeURIComponent(username)}/powerups/ready`
+          : `/${encodeURIComponent(username)}/powerups`;
+
+    if (location.pathname === targetPath) {
       return;
     }
 
@@ -267,7 +271,7 @@ export function ArenaSidebar({
 
     window.sessionStorage.setItem(redirectKey, "1");
     const query = new URLSearchParams({ room: activeRoom.roomId });
-    navigate(`/${encodeURIComponent(username)}/powerups?${query.toString()}`);
+    navigate(`${targetPath}?${query.toString()}`);
   }, [
     activeRoom,
     isCurrentUserInActiveRoom,

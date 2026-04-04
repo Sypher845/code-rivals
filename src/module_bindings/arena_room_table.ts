@@ -15,9 +15,13 @@ export default __t.row({
   creatorIdentity: __t.identity().name("creator_identity"),
   creatorName: __t.string().name("creator_name"),
   matchState: __t.string().name("match_state"),
+  currentRound: __t.u64().name("current_round"),
+  currentQuestionId: __t.option(__t.string()).name("current_question_id"),
   draftPlayerOneIdentity: __t.option(__t.identity()).name("draft_player_one_identity"),
   draftPlayerTwoIdentity: __t.option(__t.identity()).name("draft_player_two_identity"),
   rolledPowers: __t.array(__t.string()).name("rolled_powers"),
+  roundStartTime: __t.option(__t.timestamp()).name("round_start_time"),
+  roundEndTime: __t.option(__t.timestamp()).name("round_end_time"),
   createdAt: __t.timestamp().name("created_at"),
   startedAt: __t.option(__t.timestamp()).name("started_at"),
 });

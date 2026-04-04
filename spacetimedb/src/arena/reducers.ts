@@ -13,6 +13,7 @@ import {
 } from "./tables";
 
 type ArenaReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
+const TOTAL_ROUNDS = 3n;
 
 const POWER_CARD_NAMES = [
   "FlashbangCard",
@@ -43,9 +44,10 @@ function buildRolledPowers(
   roomId: string,
   playerOneIdentityHex: string,
   playerTwoIdentityHex: string,
+  roundNumber: bigint,
   timestampMicros: bigint,
 ) {
-  const seedMaterial = `${roomId}:${playerOneIdentityHex}:${playerTwoIdentityHex}:${timestampMicros.toString()}`;
+  const seedMaterial = `${roomId}:${playerOneIdentityHex}:${playerTwoIdentityHex}:${roundNumber.toString()}:${timestampMicros.toString()}`;
   let state = hashToUint32(seedMaterial);
 
   const shuffled = [...POWER_CARD_NAMES];
@@ -84,6 +86,14 @@ function buildPowerupSelectionKey(roomId: string, playerIdentityHex: string) {
   return `${roomId}:${playerIdentityHex}`;
 }
 
+function buildRoundResultKey(
+  roomId: string,
+  playerIdentityHex: string,
+  roundNumber: bigint,
+) {
+  return `${roomId}:${playerIdentityHex}:${roundNumber.toString()}`;
+}
+
 function listRoomMembers(ctx: ArenaReducerCtx, roomId: string) {
   return [...ctx.db.arenaRoomMember.iter()].filter(
     (member) => member.roomId === roomId,
@@ -100,6 +110,45 @@ function listRoomTimeoutJobs(ctx: ArenaReducerCtx, roomId: string) {
   );
 }
 
+function listRoundResults(ctx: ArenaReducerCtx, roomId: string) {
+  return [...ctx.db.arenaRoundResult.arena_round_result_room_id.filter(roomId)];
+}
+
+function upsertPlayerRoundState(
+  ctx: ArenaReducerCtx,
+  roomId: string,
+  playerIdentity: ArenaReducerCtx["sender"],
+) {
+  const selectionKey = buildPowerupSelectionKey(roomId, playerIdentity.toHexString());
+  const existingState = ctx.db.arenaPowerupLock.selectionKey.find(selectionKey);
+  if (existingState) {
+    ctx.db.arenaPowerupLock.selectionKey.update({
+      ...existingState,
+      powerupId: undefined,
+      isReady: false,
+      hasLockedPower: false,
+      activeDebuffs: [],
+      hasSubmitted: false,
+      isTyping: false,
+      lockedAt: undefined,
+    });
+    return;
+  }
+
+  ctx.db.arenaPowerupLock.insert({
+    selectionKey,
+    roomId,
+    playerIdentity,
+    powerupId: undefined,
+    isReady: false,
+    hasLockedPower: false,
+    activeDebuffs: [],
+    hasSubmitted: false,
+    isTyping: false,
+    lockedAt: undefined,
+  });
+}
+
 function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
   const roomMembers = listRoomMembers(ctx, roomId);
   for (const member of roomMembers) {
@@ -109,6 +158,11 @@ function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
   const powerupLocks = listPowerupLocks(ctx, roomId);
   for (const powerupLock of powerupLocks) {
     ctx.db.arenaPowerupLock.selectionKey.delete(powerupLock.selectionKey);
+  }
+
+  const roundResults = listRoundResults(ctx, roomId);
+  for (const roundResult of roundResults) {
+    ctx.db.arenaRoundResult.resultKey.delete(roundResult.resultKey);
   }
 
   const timeoutJobs = listRoomTimeoutJobs(ctx, roomId);
@@ -134,9 +188,13 @@ export const create_arena_room = spacetimedb.reducer(
       creatorIdentity: ctx.sender,
       creatorName: session.username,
       matchState: "waiting",
+      currentRound: 0n,
+      currentQuestionId: undefined,
       draftPlayerOneIdentity: undefined,
       draftPlayerTwoIdentity: undefined,
       rolledPowers: [],
+      roundStartTime: undefined,
+      roundEndTime: undefined,
       createdAt: ctx.timestamp,
       startedAt: undefined,
     });
@@ -222,7 +280,7 @@ export const join_arena_room = spacetimedb.reducer(
       throw new SenderError("Room not found.");
     }
 
-    if (room.matchState === "started") {
+    if (room.matchState !== "waiting") {
       throw new SenderError("This match has already started.");
     }
 
@@ -283,23 +341,31 @@ export const start_arena_match = spacetimedb.reducer(
       throw new SenderError("Unable to resolve both players for this room.");
     }
 
-    if (room.matchState === "started") {
-      return;
+    if (room.matchState !== "waiting") {
+      throw new SenderError("This match has already started.");
     }
 
     const rolledPowers = buildRolledPowers(
       room.roomId,
       playerOne.memberIdentity.toHexString(),
       playerTwo.memberIdentity.toHexString(),
+      1n,
       ctx.timestamp.microsSinceUnixEpoch,
     );
 
+    upsertPlayerRoundState(ctx, normalizedRoomId, playerOne.memberIdentity);
+    upsertPlayerRoundState(ctx, normalizedRoomId, playerTwo.memberIdentity);
+
     ctx.db.arenaRoom.roomId.update({
       ...room,
-      matchState: "started",
+      matchState: "drafting",
+      currentRound: 1n,
+      currentQuestionId: "round-1",
       draftPlayerOneIdentity: playerOne.memberIdentity,
       draftPlayerTwoIdentity: playerTwo.memberIdentity,
       rolledPowers,
+      roundStartTime: undefined,
+      roundEndTime: undefined,
       startedAt: ctx.timestamp,
     });
 
@@ -320,7 +386,7 @@ export const lock_arena_powerup = spacetimedb.reducer(
       throw new SenderError("Room not found.");
     }
 
-    if (room.matchState !== "started") {
+    if (room.matchState !== "drafting") {
       throw new SenderError("Match is not ready for powerup locking.");
     }
 
@@ -345,18 +411,37 @@ export const lock_arena_powerup = spacetimedb.reducer(
       ctx.db.arenaPowerupLock.selectionKey.update({
         ...existingLock,
         powerupId,
+        isReady: false,
+        hasLockedPower: true,
+        hasSubmitted: false,
         lockedAt: ctx.timestamp,
       });
-      return;
+    } else {
+      ctx.db.arenaPowerupLock.insert({
+        selectionKey,
+        roomId: normalizedRoomId,
+        playerIdentity: ctx.sender,
+        powerupId,
+        isReady: false,
+        hasLockedPower: true,
+        activeDebuffs: [],
+        hasSubmitted: false,
+        isTyping: false,
+        lockedAt: ctx.timestamp,
+      });
     }
 
-    ctx.db.arenaPowerupLock.insert({
-      selectionKey,
-      roomId: normalizedRoomId,
-      playerIdentity: ctx.sender,
-      powerupId,
-      lockedAt: ctx.timestamp,
-    });
+    const roomLocks = listPowerupLocks(ctx, normalizedRoomId).filter(
+      (lock) => lock.hasLockedPower,
+    );
+    if (roomLocks.length >= 2) {
+      ctx.db.arenaRoom.roomId.update({
+        ...room,
+        matchState: "round_intro",
+        roundStartTime: ctx.timestamp,
+        roundEndTime: undefined,
+      });
+    }
   },
 );
 
@@ -379,7 +464,134 @@ export const unlock_arena_powerup = spacetimedb.reducer(
       return;
     }
 
-    ctx.db.arenaPowerupLock.selectionKey.delete(selectionKey);
+    ctx.db.arenaPowerupLock.selectionKey.update({
+      ...existingLock,
+      powerupId: undefined,
+      isReady: false,
+      hasLockedPower: false,
+      lockedAt: undefined,
+    });
+  },
+);
+
+export const begin_playing_round = spacetimedb.reducer(
+  { roomId: t.string() },
+  (ctx, { roomId }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+    if (!room) {
+      throw new SenderError("Room not found.");
+    }
+
+    if (room.matchState !== "round_intro") {
+      return;
+    }
+
+    ctx.db.arenaRoom.roomId.update({
+      ...room,
+      matchState: "playing",
+      roundStartTime: ctx.timestamp,
+      roundEndTime: undefined,
+    });
+  },
+);
+
+export const submit_round_result = spacetimedb.reducer(
+  {
+    roomId: t.string(),
+    timeTakenSeconds: t.u64(),
+    testcasesPassed: t.u64(),
+    totalTestcases: t.u64(),
+    pointsEarned: t.u64(),
+  },
+  (ctx, { roomId, timeTakenSeconds, testcasesPassed, totalTestcases, pointsEarned }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+    if (!room) {
+      throw new SenderError("Room not found.");
+    }
+
+    if (room.matchState !== "playing") {
+      throw new SenderError("Round results can only be submitted while playing.");
+    }
+
+    const selectionKey = buildPowerupSelectionKey(normalizedRoomId, ctx.sender.toHexString());
+    const playerState = ctx.db.arenaPowerupLock.selectionKey.find(selectionKey);
+    if (!playerState || !playerState.hasLockedPower || !playerState.powerupId) {
+      throw new SenderError("Lock a powerup before submitting a round result.");
+    }
+
+    if (playerState.hasSubmitted) {
+      return;
+    }
+
+    ctx.db.arenaRoundResult.insert({
+      resultKey: buildRoundResultKey(
+        normalizedRoomId,
+        ctx.sender.toHexString(),
+        room.currentRound,
+      ),
+      roomId: normalizedRoomId,
+      playerIdentity: ctx.sender,
+      roundNumber: room.currentRound,
+      powerUsed: playerState.powerupId,
+      timeTakenSeconds,
+      testcasesPassed,
+      totalTestcases,
+      pointsEarned,
+      createdAt: ctx.timestamp,
+    });
+
+    ctx.db.arenaPowerupLock.selectionKey.update({
+      ...playerState,
+      hasSubmitted: true,
+      isTyping: false,
+    });
+
+    const updatedStates = listPowerupLocks(ctx, normalizedRoomId);
+    const submittedStates = updatedStates.filter((state) => state.hasSubmitted);
+    if (submittedStates.length < 2) {
+      return;
+    }
+
+    if (room.currentRound >= TOTAL_ROUNDS) {
+      ctx.db.arenaRoom.roomId.update({
+        ...room,
+        matchState: "finished",
+        roundEndTime: ctx.timestamp,
+      });
+      return;
+    }
+
+    const nextRound = room.currentRound + 1n;
+    const playerOneIdentity = room.draftPlayerOneIdentity;
+    const playerTwoIdentity = room.draftPlayerTwoIdentity;
+    if (!playerOneIdentity || !playerTwoIdentity) {
+      throw new SenderError("Both players must be assigned before advancing rounds.");
+    }
+
+    const rolledPowers = buildRolledPowers(
+      room.roomId,
+      playerOneIdentity.toHexString(),
+      playerTwoIdentity.toHexString(),
+      nextRound,
+      ctx.timestamp.microsSinceUnixEpoch,
+    );
+
+    upsertPlayerRoundState(ctx, normalizedRoomId, playerOneIdentity);
+    upsertPlayerRoundState(ctx, normalizedRoomId, playerTwoIdentity);
+
+    ctx.db.arenaRoom.roomId.update({
+      ...room,
+      matchState: "drafting",
+      currentRound: nextRound,
+      currentQuestionId: `round-${nextRound.toString()}`,
+      rolledPowers,
+      roundStartTime: undefined,
+      roundEndTime: undefined,
+    });
   },
 );
 
