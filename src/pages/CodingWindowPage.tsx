@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { useReducer, useSpacetimeDB, useTable } from "spacetimedb/react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { TopBar } from "./coding-window/TopBar";
@@ -331,6 +332,10 @@ export function CodingWindowPage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [zenToastMessage, setZenToastMessage] = useState<string | null>(null);
   const [isZenMode, setIsZenMode] = useState(zenRequested);
+  const [isZenTransitioning, setIsZenTransitioning] = useState(false);
+  const [zenTransitionDirection, setZenTransitionDirection] = useState<
+    "ltr" | "rtl"
+  >("rtl");
   const [zenSelfSabotageEnabled, setZenSelfSabotageEnabled] = useState(false);
   const [zenRoundNumber, setZenRoundNumber] = useState(fallbackRoundNumber);
   const [zenRoundStage, setZenRoundStage] = useState<ZenRoundStage>("intro");
@@ -1380,19 +1385,44 @@ export function CodingWindowPage() {
     ? activeEditorSabotage?.themeId ?? ZEN_EDITOR_THEME_ID
     : activeEditorSabotage?.themeId ?? DEFAULT_EDITOR_THEME_ID;
   const handleExitZenMode = useCallback(() => {
+    if (isZenTransitioning) {
+      return;
+    }
+
     const arenaPath = sessionUsername
       ? `/${encodeURIComponent(sessionUsername)}`
       : username
         ? `/${encodeURIComponent(username)}`
         : "/";
 
-    navigate(arenaPath, { replace: true });
-  }, [navigate, sessionUsername, username]);
+    setZenTransitionDirection("rtl");
+    setIsZenTransitioning(true);
+    window.setTimeout(() => {
+      navigate(arenaPath, { replace: true });
+    }, 420);
+  }, [isZenTransitioning, navigate, sessionUsername, username]);
   return (
     <div
       className="flex h-screen flex-col overflow-hidden"
       style={{ background: isZenMode ? "#0d0d0d" : P.bg }}
     >
+      <AnimatePresence>
+        {isZenTransitioning ? (
+          <motion.div
+            key={`zen-transition-${zenTransitionDirection}`}
+            className="pointer-events-none fixed inset-0 z-140 bg-black"
+            initial={{
+              scaleX: 0,
+              originX: zenTransitionDirection === "ltr" ? 0 : 1,
+            }}
+            animate={{
+              scaleX: 1,
+              originX: zenTransitionDirection === "ltr" ? 0 : 1,
+            }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+          />
+        ) : null}
+      </AnimatePresence>
       {isZenMode && zenToastMessage ? (
         <div className="pointer-events-none fixed top-22 right-6 z-120">
           <div className="rounded-xl border border-[#353535] bg-[#121212] px-4 py-2.5 text-sm text-[#e0e0e0] shadow-[0_18px_48px_rgba(0,0,0,0.55)]">

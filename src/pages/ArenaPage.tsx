@@ -1,4 +1,5 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Bell, LogOut, Moon } from "lucide-react";
 import type { Identity } from "spacetimedb";
@@ -147,9 +148,47 @@ export function ArenaPage({
   const showHeroCard = showQuickArena;
   const zenModePath = `/${encodeURIComponent(username)}/zen/R1`;
   const zenModeActive = /^\/[^/]+\/zen\/R[123]$/i.test(location.pathname);
+  const [isZenTransitioning, setIsZenTransitioning] = useState(false);
+  const [zenTransitionDirection, setZenTransitionDirection] = useState<
+    "ltr" | "rtl"
+  >("ltr");
+
+  const handleZenModeToggle = () => {
+    if (isZenTransitioning) {
+      return;
+    }
+
+    const enteringZenMode = !zenModeActive;
+    setZenTransitionDirection(enteringZenMode ? "ltr" : "rtl");
+    setIsZenTransitioning(true);
+    const targetPath = zenModeActive
+      ? `/${encodeURIComponent(username)}`
+      : zenModePath;
+
+    window.setTimeout(() => {
+      navigate(targetPath);
+    }, 420);
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-(--arena-page-bg)">
+      <AnimatePresence>
+        {isZenTransitioning ? (
+          <motion.div
+            key={`zen-transition-${zenTransitionDirection}`}
+            className="pointer-events-none fixed inset-0 z-140 bg-black"
+            initial={{
+              scaleX: 0,
+              originX: zenTransitionDirection === "ltr" ? 0 : 1,
+            }}
+            animate={{
+              scaleX: 1,
+              originX: zenTransitionDirection === "ltr" ? 0 : 1,
+            }}
+            transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+          />
+        ) : null}
+      </AnimatePresence>
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_10%,rgba(0,255,255,0.08),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(224,141,255,0.09),transparent_24%),radial-gradient(circle_at_50%_100%,rgba(224,141,255,0.08),transparent_30%)]" />
 
       <header className="sticky top-0 z-40 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,10,0.88)] backdrop-blur-xl">
@@ -210,9 +249,7 @@ export function ArenaPage({
               role="switch"
               aria-checked={zenModeActive}
               aria-label={zenModeActive ? "Disable Zen Mode" : "Enable Zen Mode"}
-              onClick={() =>
-                navigate(zenModeActive ? `/${encodeURIComponent(username)}` : zenModePath)
-              }
+              onClick={handleZenModeToggle}
               className="inline-flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
             >
               <Moon className="h-4 w-4" />
