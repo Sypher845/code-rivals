@@ -350,10 +350,10 @@ export function TopBar({
             aria-checked={zenMode}
             aria-label={zenMode ? "Disable Zen Mode" : "Enable Zen Mode"}
             onClick={onToggleZenMode}
-            className="inline-flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
+            className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-4 text-[0.95rem] text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
           >
             <Moon className="h-4 w-4" />
-            <span className="text-xs font-medium">Zen</span>
+            <span className="text-[0.95rem] font-medium">Zen</span>
             <span
               className={`relative inline-flex h-7 w-14 items-center rounded-full transition ${
                 zenMode

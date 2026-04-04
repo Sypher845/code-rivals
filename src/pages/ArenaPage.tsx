@@ -241,7 +241,7 @@ export function ArenaPage({
                 className="h-5 w-5 rounded-sm"
               />
             </div>
-            <span className="inline-flex items-end gap-1 text-sm font-semibold tracking-[0.1em] uppercase">
+            <span className="inline-flex items-end gap-1 text-[0.95rem] font-semibold tracking-[0.1em] uppercase">
               <span className="font-(--font-heading)">Code</span>
               <span className="relative font-(--font-heading) text-(--arena-accent)">
                 Rivals
@@ -252,7 +252,7 @@ export function ArenaPage({
           <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 md:inline-flex">
             <Link
               to={`/${username}`}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`rounded-md px-3.5 py-2 text-[0.95rem] font-medium transition ${
                 !location.pathname.endsWith("/friends") &&
                 !location.pathname.endsWith("/leaderboard")
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
@@ -263,7 +263,7 @@ export function ArenaPage({
             </Link>
             <Link
               to={`/${username}/friends`}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`rounded-md px-3.5 py-2 text-[0.95rem] font-medium transition ${
                 location.pathname.endsWith("/friends")
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
@@ -273,7 +273,7 @@ export function ArenaPage({
             </Link>
             <Link
               to={`/${username}/leaderboard`}
-              className={`rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`rounded-md px-3.5 py-2 text-[0.95rem] font-medium transition ${
                 location.pathname.endsWith("/leaderboard")
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
@@ -290,10 +290,10 @@ export function ArenaPage({
               aria-checked={zenModeActive}
               aria-label={zenModeActive ? "Disable Zen Mode" : "Enable Zen Mode"}
               onClick={handleZenModeToggle}
-              className="inline-flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
+              className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-4 text-[0.95rem] text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
             >
               <Moon className="h-4 w-4" />
-              <span className="text-xs font-medium">Zen</span>
+              <span className="text-[0.95rem] font-medium">Zen</span>
               <span
                 className={`relative inline-flex h-7 w-14 items-center rounded-full transition ${
                   zenModeActive ? "bg-[rgba(224,224,224,0.75)]" : "bg-[rgba(255,255,255,0.12)]"
@@ -312,7 +312,7 @@ export function ArenaPage({
               onClick={() => {
                 navigate(`/${encodeURIComponent(username)}/friends?view=notifications`);
               }}
-              className="relative grid h-9 w-9 place-items-center rounded-lg border border-[rgba(255,255,255,0.1)] text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
+              className="relative grid h-10 w-10 place-items-center rounded-lg border border-[rgba(255,255,255,0.1)] text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
             >
               <Bell className="h-4 w-4" />
               <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-(--arena-accent) px-1 text-[10px] font-semibold text-(--arena-bg)">
@@ -321,12 +321,12 @@ export function ArenaPage({
             </button>
 
             <button
-              className="inline-flex min-h-9 items-center rounded-lg border border-[rgba(224,141,255,0.35)] px-3.5 text-xs font-semibold tracking-[0.12em] text-(--on-background) uppercase transition hover:bg-[rgba(224,141,255,0.1)] disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex min-h-10 items-center rounded-lg border border-[rgba(224,141,255,0.35)] px-4 text-[0.95rem] font-semibold tracking-[0.08em] text-(--on-background) uppercase transition hover:bg-[rgba(224,141,255,0.1)] disabled:cursor-not-allowed disabled:opacity-60"
               type="button"
               onClick={onLogOut}
               disabled={isLoggingOut}
             >
-              <LogOut className="mr-1.5 h-3.5 w-3.5" />
+              <LogOut className="mr-1.5 h-4 w-4" />
               {isLoggingOut ? "Logging Out" : "Log Out"}
             </button>
           </div>
