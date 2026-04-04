@@ -115,6 +115,16 @@ export const flowSteps: FlowStep[] = [
 
 export const powers: Power[] = [
   {
+    name: "No Mistakes",
+    description:
+      "Activates from round start and disables the opponent's Run button, turning the round into a one-submit shot.",
+    tag: "Restrict",
+    tagClassName:
+      "border-[rgba(255,112,112,0.18)] bg-[rgba(255,112,112,0.1)] text-[var(--signal-danger)]",
+    icon: Lock,
+    iconClassName: "text-[var(--signal-danger)]",
+  },
+  {
     name: "Key Stroke Swap",
     description:
       "Randomly swaps 4 keys. Muscle memory becomes your worst enemy.",

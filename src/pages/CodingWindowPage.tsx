@@ -257,6 +257,11 @@ export function CodingWindowPage() {
   const selectedPowerupRequiresManualActivation = mySelectedPowerupId
     ? powerupRequiresManualActivation(mySelectedPowerupId)
     : false;
+  const noMistakesActive =
+    roomPhase === "playing" &&
+    opponentRoundState?.hasLockedPower &&
+    opponentRoundState.powerupId === "NoMistakesCard" &&
+    hasRealTimestamp(opponentRoundState.appliedAtRoundStartAt);
   const myRoundStartMs = microsTimestampToMs(myRoundState?.playerRoundStartTime);
   const myBaseRoundDeadlineMs = microsTimestampToMs(myRoundState?.playerRoundEndTime);
   const myBaseRoundDurationSeconds =
@@ -569,9 +574,16 @@ export function CodingWindowPage() {
   }, []);
 
   const handleRun = useCallback(() => {
+    if (noMistakesActive) {
+      setStatusMessage(
+        "No Mistakes is active. Run is disabled, so this round is submit-only.",
+      );
+      return;
+    }
+
     setHasRun(true);
     setStatusMessage(`Run completed. ${testCases.length || 1} sample testcases checked.`);
-  }, [testCases.length]);
+  }, [noMistakesActive, testCases.length]);
 
   const handleSabotage = useCallback(async () => {
     if (!normalizedRoomId) {
@@ -666,6 +678,9 @@ export function CodingWindowPage() {
       : myRoundState?.hasSubmitted
         ? "Submission synced. Redirecting when the room advances."
         : statusMessage ??
+          (noMistakesActive
+            ? "No Mistakes is active. You cannot run code and only get one submit."
+            : null) ??
           (latestIncomingSabotage
             ? `Incoming sabotage queued: ${formatPowerupName(latestIncomingSabotage.powerupId)}.`
             : null);
@@ -681,6 +696,7 @@ export function CodingWindowPage() {
       {/* ═══════════════ TOP NAV BAR ═══════════════ */}
       <TopBar
         canSubmit={!submitDisabled}
+        canRun={!noMistakesActive}
         isSubmitting={isSubmitting}
         myPowerupAppliedAtStart={hasRealTimestamp(myRoundState?.appliedAtRoundStartAt)}
         mySelectedPowerupId={mySelectedPowerupId}

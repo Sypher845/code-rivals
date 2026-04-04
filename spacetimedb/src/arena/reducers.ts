@@ -36,6 +36,7 @@ const ROUND_THREE_TIME_HEIST_MICROS = 210n * 1_000_000n;
 const TIME_HEIST_POWERUP_ID = "TimeHeistCard";
 const TIME_KUM_POWERUP_ID = "TimeKumCard";
 const MIRROR_SHIELD_POWERUP_ID = "MirrorShieldCard";
+const NO_MISTAKES_POWERUP_ID = "NoMistakesCard";
 
 const POWER_CARD_NAMES = [
   "FlashbangCard",
@@ -110,6 +111,7 @@ function getTimeHeistMicros(roundNumber: bigint) {
 
 function appliesPowerupAtRoundStart(powerupId: string | undefined) {
   return (
+    powerupId === NO_MISTAKES_POWERUP_ID ||
     powerupId === TIME_HEIST_POWERUP_ID ||
     powerupId === TIME_KUM_POWERUP_ID ||
     powerupId === MIRROR_SHIELD_POWERUP_ID

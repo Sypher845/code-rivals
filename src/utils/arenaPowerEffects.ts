@@ -99,6 +99,7 @@ export function getPassiveTimePenaltySeconds(
 
 export function powerupRequiresManualActivation(powerupId: string) {
   return (
+    powerupId !== "NoMistakesCard" &&
     powerupId !== "TimeKumCard" &&
     powerupId !== "TimeHeistCard" &&
     powerupId !== "MirrorShieldCard"

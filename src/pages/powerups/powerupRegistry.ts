@@ -42,7 +42,8 @@ export const POWER_CARD_REGISTRY: Record<string, Omit<PowerupDescriptor, "id">> 
   },
   NoMistakesCard: {
     Card: NoMistakesCard,
-    description: "No Mistakes.",
+    description:
+      "Activates from round start. The opponent cannot use Run and only gets one submit for the round.",
   },
   SkullCard: {
     Card: SkullCard,

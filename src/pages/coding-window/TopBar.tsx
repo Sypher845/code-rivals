@@ -166,6 +166,7 @@ function SabotageButton({
 
 type TopBarProps = {
   canSubmit: boolean;
+  canRun?: boolean;
   isSubmitting: boolean;
   myPowerupAppliedAtStart?: boolean;
   mySelectedPowerupId: string | null;
@@ -185,6 +186,7 @@ type TopBarProps = {
 
 export function TopBar({
   canSubmit,
+  canRun = true,
   isSubmitting,
   myPowerupAppliedAtStart = false,
   mySelectedPowerupId,
@@ -236,7 +238,8 @@ export function TopBar({
         {/* Run button */}
         <button
           onClick={onRun}
-          className="inline-flex items-center gap-2 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.04)] px-5 py-2 text-sm font-medium text-[var(--on-background)] transition hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.08)]"
+          disabled={!canRun}
+          className="inline-flex items-center gap-2 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.04)] px-5 py-2 text-sm font-medium text-[var(--on-background)] transition hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.08)] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Play className="h-4 w-4" />
           Run
