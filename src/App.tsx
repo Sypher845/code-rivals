@@ -409,14 +409,10 @@ function App() {
         }
       />
       <Route
-        path="/:username/:roomSegment/:roundSegment/match"
+        path="/:username/:roomSegment/:roundSegment"
         element={
           session && currentUsername ? (
-            <UserMatchRoute
-              expectedUsername={currentUsername}
-              identity={identity}
-              username={session.username}
-            />
+            <CodingWindowPage />
           ) : (
             <Navigate replace to="/login" />
           )

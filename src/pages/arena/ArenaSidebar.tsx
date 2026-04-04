@@ -256,7 +256,7 @@ export function ArenaSidebar({
     const round = activeRoom.currentRound?.toString() ?? "1";
     const targetPath =
       activeRoom.matchState === "playing"
-        ? `/${encodeURIComponent(username)}/room=${activeRoom.roomId}/r${round}/match`
+        ? `/${encodeURIComponent(username)}/room=${activeRoom.roomId}/r${round}`
         : activeRoom.matchState === "round_intro"
           ? `/${encodeURIComponent(username)}/room=${activeRoom.roomId}/r${round}/power-cards-locked`
           : `/${encodeURIComponent(username)}/room=${activeRoom.roomId}/r${round}/power-cards`;
@@ -349,8 +349,8 @@ export function ArenaSidebar({
               type="button"
               onClick={() => setArenaMode("create")}
               className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "create"
-                  ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
-                  : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
+                ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
+                : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
                 }`}
             >
               Create
@@ -359,8 +359,8 @@ export function ArenaSidebar({
               type="button"
               onClick={() => setArenaMode("join")}
               className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "join"
-                  ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
-                  : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
+                ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
+                : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
                 }`}
             >
               Join
@@ -409,8 +409,8 @@ export function ArenaSidebar({
           {statusMessage ? (
             <div
               className={`rounded-lg border px-3 py-2 text-sm ${statusTone === "error"
-                  ? "border-[rgba(255,92,122,0.28)] bg-[rgba(255,92,122,0.08)] text-[rgba(255,207,214,0.92)]"
-                  : "border-[rgba(0,229,204,0.24)] bg-[rgba(0,229,204,0.08)] text-[rgba(214,255,249,0.92)]"
+                ? "border-[rgba(255,92,122,0.28)] bg-[rgba(255,92,122,0.08)] text-[rgba(255,207,214,0.92)]"
+                : "border-[rgba(0,229,204,0.24)] bg-[rgba(0,229,204,0.08)] text-[rgba(214,255,249,0.92)]"
                 }`}
             >
               {statusMessage}

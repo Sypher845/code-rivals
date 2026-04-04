@@ -205,7 +205,7 @@ export function PowerupSelectionPage({
     if (activeRoom.matchState === "playing") {
       const round = activeRoom.currentRound?.toString() ?? normalizedRoundNumber;
       navigate(
-        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}/match`,
+        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}`,
         { replace: true },
       );
     }
@@ -349,8 +349,8 @@ export function PowerupSelectionPage({
                       }}
                       style={{ zIndex, position: "absolute" }}
                       className={`${panelFrameClass} shrink-0 rounded-3xl p-4 text-center outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${active
-                          ? "w-[19.2rem] sm:w-[26.4rem]"
-                          : "w-[15.6rem] bg-[rgba(11,17,28,0.58)] sm:w-[21.6rem]"
+                        ? "w-[19.2rem] sm:w-[26.4rem]"
+                        : "w-[15.6rem] bg-[rgba(11,17,28,0.58)] sm:w-[21.6rem]"
                         } ${active && lockedCard
                           ? "bg-[rgba(22,25,33,0.9)]"
                           : ""
@@ -416,8 +416,8 @@ export function PowerupSelectionPage({
                 >
                   <span
                     className={`absolute inset-0 rounded-full transition-all duration-300 ${i === activeIndex
-                        ? "scale-100 bg-[var(--primary)] shadow-[0_0_8px_rgba(224,141,255,0.5)]"
-                        : "scale-75 bg-[rgba(241,243,252,0.2)]"
+                      ? "scale-100 bg-[var(--primary)] shadow-[0_0_8px_rgba(224,141,255,0.5)]"
+                      : "scale-75 bg-[rgba(241,243,252,0.2)]"
                       }`}
                   />
                   {i === activeIndex && (

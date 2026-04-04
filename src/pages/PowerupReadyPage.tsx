@@ -124,7 +124,7 @@ export function PowerupReadyPage({
 
     const params = new URLSearchParams({ room: normalizedRoomId });
     const round = activeRoom.currentRound?.toString() ?? normalizedRoundNumber;
-    navigate(`/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}/match`, {
+    navigate(`/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${round}`, {
       replace: true,
     });
   }, [activeRoom, navigate, normalizedRoomId, normalizedRoundNumber, username]);
