@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "docker compose up -d && echo 'Docker port:' && docker compose port api-problemset 8080 && vite",
+    "dev": "sh -c 'if docker compose version >/dev/null 2>&1; then DC=\"docker compose\"; elif command -v docker-compose >/dev/null 2>&1; then DC=\"docker-compose\"; else echo \"Docker Compose is not installed.\" >&2; exit 1; fi; $DC up -d; echo \"Docker port:\"; $DC port api-problemset 8080; vite'",
     "build": "tsc -b && vite build",
     "format": "prettier . --write --ignore-path .prettierignore",
     "lint": "prettier . --check --ignore-path .prettierignore",

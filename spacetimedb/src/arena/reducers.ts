@@ -30,6 +30,10 @@ const ROUND_THREE_DURATION_MICROS = 15n * 60n * 1_000_000n;
 const TIME_KUM_ROUND_ONE_PENALTY_SECONDS = 60n;
 const TIME_KUM_ROUND_TWO_PENALTY_SECONDS = 120n;
 const TIME_KUM_ROUND_THREE_PENALTY_SECONDS = 180n;
+const ROUND_ONE_TIME_HEIST_MICROS = 90n * 1_000_000n;
+const ROUND_TWO_TIME_HEIST_MICROS = 150n * 1_000_000n;
+const ROUND_THREE_TIME_HEIST_MICROS = 210n * 1_000_000n;
+const TIME_HEIST_POWERUP_ID = "TimeHeistCard";
 
 const POWER_CARD_NAMES = [
   "FlashbangCard",
@@ -90,6 +94,22 @@ function getRoundDurationMicros(roundNumber: bigint) {
   return ROUND_THREE_DURATION_MICROS;
 }
 
+function getTimeHeistMicros(roundNumber: bigint) {
+  if (roundNumber === 1n) {
+    return ROUND_ONE_TIME_HEIST_MICROS;
+  }
+
+  if (roundNumber === 2n) {
+    return ROUND_TWO_TIME_HEIST_MICROS;
+  }
+
+  return ROUND_THREE_TIME_HEIST_MICROS;
+}
+
+function appliesPowerupAtRoundStart(powerupId: string | undefined) {
+  return powerupId === TIME_HEIST_POWERUP_ID;
+}
+
 function getRoundDurationSeconds(roundNumber: bigint) {
   return getRoundDurationMicros(roundNumber) / 1_000_000n;
 }
@@ -117,17 +137,32 @@ function getEffectiveRoundDurationSeconds(
   playerIdentity: ArenaReducerCtx["sender"],
 ) {
   const baseRoundDurationSeconds = getRoundDurationSeconds(roundNumber);
+  const playerState = ctx.db.arenaPowerupLock.selectionKey.find(
+    buildPowerupSelectionKey(roomId, playerIdentity.toHexString()),
+  );
+  const playerSpecificDurationSeconds =
+    playerState?.playerRoundStartTime &&
+    playerState?.playerRoundEndTime &&
+    playerState.playerRoundStartTime.microsSinceUnixEpoch > 0n &&
+    playerState.playerRoundEndTime.microsSinceUnixEpoch >
+      playerState.playerRoundStartTime.microsSinceUnixEpoch
+      ? (playerState.playerRoundEndTime.microsSinceUnixEpoch -
+          playerState.playerRoundStartTime.microsSinceUnixEpoch) /
+        1_000_000n
+      : undefined;
   const opponentState = listPowerupLocks(ctx, roomId).find(
     (lock) => !lock.playerIdentity.isEqual(playerIdentity),
   );
 
   if (opponentState?.powerupId !== "TimeKumCard") {
-    return baseRoundDurationSeconds;
+    return playerSpecificDurationSeconds ?? baseRoundDurationSeconds;
   }
 
   const penaltySeconds = getTimeKumPenaltySeconds(roundNumber);
-  return baseRoundDurationSeconds > penaltySeconds
-    ? baseRoundDurationSeconds - penaltySeconds
+  const effectiveBaseDuration =
+    playerSpecificDurationSeconds ?? baseRoundDurationSeconds;
+  return effectiveBaseDuration > penaltySeconds
+    ? effectiveBaseDuration - penaltySeconds
     : 0n;
 }
 
@@ -288,6 +323,9 @@ function upsertPlayerRoundState(
       activeDebuffs: [],
       hasSubmitted: false,
       isTyping: false,
+      appliedAtRoundStartAt: undefined,
+      playerRoundStartTime: undefined,
+      playerRoundEndTime: undefined,
       lockedAt: undefined,
     });
     return;
@@ -303,6 +341,9 @@ function upsertPlayerRoundState(
     activeDebuffs: [],
     hasSubmitted: false,
     isTyping: false,
+    appliedAtRoundStartAt: undefined,
+    playerRoundStartTime: undefined,
+    playerRoundEndTime: undefined,
     lockedAt: undefined,
   });
 }
@@ -628,6 +669,9 @@ export const lock_arena_powerup = spacetimedb.reducer(
         isReady: false,
         hasLockedPower: true,
         hasSubmitted: false,
+        appliedAtRoundStartAt: undefined,
+        playerRoundStartTime: undefined,
+        playerRoundEndTime: undefined,
         lockedAt: ctx.timestamp,
       });
     } else {
@@ -641,6 +685,9 @@ export const lock_arena_powerup = spacetimedb.reducer(
         activeDebuffs: [],
         hasSubmitted: false,
         isTyping: false,
+        appliedAtRoundStartAt: undefined,
+        playerRoundStartTime: undefined,
+        playerRoundEndTime: undefined,
         lockedAt: ctx.timestamp,
       });
     }
@@ -683,6 +730,9 @@ export const unlock_arena_powerup = spacetimedb.reducer(
       powerupId: undefined,
       isReady: false,
       hasLockedPower: false,
+      appliedAtRoundStartAt: undefined,
+      playerRoundStartTime: undefined,
+      playerRoundEndTime: undefined,
       lockedAt: undefined,
     });
   },
@@ -702,8 +752,77 @@ export const begin_playing_round = spacetimedb.reducer(
       return;
     }
 
+    const baseRoundDurationMicros = getRoundDurationMicros(room.currentRound);
     const roundEndMicros =
-      ctx.timestamp.microsSinceUnixEpoch + getRoundDurationMicros(room.currentRound);
+      ctx.timestamp.microsSinceUnixEpoch + baseRoundDurationMicros;
+    const playerOneIdentity = room.draftPlayerOneIdentity;
+    const playerTwoIdentity = room.draftPlayerTwoIdentity;
+    const playerOneState = playerOneIdentity
+      ? ctx.db.arenaPowerupLock.selectionKey.find(
+          buildPowerupSelectionKey(normalizedRoomId, playerOneIdentity.toHexString()),
+        )
+      : undefined;
+    const playerTwoState = playerTwoIdentity
+      ? ctx.db.arenaPowerupLock.selectionKey.find(
+          buildPowerupSelectionKey(normalizedRoomId, playerTwoIdentity.toHexString()),
+        )
+      : undefined;
+
+    let playerOneBonusMicros = 0n;
+    let playerTwoBonusMicros = 0n;
+    const timeHeistMicros = getTimeHeistMicros(room.currentRound);
+
+    if (
+      playerOneState?.hasLockedPower &&
+      appliesPowerupAtRoundStart(playerOneState.powerupId) &&
+      playerOneState.powerupId === TIME_HEIST_POWERUP_ID
+    ) {
+      playerOneBonusMicros += timeHeistMicros;
+      playerTwoBonusMicros -= timeHeistMicros;
+    }
+
+    if (
+      playerTwoState?.hasLockedPower &&
+      appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
+      playerTwoState.powerupId === TIME_HEIST_POWERUP_ID
+    ) {
+      playerTwoBonusMicros += timeHeistMicros;
+      playerOneBonusMicros -= timeHeistMicros;
+    }
+
+    if (playerOneState) {
+      ctx.db.arenaPowerupLock.selectionKey.update({
+        ...playerOneState,
+        appliedAtRoundStartAt:
+          appliesPowerupAtRoundStart(playerOneState.powerupId) &&
+          playerOneState.hasLockedPower
+            ? ctx.timestamp
+            : undefined,
+        playerRoundStartTime: ctx.timestamp,
+        playerRoundEndTime: new Timestamp(
+          ctx.timestamp.microsSinceUnixEpoch +
+            baseRoundDurationMicros +
+            playerOneBonusMicros,
+        ),
+      });
+    }
+
+    if (playerTwoState) {
+      ctx.db.arenaPowerupLock.selectionKey.update({
+        ...playerTwoState,
+        appliedAtRoundStartAt:
+          appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
+          playerTwoState.hasLockedPower
+            ? ctx.timestamp
+            : undefined,
+        playerRoundStartTime: ctx.timestamp,
+        playerRoundEndTime: new Timestamp(
+          ctx.timestamp.microsSinceUnixEpoch +
+            baseRoundDurationMicros +
+            playerTwoBonusMicros,
+        ),
+      });
+    }
 
     ctx.db.arenaRoom.roomId.update({
       ...room,
@@ -711,32 +830,32 @@ export const begin_playing_round = spacetimedb.reducer(
       roundStartTime: ctx.timestamp,
       roundEndTime: new Timestamp(roundEndMicros),
     });
-    if (room.draftPlayerOneIdentity) {
+    if (playerOneIdentity) {
       setPresenceActivity(
         ctx,
-        room.draftPlayerOneIdentity,
+        playerOneIdentity,
         PLAYER_ACTIVITY.in_match,
         normalizedRoomId,
       );
       cancelPendingInvitesForSender(
         ctx,
-        room.draftPlayerOneIdentity,
+        playerOneIdentity,
         "expired",
-        `${getDisplayUsername(ctx, room.draftPlayerOneIdentity)} is already in another match.`,
+        `${getDisplayUsername(ctx, playerOneIdentity)} is already in another match.`,
       );
     }
-    if (room.draftPlayerTwoIdentity) {
+    if (playerTwoIdentity) {
       setPresenceActivity(
         ctx,
-        room.draftPlayerTwoIdentity,
+        playerTwoIdentity,
         PLAYER_ACTIVITY.in_match,
         normalizedRoomId,
       );
       cancelPendingInvitesForSender(
         ctx,
-        room.draftPlayerTwoIdentity,
+        playerTwoIdentity,
         "expired",
-        `${getDisplayUsername(ctx, room.draftPlayerTwoIdentity)} is already in another match.`,
+        `${getDisplayUsername(ctx, playerTwoIdentity)} is already in another match.`,
       );
     }
   },
@@ -778,6 +897,10 @@ export const trigger_arena_sabotage = spacetimedb.reducer(
     const playerState = ctx.db.arenaPowerupLock.selectionKey.find(selectionKey);
     if (!playerState || !playerState.hasLockedPower || !playerState.powerupId) {
       throw new SenderError("Lock a powerup before triggering sabotage.");
+    }
+
+    if (appliesPowerupAtRoundStart(playerState.powerupId)) {
+      throw new SenderError("This powerup is applied automatically when the round begins.");
     }
 
     ctx.db.arenaSabotageEvent.insert({

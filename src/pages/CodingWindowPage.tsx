@@ -58,6 +58,22 @@ function getRoundDurationSeconds(roundNumber: number) {
   return 15 * 60;
 }
 
+function microsTimestampToMs(
+  timestamp: { microsSinceUnixEpoch: bigint } | null | undefined,
+) {
+  if (!timestamp || timestamp.microsSinceUnixEpoch <= 0n) {
+    return null;
+  }
+
+  return Number(timestamp.microsSinceUnixEpoch / 1000n);
+}
+
+function hasRealTimestamp(
+  timestamp: { microsSinceUnixEpoch: bigint } | null | undefined,
+) {
+  return Boolean(timestamp && timestamp.microsSinceUnixEpoch > 0n);
+}
+
 /* ══════════════════════════ RESIZABLE DIVIDER ════════════════════════ */
 
 function useDragResize(
@@ -233,24 +249,6 @@ export function CodingWindowPage() {
           activeRoundNumber,
         )
       : 0;
-  const effectiveRoundDurationSeconds = Math.max(
-    0,
-    baseRoundDurationSeconds - passiveTimePenaltySeconds,
-  );
-  const personalRoundDeadlineMs =
-    roundStartMs !== null && activeRoom?.matchState === "playing"
-      ? roundStartMs + effectiveRoundDurationSeconds * 1000
-      : null;
-  const roundDeadlineMs =
-    sharedRoundDeadlineMs === null
-      ? personalRoundDeadlineMs
-      : personalRoundDeadlineMs === null
-        ? sharedRoundDeadlineMs
-        : Math.min(sharedRoundDeadlineMs, personalRoundDeadlineMs);
-  const secondsRemaining =
-    roundDeadlineMs === null
-      ? effectiveRoundDurationSeconds
-      : Math.max(0, Math.ceil((roundDeadlineMs - nowMs) / 1000));
   const opponentMember = useMemo(() => {
     if (!identity) {
       return null;
@@ -267,10 +265,39 @@ export function CodingWindowPage() {
   const selectedPowerupRequiresManualActivation = mySelectedPowerupId
     ? powerupRequiresManualActivation(mySelectedPowerupId)
     : false;
+  const myRoundStartMs = microsTimestampToMs(myRoundState?.playerRoundStartTime);
+  const myBaseRoundDeadlineMs = microsTimestampToMs(myRoundState?.playerRoundEndTime);
+  const myBaseRoundDurationSeconds =
+    myRoundStartMs !== null && myBaseRoundDeadlineMs !== null
+      ? Math.max(0, Math.floor((myBaseRoundDeadlineMs - myRoundStartMs) / 1000))
+      : baseRoundDurationSeconds;
+  const effectiveRoundDurationSeconds = Math.max(
+    0,
+    myBaseRoundDurationSeconds - passiveTimePenaltySeconds,
+  );
+  const personalRoundDeadlineMs =
+    myRoundStartMs !== null && activeRoom?.matchState === "playing"
+      ? myRoundStartMs + effectiveRoundDurationSeconds * 1000
+      : roundStartMs !== null && activeRoom?.matchState === "playing"
+        ? roundStartMs + effectiveRoundDurationSeconds * 1000
+        : null;
+  const roundDeadlineMs =
+    sharedRoundDeadlineMs === null
+      ? personalRoundDeadlineMs
+      : personalRoundDeadlineMs === null
+        ? sharedRoundDeadlineMs
+        : Math.min(sharedRoundDeadlineMs, personalRoundDeadlineMs);
+  const secondsRemaining =
+    roundDeadlineMs === null
+      ? effectiveRoundDurationSeconds
+      : Math.max(0, Math.ceil((roundDeadlineMs - nowMs) / 1000));
+  const myRoundDurationSeconds = effectiveRoundDurationSeconds;
   const currentRoundKey =
     normalizedRoomId === null ? null : `${normalizedRoomId}:${activeRoundNumber}`;
   const sabotageUsed =
-    currentRoundKey !== null && usedSabotageRoundKey === currentRoundKey;
+    currentRoundKey !== null &&
+    (usedSabotageRoundKey === currentRoundKey ||
+      hasRealTimestamp(myRoundState?.appliedAtRoundStartAt));
   const editorThemeId =
     activeEditorSabotage?.themeId ?? DEFAULT_EDITOR_THEME_ID;
   const flashbangActive = activeEditorSabotage?.flashbangActive ?? false;
@@ -319,7 +346,7 @@ export function CodingWindowPage() {
         return;
       }
 
-      setLatestIncomingSabotage({
+        setLatestIncomingSabotage({
         ...resolvedEffect,
         emittedAtMs: Number(eventRow.createdAt.microsSinceUnixEpoch / 1000n),
         roomId: eventRow.roomId,
@@ -488,7 +515,7 @@ export function CodingWindowPage() {
         setStatusMessage("Timer expired. Submitting your round result...");
         await submitRoundResult({
           roomId: normalizedRoomId,
-          timeTakenSeconds: BigInt(effectiveRoundDurationSeconds),
+          timeTakenSeconds: BigInt(myRoundDurationSeconds),
           testcasesPassed: 0n,
           totalTestcases,
           pointsEarned: 0n,
@@ -502,7 +529,7 @@ export function CodingWindowPage() {
       }
     })();
   }, [
-    effectiveRoundDurationSeconds,
+    myRoundDurationSeconds,
     normalizedRoomId,
     secondsRemaining,
     submitDisabled,
@@ -612,7 +639,7 @@ export function CodingWindowPage() {
       await submitRoundResult({
         roomId: normalizedRoomId,
         timeTakenSeconds: BigInt(
-          Math.max(0, effectiveRoundDurationSeconds - secondsRemaining),
+          Math.max(0, myRoundDurationSeconds - secondsRemaining),
         ),
         testcasesPassed: totalTestcases,
         totalTestcases,
@@ -627,7 +654,7 @@ export function CodingWindowPage() {
       setIsSubmitting(false);
     }
   }, [
-    effectiveRoundDurationSeconds,
+    myRoundDurationSeconds,
     normalizedRoomId,
     secondsRemaining,
     submitDisabled,
@@ -663,9 +690,14 @@ export function CodingWindowPage() {
       <TopBar
         canSubmit={!submitDisabled}
         isSubmitting={isSubmitting}
+        myPowerupAppliedAtStart={hasRealTimestamp(myRoundState?.appliedAtRoundStartAt)}
         mySelectedPowerupId={mySelectedPowerupId}
         onRun={handleRun}
-        onSabotage={handleSabotage}
+        onSabotage={
+          hasRealTimestamp(myRoundState?.appliedAtRoundStartAt)
+            ? undefined
+            : handleSabotage
+        }
         opponentCardUsed={null}
         opponentHasSubmitted={Boolean(opponentRoundState?.hasSubmitted)}
         opponentIsTyping={Boolean(opponentRoundState?.isTyping)}

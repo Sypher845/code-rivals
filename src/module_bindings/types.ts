@@ -48,6 +48,9 @@ export const ArenaPowerupLock = __t.object("ArenaPowerupLock", {
   hasSubmitted: __t.bool(),
   isTyping: __t.bool(),
   lockedAt: __t.option(__t.timestamp()),
+  appliedAtRoundStartAt: __t.option(__t.timestamp()),
+  playerRoundStartTime: __t.option(__t.timestamp()),
+  playerRoundEndTime: __t.option(__t.timestamp()),
 });
 export type ArenaPowerupLock = __Infer<typeof ArenaPowerupLock>;
 

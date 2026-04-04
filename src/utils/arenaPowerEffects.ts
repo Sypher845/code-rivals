@@ -84,7 +84,7 @@ export function getPassiveTimePenaltySeconds(
 }
 
 export function powerupRequiresManualActivation(powerupId: string) {
-  return powerupId !== "TimeKumCard";
+  return powerupId !== "TimeKumCard" && powerupId !== "TimeHeistCard";
 }
 
 export function getPowerupDurationMinutes(

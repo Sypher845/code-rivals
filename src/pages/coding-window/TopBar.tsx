@@ -7,11 +7,10 @@ import {
   Keyboard,
 } from "lucide-react";
 import { POWER_CARD_REGISTRY } from "../powerups/powerupRegistry";
-import { formatPowerupName } from "../../utils/arenaPowerEffects";
-
-function powerupRequiresManualActivation(powerupId: string) {
-  return powerupId !== "TimeKumCard";
-}
+import {
+  formatPowerupName,
+  powerupRequiresManualActivation,
+} from "../../utils/arenaPowerEffects";
 
 /* ═══════════════════════════ MATCH TIMER ═════════════════════════════ */
 
@@ -99,6 +98,7 @@ function OpponentCard({
 type SabotageButtonProps = {
   cardName: string;
   isSabotaged: boolean;
+  powerupAppliedAtStart?: boolean;
   onClick?: () => void;
   opponentName: string;
 };
@@ -106,6 +106,7 @@ type SabotageButtonProps = {
 function SabotageButton({
   cardName,
   isSabotaged,
+  powerupAppliedAtStart = false,
   onClick,
   opponentName,
 }: SabotageButtonProps) {
@@ -114,7 +115,11 @@ function SabotageButton({
 
   const CardComponent = descriptor.Card;
   const displayName = formatPowerupName(cardName);
-  const actionLabel = isSabotaged ? "Sabotaged" : "Sabotage";
+  const actionLabel = powerupAppliedAtStart
+    ? "Applied"
+    : isSabotaged
+      ? "Sabotaged"
+      : "Sabotage";
   const handleClick = () => {
     if (isSabotaged || !onClick) {
       return;
@@ -164,6 +169,7 @@ function SabotageButton({
 type TopBarProps = {
   canSubmit: boolean;
   isSubmitting: boolean;
+  myPowerupAppliedAtStart?: boolean;
   mySelectedPowerupId: string | null;
   onRun: () => void;
   onSabotage?: () => void;
@@ -182,6 +188,7 @@ type TopBarProps = {
 export function TopBar({
   canSubmit,
   isSubmitting,
+  myPowerupAppliedAtStart = false,
   mySelectedPowerupId,
   onRun,
   onSabotage,
@@ -223,6 +230,7 @@ export function TopBar({
           <SabotageButton
             cardName={mySelectedPowerupId}
             isSabotaged={sabotageUsed}
+            powerupAppliedAtStart={myPowerupAppliedAtStart}
             onClick={onSabotage}
             opponentName={opponentName}
           />

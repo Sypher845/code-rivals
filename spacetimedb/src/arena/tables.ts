@@ -1,3 +1,4 @@
+import { Timestamp } from "spacetimedb";
 import { t, table } from "spacetimedb/server";
 
 let timeoutWaitingRoomReducerExport: unknown;
@@ -67,6 +68,9 @@ export const arena_powerup_lock = table(
     hasSubmitted: t.bool(),
     isTyping: t.bool(),
     lockedAt: t.timestamp().optional(),
+    appliedAtRoundStartAt: t.timestamp().optional().default(new Timestamp(0n)),
+    playerRoundStartTime: t.timestamp().optional().default(new Timestamp(0n)),
+    playerRoundEndTime: t.timestamp().optional().default(new Timestamp(0n)),
   },
 );
 

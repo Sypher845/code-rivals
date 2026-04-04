@@ -21,4 +21,7 @@ export default __t.row({
   hasSubmitted: __t.bool().name("has_submitted"),
   isTyping: __t.bool().name("is_typing"),
   lockedAt: __t.option(__t.timestamp()).name("locked_at"),
+  appliedAtRoundStartAt: __t.option(__t.timestamp()).name("applied_at_round_start_at"),
+  playerRoundStartTime: __t.option(__t.timestamp()).name("player_round_start_time"),
+  playerRoundEndTime: __t.option(__t.timestamp()).name("player_round_end_time"),
 });
