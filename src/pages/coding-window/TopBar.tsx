@@ -100,7 +100,6 @@ type SabotageButtonProps = {
   isSabotaged: boolean;
   powerupAppliedAtStart?: boolean;
   onClick?: () => void;
-  opponentName: string;
 };
 
 function SabotageButton({
@@ -108,7 +107,6 @@ function SabotageButton({
   isSabotaged,
   powerupAppliedAtStart = false,
   onClick,
-  opponentName,
 }: SabotageButtonProps) {
   const descriptor = POWER_CARD_REGISTRY[cardName];
   if (!descriptor) return null;
@@ -157,7 +155,7 @@ function SabotageButton({
           Selected Power
         </p>
         <p className="mt-0.5 text-sm font-semibold leading-tight">
-          {actionLabel} {opponentName} with {displayName}
+          {actionLabel} with {displayName}
         </p>
       </div>
     </motion.button>
@@ -232,7 +230,6 @@ export function TopBar({
             isSabotaged={sabotageUsed}
             powerupAppliedAtStart={myPowerupAppliedAtStart}
             onClick={onSabotage}
-            opponentName={opponentName}
           />
         ) : null}
 

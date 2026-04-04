@@ -91,12 +91,16 @@ function defineFlashbangTheme(monaco: Parameters<OnMount>[1]) {
 
 type EditorPanelProps = {
   editorThemeId?: EditorThemeId;
+  keySwapActive?: boolean;
+  keySwapMap?: Record<string, string> | null;
   lineJumperActive?: boolean;
   noRetreatActive?: boolean;
 };
 
 export function EditorPanel({
   editorThemeId = DEFAULT_EDITOR_THEME_ID,
+  keySwapActive = false,
+  keySwapMap = null,
   lineJumperActive = false,
   noRetreatActive = false,
 }: EditorPanelProps) {
@@ -192,6 +196,60 @@ export function EditorPanel({
 
     acceptedCodeRef.current = code;
   }, [code]);
+
+  useEffect(() => {
+    if (!editorRef.current || !keySwapActive || !keySwapMap) {
+      return;
+    }
+
+    const editor = editorRef.current;
+    const editorDomNode = editor.getDomNode();
+    const monaco = monacoRef.current;
+
+    const swapTypedLetter = (event: KeyboardEvent) => {
+      if (
+        !monaco ||
+        event.ctrlKey ||
+        event.metaKey ||
+        event.altKey ||
+        event.key.length !== 1 ||
+        !/[a-z]/i.test(event.key)
+      ) {
+        return;
+      }
+
+      const lowerKey = event.key.toLowerCase();
+      const mappedLowerKey = keySwapMap[lowerKey];
+      if (!mappedLowerKey) {
+        return;
+      }
+
+      const mappedKey =
+        event.key === lowerKey ? mappedLowerKey : mappedLowerKey.toUpperCase();
+      const selection = editor.getSelection();
+      if (!selection) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      editor.executeEdits("key-swap", [
+        {
+          range: selection,
+          text: mappedKey,
+          forceMoveMarkers: true,
+        },
+      ]);
+    };
+
+    editorDomNode?.addEventListener("keydown", swapTypedLetter, true);
+
+    return () => {
+      editorDomNode?.removeEventListener("keydown", swapTypedLetter, true);
+    };
+  }, [keySwapActive, keySwapMap]);
 
   useEffect(() => {
     if (!editorRef.current || !lineJumperActive) {

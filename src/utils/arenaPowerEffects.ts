@@ -8,6 +8,7 @@ export type PowerupEffectTarget = "editor";
 
 export type PowerupEffectHandlerKey =
   | "applyFlashbangEffect"
+  | "applyKeySwapEffect"
   | "applyLineJumperEffect"
   | "applyNoRetreatEffect";
 
@@ -26,6 +27,12 @@ export const POWERUP_EFFECTS_MAP = {
   FlashbangCard: {
     fullRound: false,
     handlerKey: "applyFlashbangEffect",
+    roundTime: [2, 4, 7],
+    target: "editor",
+  },
+  KeySwapCard: {
+    fullRound: false,
+    handlerKey: "applyKeySwapEffect",
     roundTime: [2, 4, 7],
     target: "editor",
   },

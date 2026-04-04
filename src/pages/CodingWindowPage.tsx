@@ -301,6 +301,8 @@ export function CodingWindowPage() {
   const editorThemeId =
     activeEditorSabotage?.themeId ?? DEFAULT_EDITOR_THEME_ID;
   const flashbangActive = activeEditorSabotage?.flashbangActive ?? false;
+  const keySwapActive = activeEditorSabotage?.keySwapActive ?? false;
+  const keySwapMap = activeEditorSabotage?.keySwapMap ?? null;
   const lineJumperActive = activeEditorSabotage?.lineJumperActive ?? false;
   const noRetreatActive = activeEditorSabotage?.noRetreatActive ?? false;
   const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
@@ -735,6 +737,8 @@ export function CodingWindowPage() {
           <div style={{ height: `${vRatio * 100}%` }} className="min-h-0">
             <EditorPanel
               editorThemeId={editorThemeId}
+              keySwapActive={keySwapActive}
+              keySwapMap={keySwapMap}
               lineJumperActive={lineJumperActive}
               noRetreatActive={noRetreatActive}
             />
