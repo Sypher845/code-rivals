@@ -17,6 +17,70 @@ export type ParsedTestCase = {
   expectedOutput: string;
 };
 
+function splitTopLevelCommaSeparated(input: string) {
+  const segments: string[] = [];
+  let current = "";
+  let depth = 0;
+
+  for (const char of input) {
+    if (char === "[" || char === "(" || char === "{") {
+      depth += 1;
+    } else if (char === "]" || char === ")" || char === "}") {
+      depth = Math.max(0, depth - 1);
+    }
+
+    if (char === "," && depth === 0) {
+      if (current.trim()) {
+        segments.push(current.trim());
+      }
+      current = "";
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current.trim()) {
+    segments.push(current.trim());
+  }
+
+  return segments;
+}
+
+function normalizeQuestionInputToStdin(input: string) {
+  const trimmedInput = input.trim();
+  if (!trimmedInput) {
+    return "";
+  }
+
+  const stripAssignmentPrefix = (segment: string) => {
+    const equalsIndex = segment.indexOf("=");
+    if (equalsIndex === -1) {
+      return segment.trim();
+    }
+
+    return segment.slice(equalsIndex + 1).trim();
+  };
+
+  if (trimmedInput.includes("\n")) {
+    return trimmedInput
+      .split("\n")
+      .map((line) => stripAssignmentPrefix(line))
+      .join("\n");
+  }
+
+  const segments = splitTopLevelCommaSeparated(trimmedInput);
+  if (segments.length <= 1) {
+    return stripAssignmentPrefix(trimmedInput);
+  }
+
+  const normalizedSegments = segments.map((segment) =>
+    stripAssignmentPrefix(segment),
+  );
+
+  return normalizedSegments.join("\n");
+}
+
 export function getDescriptionText(problem?: RemoteProblemData | null) {
   if (
     typeof problem?.problem_description === "string" &&
@@ -191,7 +255,7 @@ export function getParsedTestCases(problem?: RemoteProblemData | null) {
 
         return {
           label: example.heading || `Example ${index + 1}:`,
-          input: inputField.value,
+          input: normalizeQuestionInputToStdin(inputField.value),
           expectedOutput: outputField.value,
         };
       })
@@ -216,7 +280,7 @@ export function getParsedTestCases(problem?: RemoteProblemData | null) {
 
         return {
           label: `Case ${index + 1}:`,
-          input,
+          input: normalizeQuestionInputToStdin(input),
           expectedOutput: output,
         };
       })
@@ -229,7 +293,7 @@ export function getParsedTestCases(problem?: RemoteProblemData | null) {
 
   return PROBLEM.testCases.map((testCase, index) => ({
     label: `Example ${index + 1}:`,
-    input: testCase.input,
+    input: normalizeQuestionInputToStdin(testCase.input),
     expectedOutput: testCase.expectedOutput,
   }));
 }

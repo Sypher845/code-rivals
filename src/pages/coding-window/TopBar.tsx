@@ -237,6 +237,7 @@ type TopBarProps = {
   activeDebuffUsesRoundTimer?: boolean;
   canSubmit: boolean;
   canRun?: boolean;
+  isRunning?: boolean;
   isSubmitting: boolean;
   myPowerupAppliedAtStart?: boolean;
   mySelectedPowerupId: string | null;
@@ -266,6 +267,7 @@ export function TopBar({
   activeDebuffUsesRoundTimer = false,
   canSubmit,
   canRun = true,
+  isRunning = false,
   isSubmitting,
   myPowerupAppliedAtStart = false,
   mySelectedPowerupId,
@@ -358,7 +360,7 @@ export function TopBar({
         {/* Run button */}
         <button
           onClick={onRun}
-          disabled={!canRun}
+          disabled={!canRun || isRunning}
           className={`inline-flex items-center gap-2 rounded-lg border px-5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
             zenMode
               ? "border-[#2b2b2b] bg-[#181818] text-[#efefef] hover:border-[#454545] hover:bg-[#1f1f1f]"
@@ -366,7 +368,7 @@ export function TopBar({
           }`}
         >
           <Play className="h-4 w-4" />
-          Run
+          {isRunning ? "Running..." : "Run"}
         </button>
 
         {/* Submit button */}
