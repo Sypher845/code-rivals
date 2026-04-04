@@ -81,11 +81,12 @@ In other words: very healthy, calm, normal software behavior.
 
 - React 18
 - TypeScript
-- Vite
 - Tailwind CSS 4
 - Framer Motion
 - Monaco editor
-- SpacetimeDB 2.x
+- SpacetimeDB
+- AWS EC2
+- Docker
 
 ## Local Development
 
@@ -200,32 +201,6 @@ Backend areas to know:
 - Zen Mode for solo practice when you want less rivalry and more focus
 - Animated transitions because if you’re going to duel, you may as well arrive dramatically
 
-## Known Practical Reality
-
-At the moment, Vite in this project is happiest on newer Node versions.
-
-If you hit weird build issues like:
-
-```text
-crypto.hash is not a function
-```
-
-upgrade Node to a version Vite likes better, ideally:
-
-- `20.19+`, or
-- `22.12+`
-
-## If You’re New Here
-
-Best files to open first:
-
-- [src/App.tsx](/home/samyak/code/Projects/code-rivals/src/App.tsx)
-- [src/pages/ArenaPage.tsx](/home/samyak/code/Projects/code-rivals/src/pages/ArenaPage.tsx)
-- [src/pages/CodingWindowPage.tsx](/home/samyak/code/Projects/code-rivals/src/pages/CodingWindowPage.tsx)
-- [spacetimedb/src/schema.ts](/home/samyak/code/Projects/code-rivals/spacetimedb/src/schema.ts)
-- [spacetimedb/src/arena/reducers.ts](/home/samyak/code/Projects/code-rivals/spacetimedb/src/arena/reducers.ts)
-
-Those five files will get you from “what is happening?” to “okay, this is a whole battle system” pretty quickly.
 
 ## Final Pitch
 
