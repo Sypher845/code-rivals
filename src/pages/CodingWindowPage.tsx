@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useReducer, useSpacetimeDB, useTable } from "spacetimedb/react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { TopBar } from "./coding-window/TopBar";
 import { DescriptionPanel } from "./coding-window/DescriptionPanel";
 import { EditorPanel } from "./coding-window/EditorPanel";
@@ -301,9 +301,17 @@ function ZenRoundCard({
 
 export function CodingWindowPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { identity } = useSpacetimeDB();
   const { roomSegment, roundSegment, username } = useParams();
+  const zenRouteRoundNumber = useMemo(() => {
+    const match = location.pathname.match(/^\/[^/]+\/zen\/R([123])$/i);
+    if (!match) {
+      return null;
+    }
+
+    return Number.parseInt(match[1] ?? "1", 10);
+  }, [location.pathname]);
   const normalizedRoomId =
     roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? null;
   const isStandaloneTestingMode = normalizedRoomId === null;
@@ -311,9 +319,10 @@ export function CodingWindowPage() {
     roundSegment?.replace(/^r/i, "") ?? "1",
     10,
   );
-  const zenRequested = searchParams.get("zen") === "1";
+  const zenRequested = zenRouteRoundNumber !== null;
   const fallbackRoundNumber =
-    Number.isNaN(parsedRoundNumber) || parsedRoundNumber < 1 ? 1 : parsedRoundNumber;
+    zenRouteRoundNumber ??
+    (Number.isNaN(parsedRoundNumber) || parsedRoundNumber < 1 ? 1 : parsedRoundNumber);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const containerRef = useRef<HTMLDivElement>(null);
   const [problemRequestInFlight, setProblemRequestInFlight] = useState(false);
@@ -322,7 +331,7 @@ export function CodingWindowPage() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isZenMode, setIsZenMode] = useState(zenRequested);
   const [zenSelfSabotageEnabled, setZenSelfSabotageEnabled] = useState(false);
-  const [zenRoundNumber, setZenRoundNumber] = useState(1);
+  const [zenRoundNumber, setZenRoundNumber] = useState(fallbackRoundNumber);
   const [zenRoundStage, setZenRoundStage] = useState<ZenRoundStage>("intro");
   const [zenRoundStartMs, setZenRoundStartMs] = useState<number | null>(null);
   const [zenRoundDurationSeconds, setZenRoundDurationSeconds] = useState(() =>
@@ -1250,6 +1259,15 @@ export function CodingWindowPage() {
   }, [zenRequested]);
 
   useEffect(() => {
+    if (!isZenMode || zenRouteRoundNumber === null) {
+      return;
+    }
+
+    setZenRoundNumber(zenRouteRoundNumber);
+    setZenRoundDurationSeconds(getRoundDurationSeconds(zenRouteRoundNumber));
+  }, [isZenMode, zenRouteRoundNumber]);
+
+  useEffect(() => {
     if (!isZenMode) {
       setZenRoundNumber(1);
       setZenRoundStage("intro");
@@ -1261,16 +1279,31 @@ export function CodingWindowPage() {
       return;
     }
 
-    setZenRoundNumber(1);
+    setZenRoundNumber(zenRouteRoundNumber ?? 1);
     setZenRoundStage("intro");
     setZenRoundStartMs(null);
-    setZenRoundDurationSeconds(getRoundDurationSeconds(1));
+    setZenRoundDurationSeconds(getRoundDurationSeconds(zenRouteRoundNumber ?? 1));
     setZenAssignedSabotageId(null);
     setZenProblemJson(null);
     setLatestIncomingSabotage(null);
     setActiveEditorSabotage(null);
-    setStatusMessage("Zen Mode is on. Start Round 1 whenever you want.");
-  }, [isZenMode]);
+    setStatusMessage(
+      `Zen Mode is on. Start Round ${zenRouteRoundNumber ?? 1} whenever you want.`,
+    );
+  }, [isZenMode, zenRouteRoundNumber]);
+
+  useEffect(() => {
+    if (!isZenMode || !username) {
+      return;
+    }
+
+    const targetPath = `/${encodeURIComponent(username)}/zen/R${zenRoundNumber}`;
+    if (location.pathname === targetPath) {
+      return;
+    }
+
+    navigate(targetPath, { replace: true });
+  }, [isZenMode, location.pathname, navigate, username, zenRoundNumber]);
 
   useEffect(() => {
     if (!isZenMode || zenRoundStage !== "playing" || zenSecondsRemaining !== 0) {
@@ -1393,6 +1426,7 @@ export function CodingWindowPage() {
         }
         zenMode={isZenMode}
         zenSelfSabotageEnabled={zenSelfSabotageEnabled}
+        onToggleZenMode={handleExitZenMode}
         onToggleZenSelfSabotage={() =>
           setZenSelfSabotageEnabled((current) => !current)
         }

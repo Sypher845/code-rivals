@@ -147,6 +147,8 @@ export function ArenaPage({
     !location.pathname.endsWith("/friends") &&
     !location.pathname.endsWith("/leaderboard");
   const showHeroCard = showQuickArena;
+  const zenModePath = `/${encodeURIComponent(username)}/zen/R1`;
+  const zenModeActive = /^\/[^/]+\/zen\/R[123]$/i.test(location.pathname);
 
   return (
     <div className="flex min-h-screen flex-col bg-(--arena-page-bg)">
@@ -202,17 +204,34 @@ export function ArenaPage({
             >
               Leaderboard
             </Link>
-            <button
-              type="button"
-              onClick={() => navigate("/coding-window?zen=1")}
-              className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-[rgba(241,243,252,0.62)] transition hover:bg-[rgba(255,255,255,0.05)] hover:text-(--on-background)"
-            >
-              <Moon className="h-4 w-4" />
-              Zen Mode
-            </button>
           </nav>
 
           <div className="inline-flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={zenModeActive}
+              aria-label={zenModeActive ? "Disable Zen Mode" : "Enable Zen Mode"}
+              onClick={() =>
+                navigate(zenModeActive ? `/${encodeURIComponent(username)}` : zenModePath)
+              }
+              className="inline-flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
+            >
+              <Moon className="h-4 w-4" />
+              <span className="text-xs font-medium">Zen</span>
+              <span
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${
+                  zenModeActive ? "bg-[rgba(224,224,224,0.75)]" : "bg-[rgba(255,255,255,0.12)]"
+                }`}
+              >
+                <span
+                  className={`absolute h-4 w-4 rounded-full bg-[#e6e6e6] transition ${
+                    zenModeActive ? "right-0.5" : "left-0.5"
+                  }`}
+                />
+              </span>
+            </button>
+
             <button
               type="button"
               onClick={() => {

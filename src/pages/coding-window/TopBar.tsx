@@ -257,6 +257,7 @@ type TopBarProps = {
   statusMessage: string | null;
   submitLabel: string;
   zenMode: boolean;
+  onToggleZenMode?: () => void;
   zenSelfSabotageEnabled: boolean;
   onToggleZenSelfSabotage: () => void;
 };
@@ -287,6 +288,7 @@ export function TopBar({
   statusMessage,
   submitLabel,
   zenMode,
+  onToggleZenMode,
   zenSelfSabotageEnabled,
   onToggleZenSelfSabotage,
 }: TopBarProps) {
@@ -328,6 +330,23 @@ export function TopBar({
 
       {/* RIGHT — Power card + Run/Submit */}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
+        {zenMode && onToggleZenMode ? (
+          <button
+            type="button"
+            role="switch"
+            aria-checked={zenMode}
+            aria-label="Disable Zen Mode"
+            onClick={onToggleZenMode}
+            className="inline-flex items-center gap-2 rounded-lg border border-[#2b2b2b] px-3 py-1.5 text-[#efefef] transition hover:border-[#454545]"
+          >
+            <Moon className="h-4 w-4" />
+            <span className="text-xs font-medium">Zen</span>
+            <span className="relative inline-flex h-5 w-9 items-center rounded-full bg-[rgba(224,224,224,0.75)] transition">
+              <span className="absolute right-0.5 h-4 w-4 rounded-full bg-[#e6e6e6] transition" />
+            </span>
+          </button>
+        ) : null}
+
         {zenMode ? (
           <button
             type="button"

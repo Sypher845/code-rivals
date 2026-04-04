@@ -383,6 +383,36 @@ function App() {
       <Route path="/sign-up" element={<Navigate replace to="/signup" />} />
       <Route path="/coding-window" element={<CodingWindowPage />} />
       <Route
+        path="/:username/zen/R1"
+        element={
+          session && currentUsername ? (
+            <CodingWindowPage />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
+      <Route
+        path="/:username/zen/R2"
+        element={
+          session && currentUsername ? (
+            <CodingWindowPage />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
+      <Route
+        path="/:username/zen/R3"
+        element={
+          session && currentUsername ? (
+            <CodingWindowPage />
+          ) : (
+            <Navigate replace to="/login" />
+          )
+        }
+      />
+      <Route
         path="/:username/:roomSegment/:roundSegment/power-cards-locked"
         element={
           session && currentUsername ? (
