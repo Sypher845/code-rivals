@@ -41,7 +41,6 @@ export function AuthLayout({
       <section className={heroPanelClass}>
         <div className={panelNoiseClass} />
         <div className="relative z-[1] flex max-w-[42rem] flex-col gap-7">
-          <p className={eyebrowClass}>NEON COMMAND PALETTE</p>
           <h1 className="grid gap-[0.15rem] text-[clamp(3.3rem,7vw,5.9rem)] leading-[0.92] font-bold tracking-[-0.06em] uppercase [text-shadow:0_0_24px_rgba(241,243,252,0.12)] max-xl:text-[clamp(2.8rem,13vw,5rem)]">
             <span>BOOT INTO</span>
             <span>THE 1V1</span>
