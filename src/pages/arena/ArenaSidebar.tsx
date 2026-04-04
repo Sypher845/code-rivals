@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
-import { mockFriends } from "./arena-data";
+import { getLeagueFromElo } from "../../lib/ranking";
 import {
   panelFrameClass,
   panelNoiseClass,
@@ -129,9 +129,23 @@ export function ArenaSidebar({
     activeRoom &&
     activeRoomMembers.some((member) => member.memberIdentity.isEqual(identity)),
   );
+  const [playerProfileRows] = useTable(tables.playerProfile);
+  const [sessionRows] = useTable(tables.authSession);
   const onlineFriends = useMemo(
-    () => mockFriends.filter((friend) => friend.isOnline),
-    [],
+    () =>
+      playerProfileRows
+        .filter((profile) => profile.username !== username)
+        .filter((profile) =>
+          sessionRows.some(
+            (session) => session.username === profile.username && session.connected,
+          ),
+        )
+        .map((profile) => ({
+          id: profile.usernameKey,
+          username: profile.username,
+          league: getLeagueFromElo(Number(profile.eloRating)),
+        })),
+    [playerProfileRows, sessionRows, username],
   );
 
   const pushStatus = (message: string, tone: "neutral" | "error" = "neutral") => {

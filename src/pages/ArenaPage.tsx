@@ -4,6 +4,7 @@ import { Bell, ChevronDown, LogOut, User } from "lucide-react";
 import type { Identity } from "spacetimedb";
 import { useTable } from "spacetimedb/react";
 import coderivalsMark from "../assets/coderivals-mark.svg";
+import { getLeagueFromElo } from "../lib/ranking";
 import { tables } from "../module_bindings";
 import { StatsTab } from "./arena/StatsTab";
 import { FriendsTab } from "./arena/FriendsTab";
@@ -29,6 +30,7 @@ export function ArenaPage({
 
   const [arenaRoomRows, arenaRoomsReady] = useTable(tables.arenaRoom);
   const [arenaMemberRows, arenaMembersReady] = useTable(tables.arenaRoomMember);
+  const [playerProfileRows] = useTable(tables.playerProfile);
 
   const arenaReady = useMemo(
     () => arenaRoomsReady && arenaMembersReady,
@@ -58,6 +60,32 @@ export function ArenaPage({
 
     return count;
   }, [arenaMemberRows]);
+
+  const myProfile = useMemo(
+    () => playerProfileRows.find((profile) => profile.username === username) ?? null,
+    [playerProfileRows, username],
+  );
+  const myElo = Number(myProfile?.eloRating ?? 400n);
+  const myLeague = getLeagueFromElo(myElo);
+  const myDivision = myLeague.split(" ")[1] ?? "I";
+  const leaderboardRank =
+    playerProfileRows
+      .slice()
+      .sort((left, right) => Number(right.eloRating - left.eloRating))
+      .findIndex((profile) => profile.username === username) + 1;
+  const percentile =
+    playerProfileRows.length > 0
+      ? Math.max(
+          1,
+          Math.round(((playerProfileRows.length - Math.max(leaderboardRank - 1, 0)) / playerProfileRows.length) * 100),
+        )
+      : 100;
+  const winRate =
+    Number(myProfile?.matchesPlayed ?? 0n) > 0
+      ? Math.round((Number(myProfile?.wins ?? 0n) / Number(myProfile?.matchesPlayed ?? 1n)) * 100)
+      : 0;
+  const wins = Number(myProfile?.wins ?? 0n);
+  const losses = Number(myProfile?.losses ?? 0n);
 
   const renderTabContent = () => {
     if (location.pathname.endsWith("/friends")) {
@@ -177,7 +205,7 @@ export function ArenaPage({
                     {username.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="absolute -bottom-1 -right-1 rounded-full border border-[rgba(0,229,204,0.5)] bg-[rgba(8,15,24,0.95)] px-2 py-0.5 text-[0.62rem] font-semibold tracking-[0.08em] text-(--arena-accent) uppercase">
-                    II
+                    {myDivision}
                   </div>
                 </div>
 
@@ -191,15 +219,15 @@ export function ArenaPage({
                   </h1>
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <span className="inline-flex items-center rounded-full border border-[rgba(0,229,204,0.38)] bg-[rgba(0,229,204,0.12)] px-3 py-1 text-[0.74rem] font-semibold tracking-[0.08em] text-(--arena-accent) uppercase">
-                      Diamond II
+                      {myLeague}
                     </span>
                     <span className="text-[rgba(241,243,252,0.4)]">|</span>
                     <span className="font-(--font-mono) text-3xl text-(--arena-accent)">
-                      1,847 ELO
+                      {myElo.toLocaleString()} ELO
                     </span>
                     <span className="text-[rgba(241,243,252,0.4)]">|</span>
                     <span className="text-sm text-[rgba(241,243,252,0.56)]">
-                      Top 15%
+                      Top {percentile}%
                     </span>
                   </div>
                 </div>
@@ -208,19 +236,29 @@ export function ArenaPage({
               <div className="hidden lg:block" />
             </div>
 
-            <div className="relative mt-6 grid grid-cols-2 gap-0 border-t border-[rgba(255,255,255,0.08)] pt-4 sm:max-w-md">
+            <div className="relative mt-6 grid grid-cols-3 gap-0 border-t border-[rgba(255,255,255,0.08)] pt-4 sm:max-w-xl">
               <div className="px-2 text-center">
-                <p className="text-4xl font-bold text-(--signal-success)">
-                  {myActiveRoomsCount}
+                <p className="text-4xl font-bold text-(--on-background)">
+                  {winRate}%
                 </p>
                 <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">
-                  Current Streak
+                  Win Rate
                 </p>
               </div>
               <div className="border-l border-[rgba(255,255,255,0.08)] px-2 text-center">
-                <p className="text-4xl font-bold text-(--on-background)">63%</p>
+                <p className="text-4xl font-bold text-(--signal-success)">
+                  {wins}
+                </p>
                 <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">
-                  Win Rate
+                  Wins
+                </p>
+              </div>
+              <div className="border-l border-[rgba(255,255,255,0.08)] px-2 text-center">
+                <p className="text-4xl font-bold text-(--signal-danger)">
+                  {losses}
+                </p>
+                <p className="mt-1 text-[0.68rem] tracking-[0.12em] text-[rgba(241,243,252,0.46)] uppercase">
+                  Losses
                 </p>
               </div>
             </div>
