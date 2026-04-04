@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -13,16 +13,7 @@ import { POWER_CARD, OPPONENT } from "./constants";
 
 /* ═══════════════════════════ MATCH TIMER ═════════════════════════════ */
 
-function MatchTimer() {
-  const [secondsRemaining, setSecondsRemaining] = useState(7 * 60 + 43);
-
-  useEffect(() => {
-    const timerId = window.setInterval(() => {
-      setSecondsRemaining((current) => (current > 0 ? current - 1 : 0));
-    }, 1000);
-    return () => window.clearInterval(timerId);
-  }, []);
-
+function MatchTimer({ secondsRemaining }: { secondsRemaining: number }) {
   const minutes = String(Math.floor(secondsRemaining / 60)).padStart(2, "0");
   const seconds = String(secondsRemaining % 60).padStart(2, "0");
 
@@ -155,17 +146,40 @@ function SabotageButton({ cardName, opponentName }: { cardName: string; opponent
 
 /* ═══════════════════════════ TOP BAR ═════════════════════════════════ */
 
-export function TopBar() {
+type TopBarProps = {
+  canSubmit: boolean;
+  isSubmitting: boolean;
+  onRun: () => void;
+  onSubmit: () => void;
+  roundNumber: number;
+  secondsRemaining: number;
+  statusMessage: string | null;
+  submitLabel: string;
+};
+
+export function TopBar({
+  canSubmit,
+  isSubmitting,
+  onRun,
+  onSubmit,
+  roundNumber,
+  secondsRemaining,
+  statusMessage,
+  submitLabel,
+}: TopBarProps) {
   return (
-    <nav className="flex h-16 shrink-0 items-center justify-between border-b border-[var(--ghost-border)] bg-[rgba(10,14,20,0.96)] px-6">
+    <nav className="flex min-h-16 shrink-0 flex-wrap items-center justify-between gap-3 border-b border-[var(--ghost-border)] bg-[rgba(10,14,20,0.96)] px-6 py-3">
       {/* LEFT — Opponent status card */}
-      <div className="flex min-w-0 flex-1 items-center">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
         <OpponentCard />
+        <div className="rounded-lg border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-2 text-xs uppercase tracking-[0.16em] text-[var(--text-secondary)]">
+          Round {roundNumber}
+        </div>
       </div>
 
       {/* CENTER — Timer */}
       <div className="flex items-center justify-center px-6">
-        <MatchTimer />
+        <MatchTimer secondsRemaining={secondsRemaining} />
       </div>
 
       {/* RIGHT — Power card + Run/Submit */}
@@ -176,17 +190,30 @@ export function TopBar() {
         )}
 
         {/* Run button */}
-        <button className="inline-flex items-center gap-2 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.04)] px-5 py-2 text-sm font-medium text-[var(--on-background)] transition hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.08)]">
+        <button
+          onClick={onRun}
+          className="inline-flex items-center gap-2 rounded-lg border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.04)] px-5 py-2 text-sm font-medium text-[var(--on-background)] transition hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.08)]"
+        >
           <Play className="h-4 w-4" />
           Run
         </button>
 
         {/* Submit button */}
-        <button className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-[#0a0e14] shadow-[0_0_18px_rgba(224,141,255,0.2)] transition hover:-translate-y-px hover:opacity-90">
+        <button
+          onClick={onSubmit}
+          disabled={!canSubmit || isSubmitting}
+          className="inline-flex items-center gap-2 rounded-lg bg-[var(--primary)] px-5 py-2 text-sm font-semibold text-[#0a0e14] shadow-[0_0_18px_rgba(224,141,255,0.2)] transition hover:-translate-y-px hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
           <Send className="h-4 w-4" />
-          Submit
+          {isSubmitting ? "Submitting..." : submitLabel}
         </button>
       </div>
+
+      {statusMessage ? (
+        <div className="basis-full text-right text-sm text-[var(--text-secondary)]">
+          {statusMessage}
+        </div>
+      ) : null}
     </nav>
   );
 }
