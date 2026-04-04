@@ -29,6 +29,7 @@ import SetPlayerActivityReducer from "../set_player_activity_reducer";
 import SignUpReducer from "../sign_up_reducer";
 import StartArenaMatchReducer from "../start_arena_match_reducer";
 import SubmitRoundResultReducer from "../submit_round_result_reducer";
+import TriggerArenaSabotageReducer from "../trigger_arena_sabotage_reducer";
 import UnlockArenaPowerupReducer from "../unlock_arena_powerup_reducer";
 
 export type AcceptFriendRequestParams = __Infer<typeof AcceptFriendRequestReducer>;
@@ -54,5 +55,6 @@ export type SetPlayerActivityParams = __Infer<typeof SetPlayerActivityReducer>;
 export type SignUpParams = __Infer<typeof SignUpReducer>;
 export type StartArenaMatchParams = __Infer<typeof StartArenaMatchReducer>;
 export type SubmitRoundResultParams = __Infer<typeof SubmitRoundResultReducer>;
+export type TriggerArenaSabotageParams = __Infer<typeof TriggerArenaSabotageReducer>;
 export type UnlockArenaPowerupParams = __Infer<typeof UnlockArenaPowerupReducer>;
 

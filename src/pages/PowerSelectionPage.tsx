@@ -106,6 +106,40 @@ export function PowerupSelectionPage({
     }
   }, [currentLock?.powerupId, powerups]);
 
+  useEffect(() => {
+    if (!normalizedRoomId || !currentLock?.hasLockedPower || !currentLock.powerupId) {
+      return;
+    }
+
+    setLockSubmitting(false);
+    navigate(
+      `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${normalizedRoundNumber}/power-cards-locked`,
+      { replace: true },
+    );
+  }, [
+    currentLock?.hasLockedPower,
+    currentLock?.powerupId,
+    navigate,
+    normalizedRoomId,
+    normalizedRoundNumber,
+    username,
+  ]);
+
+  useEffect(() => {
+    if (!lockSubmitting) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setLockSubmitting(false);
+      setLockStatusMessage(
+        "Lock sync is taking longer than expected. If it still does not move, refresh and make sure the SpacetimeDB module is published.",
+      );
+    }, 6000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [lockSubmitting]);
+
   const toggleLockSelection = async () => {
     if (!normalizedRoomId) {
       setLockStatusMessage("Room context is missing.");
