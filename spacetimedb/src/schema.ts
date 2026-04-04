@@ -7,6 +7,7 @@ import {
   arena_room_member,
   arena_room_notice,
   arena_powerup_lock,
+  arena_sabotage_event,
   arena_round_result,
   arena_room_timeout_job,
 } from "./arena/tables";
@@ -26,6 +27,7 @@ const spacetimedb = schema({
   arenaRoom: arena_room,
   arenaRoomMember: arena_room_member,
   arenaPowerupLock: arena_powerup_lock,
+  arenaSabotageEvent: arena_sabotage_event,
   arenaRoundResult: arena_round_result,
   arenaMatchSummary: arena_match_summary,
   arenaMatchContinue: arena_match_continue,

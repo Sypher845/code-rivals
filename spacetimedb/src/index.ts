@@ -7,6 +7,7 @@ export {
   leave_arena_room,
   kick_arena_member,
   start_arena_match,
+  trigger_arena_sabotage,
   submit_round_result,
   timeout_waiting_room,
   lock_arena_powerup,
