@@ -141,6 +141,9 @@ export function ArenaPage({
   }, [currentPresence, identity, isInActivePlayingRoom, setPlayerActivity]);
 
   const renderTabContent = () => {
+    if (location.pathname.endsWith("/notifications")) {
+      return <FriendsTab identity={identity} username={username} mode="notifications" />;
+    }
     if (location.pathname.endsWith("/friends")) {
       return <FriendsTab identity={identity} username={username} />;
     }
@@ -150,9 +153,13 @@ export function ArenaPage({
     return <StatsTab />;
   };
 
+  const isFriendsRoute = location.pathname.endsWith("/friends");
+  const isLeaderboardRoute = location.pathname.endsWith("/leaderboard");
+  const isNotificationsRoute = location.pathname.endsWith("/notifications");
   const showQuickArena =
-    !location.pathname.endsWith("/friends") &&
-    !location.pathname.endsWith("/leaderboard");
+    !isFriendsRoute &&
+    !isLeaderboardRoute &&
+    !isNotificationsRoute;
   const showHeroCard = showQuickArena;
   const zenModePath = `/${encodeURIComponent(username)}/zen/R1`;
   const zenModeActive = /^\/[^/]+\/zen\/R[123]$/i.test(location.pathname);
@@ -252,8 +259,9 @@ export function ArenaPage({
             <Link
               to={`/${username}`}
               className={`rounded-md px-3.5 py-2 text-[0.95rem] font-medium transition ${
-                !location.pathname.endsWith("/friends") &&
-                !location.pathname.endsWith("/leaderboard")
+                !isFriendsRoute &&
+                !isLeaderboardRoute &&
+                !isNotificationsRoute
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
               }`}
@@ -263,7 +271,7 @@ export function ArenaPage({
             <Link
               to={`/${username}/friends`}
               className={`rounded-md px-3.5 py-2 text-[0.95rem] font-medium transition ${
-                location.pathname.endsWith("/friends")
+                isFriendsRoute
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
               }`}
@@ -273,7 +281,7 @@ export function ArenaPage({
             <Link
               to={`/${username}/leaderboard`}
               className={`rounded-md px-3.5 py-2 text-[0.95rem] font-medium transition ${
-                location.pathname.endsWith("/leaderboard")
+                isLeaderboardRoute
                   ? "bg-[rgba(0,229,204,0.12)] text-(--on-background)"
                   : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
               }`}
@@ -309,9 +317,13 @@ export function ArenaPage({
             <button
               type="button"
               onClick={() => {
-                navigate(`/${encodeURIComponent(username)}/friends?view=notifications`);
+                navigate(`/${encodeURIComponent(username)}/notifications`);
               }}
-              className="relative grid h-10 w-10 place-items-center rounded-lg border border-[rgba(255,255,255,0.1)] text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
+              className={`relative grid h-10 w-10 place-items-center rounded-lg border transition ${
+                isNotificationsRoute
+                  ? "border-[rgba(0,229,204,0.34)] bg-[rgba(0,229,204,0.12)] text-(--on-background)"
+                  : "border-[rgba(255,255,255,0.1)] text-[rgba(241,243,252,0.72)] hover:text-(--on-background)"
+              }`}
             >
               <Bell className="h-4 w-4" />
               <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-(--arena-accent) px-1 text-[10px] font-semibold text-(--arena-bg)">

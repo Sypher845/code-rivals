@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { Check, Search, Swords, UserPlus, X } from "lucide-react";
 import type { Identity } from "spacetimedb";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useReducer, useTable } from "spacetimedb/react";
 import { reducers, tables } from "../../module_bindings";
 
 type FriendsTabProps = {
   identity: Identity | undefined;
   username: string;
+  mode?: "friends" | "notifications";
 };
 
 function getInitials(name: string) {
@@ -71,15 +72,16 @@ function getNotificationLabel(notificationType: string) {
   return notificationType.replace(/_/g, " ");
 }
 
-export function FriendsTab({ identity, username }: FriendsTabProps) {
+export function FriendsTab({
+  identity,
+  username,
+  mode = "friends",
+}: FriendsTabProps) {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState("");
   const [friendUsernameInput, setFriendUsernameInput] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<string | null>(null);
-
-  const isNotificationsView = searchParams.get("view") === "notifications";
 
   const [friendshipRows] = useTable(tables.friendship);
   const [friendRequestRows] = useTable(tables.friendRequest);
@@ -313,9 +315,7 @@ export function FriendsTab({ identity, username }: FriendsTabProps) {
   };
 
   const openFriendsView = () => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete("view");
-    setSearchParams(nextParams, { replace: true });
+    navigate(`/${encodeURIComponent(username)}/friends`);
   };
 
   const handleAcceptInvite = async (inviteId: string) => {
@@ -327,7 +327,7 @@ export function FriendsTab({ identity, username }: FriendsTabProps) {
     });
   };
 
-  if (isNotificationsView) {
+  if (mode === "notifications") {
     return (
       <section className="space-y-6">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
