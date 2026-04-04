@@ -1,9 +1,8 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import Editor, { type OnMount } from "@monaco-editor/react";
 import { RotateCcw } from "lucide-react";
-import { DEFAULT_CODE, LANGUAGES } from "./constants";
+import { LANGUAGE_CONFIGS, LANGUAGES, type SupportedLanguage } from "./constants";
 
-/* ──────────────────────── register custom Monaco theme ──────────────── */
 function defineNeonTheme(monaco: Parameters<OnMount>[1]) {
   monaco.editor.defineTheme("neonCommand", {
     base: "vs-dark",
@@ -44,9 +43,21 @@ function defineNeonTheme(monaco: Parameters<OnMount>[1]) {
   });
 }
 
-export function EditorPanel() {
-  const [language, setLanguage] = useState("cpp");
-  const [code, setCode] = useState(DEFAULT_CODE);
+type EditorPanelProps = {
+  language: SupportedLanguage;
+  code: string;
+  onLanguageChange: (language: SupportedLanguage) => void;
+  onCodeChange: (code: string) => void;
+  onReset: () => void;
+};
+
+export function EditorPanel({
+  language,
+  code,
+  onLanguageChange,
+  onCodeChange,
+  onReset,
+}: EditorPanelProps) {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
 
@@ -57,15 +68,11 @@ export function EditorPanel() {
     editor.focus();
   };
 
-  const handleReset = () => setCode(DEFAULT_CODE);
-
-  const currentLang = LANGUAGES.find((l) => l.value === language);
+  const currentLang = LANGUAGES.find((candidate) => candidate.value === language);
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]">
-      {/* header bar */}
       <div className="flex items-center justify-between border-b border-[var(--ghost-border)] px-4 py-2">
-        {/* left: language selector */}
         <div className="relative flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5 text-sm font-semibold tracking-wide text-[var(--primary)]">
             <span className="opacity-60">{"</>"}</span>
@@ -74,12 +81,17 @@ export function EditorPanel() {
 
           <div className="relative">
             <button
-              onClick={() => setShowLangMenu(!showLangMenu)}
+              onClick={() => setShowLangMenu((open) => !open)}
               className="inline-flex items-center gap-2 rounded-md border border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-sm font-medium text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:bg-[rgba(255,255,255,0.06)]"
             >
               {currentLang?.label ?? "C++"}
               <svg className="h-3.5 w-3.5 opacity-50" viewBox="0 0 12 12">
-                <path d="M3 5l3 3 3-3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                <path
+                  d="M3 5l3 3 3-3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                />
               </svg>
             </button>
 
@@ -89,13 +101,14 @@ export function EditorPanel() {
                   <button
                     key={lang.value}
                     onClick={() => {
-                      setLanguage(lang.value);
+                      onLanguageChange(lang.value);
                       setShowLangMenu(false);
                     }}
-                    className={`block w-full px-4 py-2.5 text-left text-sm transition ${lang.value === language
-                      ? "bg-[rgba(224,141,255,0.1)] text-[var(--primary)]"
-                      : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)]"
-                      }`}
+                    className={`block w-full px-4 py-2.5 text-left text-sm transition ${
+                      lang.value === language
+                        ? "bg-[rgba(224,141,255,0.1)] text-[var(--primary)]"
+                        : "text-[var(--text-secondary)] hover:bg-[rgba(255,255,255,0.04)]"
+                    }`}
                   >
                     {lang.label}
                   </button>
@@ -105,11 +118,10 @@ export function EditorPanel() {
           </div>
         </div>
 
-        {/* right: reset only */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
           <button
-            onClick={handleReset}
-            title="Reset"
+            onClick={onReset}
+            title="Reset starter code"
             className="grid h-9 w-9 place-items-center rounded-md text-[var(--text-tertiary)] transition hover:bg-[rgba(255,255,255,0.05)] hover:text-[var(--text-secondary)]"
           >
             <RotateCcw className="h-4 w-4" />
@@ -117,13 +129,13 @@ export function EditorPanel() {
         </div>
       </div>
 
-      {/* Monaco Editor */}
       <div className="relative min-h-0 flex-1">
         <Editor
+          key={language}
           height="100%"
-          language={language}
+          language={LANGUAGE_CONFIGS[language].monacoLanguage}
           value={code}
-          onChange={(val) => setCode(val ?? "")}
+          onChange={(value) => onCodeChange(value ?? "")}
           onMount={handleMount}
           theme="neonCommand"
           options={{

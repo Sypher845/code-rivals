@@ -4,3 +4,19 @@ services:
     container_name: api-problemset
     ports:
       - "8080:8080"
+
+  piston:
+    image: ghcr.io/engineer-man/piston:latest
+    container_name: piston
+    privileged: true
+    ports:
+      - "2001:2000"
+    volumes:
+      - piston-packages:/piston/packages
+      - piston-jobs:/piston/jobs
+      - piston-cache:/tmp/piston
+
+volumes:
+  piston-packages:
+  piston-jobs:
+  piston-cache:

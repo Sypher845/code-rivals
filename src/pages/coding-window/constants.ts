@@ -1,4 +1,3 @@
-/* ───────────────────────────── palette (from user spec) ─────────────── */
 export const P = {
   bg: "#0a0e14",
   onBg: "#f1f3fc",
@@ -13,7 +12,6 @@ export const P = {
   ambientSecondary: "rgba(0, 255, 255, 0.10)",
 };
 
-/* ────────────────────── sample problem data (Two Sum) ───────────────── */
 export const PROBLEM = {
   title: "Two Sum",
   description: `Given an array of integers \`nums\` and an integer \`target\`, return *indices of the two numbers such that they add up to* \`target\`.
@@ -41,9 +39,9 @@ You can return the answer in **any order**.`,
     },
   ],
   constraints: [
-    "2 <= nums.length <= 10⁴",
-    "-10⁹ <= nums[i] <= 10⁹",
-    "-10⁹ <= target <= 10⁹",
+    "2 <= nums.length <= 10^4",
+    "-10^9 <= nums[i] <= 10^9",
+    "-10^9 <= target <= 10^9",
     "Only one valid answer exists.",
   ],
   testCases: [
@@ -53,24 +51,68 @@ You can return the answer in **any order**.`,
   ],
 };
 
-export const DEFAULT_CODE = `class Solution {
-public:
-    vector<int> twoSum(vector<int>& nums, int target) {
+export type SupportedLanguage = "cpp" | "java";
 
+export type LanguageConfig = {
+  label: string;
+  value: SupportedLanguage;
+  monacoLanguage: "cpp" | "java";
+  pistonLanguage: string;
+  mainFileName: string;
+  starterCode: string;
+};
+
+export const LANGUAGE_CONFIGS: Record<SupportedLanguage, LanguageConfig> = {
+  cpp: {
+    label: "C++",
+    value: "cpp",
+    monacoLanguage: "cpp",
+    pistonLanguage: "c++",
+    mainFileName: "main.cpp",
+    starterCode: `#include <iostream>
+#include <string>
+
+using namespace std;
+
+int main() {
+    string input;
+    getline(cin, input);
+
+    // Write your solution here.
+    cout << input << '\\n';
+    return 0;
+}
+`,
+  },
+  java: {
+    label: "Java",
+    value: "java",
+    monacoLanguage: "java",
+    pistonLanguage: "java",
+    mainFileName: "Main.java",
+    starterCode: `import java.io.BufferedReader;
+import java.io.InputStreamReader;
+
+public class Main {
+    public static void main(String[] args) throws Exception {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+        String input = reader.readLine();
+        if (input == null) {
+            input = "";
+        }
+
+        // Write your solution here.
+        System.out.println(input);
     }
-};`;
+}
+`,
+  },
+};
 
-export const LANGUAGES = [
-  { label: "C++", value: "cpp" },
-  { label: "Python", value: "python" },
-  { label: "Java", value: "java" },
-  { label: "JavaScript", value: "javascript" },
-  { label: "TypeScript", value: "typescript" },
-  { label: "Go", value: "go" },
-  { label: "Rust", value: "rust" },
-];
+export const LANGUAGES = Object.values(LANGUAGE_CONFIGS);
+export const DEFAULT_LANGUAGE: SupportedLanguage = "cpp";
+export const DEFAULT_CODE = LANGUAGE_CONFIGS[DEFAULT_LANGUAGE].starterCode;
 
-/* ──── sample power card & opponent data (placeholders for SpacetimeDB) ── */
 export const POWER_CARD = {
   name: "FlashbangCard",
   used: false,

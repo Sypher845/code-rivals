@@ -17,6 +17,96 @@ export type ParsedTestCase = {
   expectedOutput: string;
 };
 
+function splitTopLevel(value: string, delimiter: string) {
+  const parts: string[] = [];
+  let current = "";
+  let depth = 0;
+  let inString = false;
+  let quoteChar = "";
+
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    const previous = index > 0 ? value[index - 1] : "";
+
+    if ((char === '"' || char === "'") && previous !== "\\") {
+      if (!inString) {
+        inString = true;
+        quoteChar = char;
+      } else if (quoteChar === char) {
+        inString = false;
+        quoteChar = "";
+      }
+    }
+
+    if (!inString) {
+      if (char === "(" || char === "[" || char === "{") {
+        depth += 1;
+      } else if (char === ")" || char === "]" || char === "}") {
+        depth = Math.max(0, depth - 1);
+      } else if (char === delimiter && depth === 0) {
+        parts.push(current.trim());
+        current = "";
+        continue;
+      }
+    }
+
+    current += char;
+  }
+
+  if (current.trim()) {
+    parts.push(current.trim());
+  }
+
+  return parts;
+}
+
+function stripOuterQuotes(value: string) {
+  if (
+    value.length >= 2 &&
+    ((value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'")))
+  ) {
+    return value.slice(1, -1);
+  }
+
+  return value;
+}
+
+function normalizeAssignmentSegment(segment: string) {
+  const equalsIndex = segment.indexOf("=");
+  const rawValue =
+    equalsIndex >= 0 ? segment.slice(equalsIndex + 1).trim() : segment.trim();
+
+  return stripOuterQuotes(rawValue);
+}
+
+export function normalizeTestCaseInput(input: string) {
+  const trimmed = input.trim();
+
+  if (!trimmed) {
+    return "";
+  }
+
+  const normalizedLines = trimmed
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .flatMap((line) => {
+      if (!line.includes("=")) {
+        return [stripOuterQuotes(line)];
+      }
+
+      const segments = splitTopLevel(line, ",");
+      return segments.map(normalizeAssignmentSegment);
+    });
+
+  return normalizedLines.join("\n");
+}
+
+export function normalizeExpectedOutput(output: string) {
+  return stripOuterQuotes(output.trim());
+}
+
 export function getDescriptionText(problem?: RemoteProblemData | null) {
   if (
     typeof problem?.problem_description === "string" &&
@@ -172,11 +262,11 @@ export function getExampleBlocks(problem?: RemoteProblemData | null) {
   return parseBodyContent(descriptionBody).examples;
 }
 
-export function getParsedTestCases(problem?: RemoteProblemData | null) {
+function getExampleTestCases(problem?: RemoteProblemData | null) {
   const examples = getExampleBlocks(problem);
 
   if (examples.length > 0) {
-    const parsedCases = examples
+    return examples
       .map((example, index) => {
         const inputField = example.fields.find(
           (field) => field.label.toLowerCase() === "input",
@@ -196,14 +286,14 @@ export function getParsedTestCases(problem?: RemoteProblemData | null) {
         };
       })
       .filter((testCase): testCase is ParsedTestCase => testCase !== null);
-
-    if (parsedCases.length > 0) {
-      return parsedCases;
-    }
   }
 
+  return [];
+}
+
+function getApiTestCases(problem?: RemoteProblemData | null) {
   if (Array.isArray(problem?.input_output) && problem.input_output.length > 0) {
-    const apiCases = problem.input_output
+    return problem.input_output
       .map((testCase, index) => {
         const input =
           typeof testCase.input === "string" ? testCase.input.trim() : "";
@@ -221,15 +311,47 @@ export function getParsedTestCases(problem?: RemoteProblemData | null) {
         };
       })
       .filter((testCase): testCase is ParsedTestCase => testCase !== null);
-
-    if (apiCases.length > 0) {
-      return apiCases;
-    }
   }
 
+  return [];
+}
+
+function getFallbackTestCases() {
   return PROBLEM.testCases.map((testCase, index) => ({
     label: `Example ${index + 1}:`,
     input: testCase.input,
     expectedOutput: testCase.expectedOutput,
   }));
+}
+
+export function getVisibleTestCases(problem?: RemoteProblemData | null) {
+  const exampleCases = getExampleTestCases(problem);
+  if (exampleCases.length > 0) {
+    return exampleCases;
+  }
+
+  const apiCases = getApiTestCases(problem);
+  if (apiCases.length > 0) {
+    return apiCases.slice(0, Math.min(3, apiCases.length));
+  }
+
+  return getFallbackTestCases();
+}
+
+export function getSubmissionTestCases(problem?: RemoteProblemData | null) {
+  const apiCases = getApiTestCases(problem);
+  if (apiCases.length > 0) {
+    return apiCases;
+  }
+
+  const exampleCases = getExampleTestCases(problem);
+  if (exampleCases.length > 0) {
+    return exampleCases;
+  }
+
+  return getFallbackTestCases();
+}
+
+export function getParsedTestCases(problem?: RemoteProblemData | null) {
+  return getVisibleTestCases(problem);
 }

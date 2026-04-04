@@ -1,12 +1,25 @@
-import { useState, useRef, useCallback, useEffect } from "react";
-import { TopBar } from "./coding-window/TopBar";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DescriptionPanel } from "./coding-window/DescriptionPanel";
 import { EditorPanel } from "./coding-window/EditorPanel";
 import { TestCasesPanel } from "./coding-window/TestCasesPanel";
-import { P } from "./coding-window/constants";
+import { TopBar } from "./coding-window/TopBar";
+import {
+  DEFAULT_LANGUAGE,
+  LANGUAGE_CONFIGS,
+  P,
+  type SupportedLanguage,
+} from "./coding-window/constants";
+import {
+  judgeCodeAgainstCases,
+  type JudgeRunResult,
+} from "./coding-window/piston";
+import {
+  getSubmissionTestCases,
+  getVisibleTestCases,
+} from "./coding-window/problemContent";
 
 const PROBLEM_API_URL =
-  import.meta.env.VITE_PROBLEM_API_URL ?? "http://localhost:8080";
+  import.meta.env.VITE_PROBLEM_API_URL ?? "/api/problemset";
 
 export type RemoteProblemData = {
   task_id?: string;
@@ -22,8 +35,6 @@ export type RemoteProblemData = {
   [key: string]: unknown;
 };
 
-/* ══════════════════════════ RESIZABLE DIVIDER ════════════════════════ */
-
 function useDragResize(
   direction: "horizontal" | "vertical",
   initialRatio: number,
@@ -33,12 +44,13 @@ function useDragResize(
   const dragging = useRef(false);
 
   const handleMouseDown = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
+    (event: React.MouseEvent) => {
+      event.preventDefault();
       dragging.current = true;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
         if (!dragging.current || !containerRef.current) return;
+
         const rect = containerRef.current.getBoundingClientRect();
         const totalSize = direction === "horizontal" ? rect.width : rect.height;
         const currentPos =
@@ -48,6 +60,7 @@ function useDragResize(
           0.2,
           Math.min(0.8, (currentPos - startOffset) / totalSize),
         );
+
         setRatio(newRatio);
       };
 
@@ -65,7 +78,7 @@ function useDragResize(
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [direction, ratio, containerRef],
+    [containerRef, direction],
   );
 
   return { ratio, handleMouseDown };
@@ -76,44 +89,61 @@ function DragHandle({
   onMouseDown,
 }: {
   direction: "horizontal" | "vertical";
-  onMouseDown: (e: React.MouseEvent) => void;
+  onMouseDown: (event: React.MouseEvent) => void;
 }) {
-  const isH = direction === "horizontal";
+  const isHorizontal = direction === "horizontal";
+
   return (
     <div
       onMouseDown={onMouseDown}
       className={`group relative z-10 flex shrink-0 items-center justify-center transition-colors ${
-        isH ? "w-[6px] cursor-col-resize" : "h-[6px] cursor-row-resize"
+        isHorizontal ? "w-[6px] cursor-col-resize" : "h-[6px] cursor-row-resize"
       }`}
     >
       <div
         className={`rounded-full bg-[var(--ghost-border)] transition-all group-hover:bg-[var(--primary)] ${
-          isH ? "h-8 w-[2px]" : "h-[2px] w-8"
+          isHorizontal ? "h-8 w-[2px]" : "h-[2px] w-8"
         }`}
       />
     </div>
   );
 }
 
-/* ═══════════════════════════ MAIN PAGE ═══════════════════════════════ */
-
 export function CodingWindowPage() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const rightContainerRef = useRef<HTMLDivElement>(null);
+
   const [problem, setProblem] = useState<RemoteProblemData | null>(null);
   const [problemLoading, setProblemLoading] = useState(true);
   const [problemError, setProblemError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
+  const [drafts, setDrafts] = useState<Record<SupportedLanguage, string>>({
+    cpp: LANGUAGE_CONFIGS.cpp.starterCode,
+    java: LANGUAGE_CONFIGS.java.starterCode,
+  });
+  const [activeAction, setActiveAction] = useState<"run" | "submit" | null>(
+    null,
+  );
+  const [runResult, setRunResult] = useState<JudgeRunResult | null>(null);
+  const [executionError, setExecutionError] = useState<string | null>(null);
+  const [lastAction, setLastAction] = useState<"run" | "submit" | null>(null);
 
   const { ratio: hRatio, handleMouseDown: hMouseDown } = useDragResize(
     "horizontal",
     0.42,
     containerRef,
   );
-
-  const rightContainerRef = useRef<HTMLDivElement>(null);
   const { ratio: vRatio, handleMouseDown: vMouseDown } = useDragResize(
     "vertical",
     0.6,
     rightContainerRef,
+  );
+
+  const code = drafts[language];
+  const visibleTestCases = useMemo(() => getVisibleTestCases(problem), [problem]);
+  const submissionTestCases = useMemo(
+    () => getSubmissionTestCases(problem),
+    [problem],
   );
 
   useEffect(() => {
@@ -152,20 +182,107 @@ export function CodingWindowPage() {
     return () => controller.abort();
   }, []);
 
+  const handleCodeChange = useCallback(
+    (nextCode: string) => {
+      setDrafts((current) => ({
+        ...current,
+        [language]: nextCode,
+      }));
+    },
+    [language],
+  );
+
+  const handleLanguageChange = useCallback((nextLanguage: SupportedLanguage) => {
+    setLanguage(nextLanguage);
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setDrafts((current) => ({
+      ...current,
+      [language]: LANGUAGE_CONFIGS[language].starterCode,
+    }));
+  }, [language]);
+
+  const executeJudge = useCallback(
+    async (action: "run" | "submit") => {
+      const selectedTestCases =
+        action === "submit" ? submissionTestCases : visibleTestCases;
+
+      if (selectedTestCases.length === 0) {
+        setExecutionError("No test cases were found for this problem.");
+        setRunResult(null);
+        setLastAction(action);
+        return;
+      }
+
+      setActiveAction(action);
+      setExecutionError(null);
+      setRunResult(null);
+
+      try {
+        const result = await judgeCodeAgainstCases({
+          language,
+          code,
+          testCases: selectedTestCases,
+        });
+
+        setRunResult(result);
+        setLastAction(action);
+      } catch (error) {
+        setExecutionError(
+          error instanceof Error ? error.message : "Execution failed.",
+        );
+        setLastAction(action);
+      } finally {
+        setActiveAction(null);
+      }
+    },
+    [code, language, submissionTestCases, visibleTestCases],
+  );
+
+  const statusText = useMemo(() => {
+    if (activeAction === "run") {
+      return `Running ${visibleTestCases.length} visible test cases in ${LANGUAGE_CONFIGS[language].label}...`;
+    }
+
+    if (activeAction === "submit") {
+      return `Submitting ${submissionTestCases.length} total test cases in ${LANGUAGE_CONFIGS[language].label}...`;
+    }
+
+    if (executionError) {
+      return executionError;
+    }
+
+    if (!runResult) {
+      return `${LANGUAGE_CONFIGS[language].label} ready. Run checks the visible examples, and submit checks the full testcase set.`;
+    }
+
+    return `${runResult.passedCount}/${runResult.totalCount} test cases passed on ${LANGUAGE_CONFIGS[language].label} ${runResult.runtimeVersion}.`;
+  }, [
+    activeAction,
+    executionError,
+    language,
+    runResult,
+    submissionTestCases.length,
+    visibleTestCases.length,
+  ]);
+
   return (
     <div
       className="flex h-screen flex-col overflow-hidden"
       style={{ background: P.bg }}
     >
-      {/* ambient glow background */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_10%,rgba(0,255,255,0.06),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(224,141,255,0.07),transparent_24%)]" />
 
-      {/* ═══════════════ TOP NAV BAR ═══════════════ */}
-      <TopBar />
+      <TopBar
+        onRun={() => void executeJudge("run")}
+        onSubmit={() => void executeJudge("submit")}
+        isRunning={activeAction === "run"}
+        isSubmitting={activeAction === "submit"}
+        statusText={statusText}
+      />
 
-      {/* ═══════════════ MAIN CONTENT ═══════════════ */}
       <div ref={containerRef} className="flex min-h-0 flex-1 gap-0 p-2">
-        {/* LEFT: description */}
         <div style={{ width: `${hRatio * 100}%` }} className="min-w-0">
           <DescriptionPanel
             problem={problem}
@@ -176,21 +293,30 @@ export function CodingWindowPage() {
 
         <DragHandle direction="horizontal" onMouseDown={hMouseDown} />
 
-        {/* RIGHT: editor + test cases */}
         <div
           ref={rightContainerRef}
           className="flex min-w-0 flex-1 flex-col gap-0"
         >
-          {/* editor */}
           <div style={{ height: `${vRatio * 100}%` }} className="min-h-0">
-            <EditorPanel />
+            <EditorPanel
+              language={language}
+              code={code}
+              onLanguageChange={handleLanguageChange}
+              onCodeChange={handleCodeChange}
+              onReset={handleReset}
+            />
           </div>
 
           <DragHandle direction="vertical" onMouseDown={vMouseDown} />
 
-          {/* test cases */}
           <div className="min-h-0 flex-1">
-            <TestCasesPanel problem={problem} />
+            <TestCasesPanel
+              visibleTestCases={visibleTestCases}
+              runResult={runResult}
+              isRunning={activeAction !== null}
+              mode={lastAction}
+              executionError={executionError}
+            />
           </div>
         </div>
       </div>

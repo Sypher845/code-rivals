@@ -4,11 +4,12 @@
   "version": "0.0.1",
   "type": "module",
   "scripts": {
-    "dev": "docker compose up -d && echo 'Docker port:' && docker compose port api-problemset 8080 && vite",
+    "dev": "docker compose up -d && vite",
     "build": "tsc -b && vite build",
     "format": "prettier . --write --ignore-path .prettierignore",
     "lint": "prettier . --check --ignore-path .prettierignore",
     "preview": "vite preview",
+    "judge:install-runtimes": "node scripts/install-piston-runtimes.mjs",
     "spacetime:generate": "spacetime generate --lang typescript --out-dir src/module_bindings --module-path spacetimedb",
     "spacetime:publish:local": "spacetime publish --module-path spacetimedb --server local",
     "spacetime:publish": "spacetime publish --module-path spacetimedb --server maincloud"

@@ -1,3 +1,15 @@
+# CodeRivals
+
+## Local Judge Setup
+
+The coding window now uses a local Piston instance for compilation and judging.
+
+1. Start the app stack with `npm run dev`
+2. Install the required runtimes once with `npm run judge:install-runtimes`
+3. Open `/coding-window` and run or submit C++ / Java solutions
+
+The judge executes every testcase separately, feeds each testcase into `main`, and compares each produced output against the expected output independently.
+
 # SpacetimeDB TypeScript Quickstart Chat
 
 This is a simple chat application that demonstrates how to use SpacetimeDB with TypeScript and React. The chat application is a simple chat room where users can send messages to each other. The chat application uses SpacetimeDB to store the chat messages.
