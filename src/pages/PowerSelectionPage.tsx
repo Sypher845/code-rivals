@@ -382,15 +382,9 @@ export function PowerupSelectionPage({
                         mass: 0.8,
                       }}
                       style={{ zIndex, position: "absolute" }}
-                      className={`${panelFrameClass} shrink-0 rounded-3xl p-4 text-center outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${active
+                      className={`shrink-0 text-center outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${active
                         ? "w-[19.2rem] sm:w-[26.4rem]"
-                        : "w-[15.6rem] bg-[rgba(11,17,28,0.58)] sm:w-[21.6rem]"
-                        } ${active && lockedCard
-                          ? "bg-[rgba(22,25,33,0.9)]"
-                          : ""
-                        } ${active && !lockedCard
-                          ? "bg-[rgba(8,22,30,0.9)]"
-                          : ""
+                        : "w-[15.6rem] sm:w-[21.6rem]"
                         }`}
                       aria-pressed={active}
                       disabled={isLocked && !lockedCard}
