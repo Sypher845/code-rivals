@@ -661,6 +661,7 @@ export const submit_round_result = spacetimedb.reducer(
       testcasesPassed,
       totalTestcases,
       pointsEarned: calculatedPointsEarned,
+      pointsEarned: calculatedPointsEarned,
       createdAt: ctx.timestamp,
     });
 
