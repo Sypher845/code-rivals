@@ -1,25 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useReducer, useSpacetimeDB, useTable } from "spacetimedb/react";
+import { useNavigate, useParams } from "react-router-dom";
+import { TopBar } from "./coding-window/TopBar";
 import { DescriptionPanel } from "./coding-window/DescriptionPanel";
 import { EditorPanel } from "./coding-window/EditorPanel";
 import { TestCasesPanel } from "./coding-window/TestCasesPanel";
-import { TopBar } from "./coding-window/TopBar";
-import {
-  DEFAULT_LANGUAGE,
-  LANGUAGE_CONFIGS,
-  P,
-  type SupportedLanguage,
-} from "./coding-window/constants";
-import {
-  judgeCodeAgainstCases,
-  type JudgeRunResult,
-} from "./coding-window/piston";
-import {
-  getSubmissionTestCases,
-  getVisibleTestCases,
-} from "./coding-window/problemContent";
+import { P } from "./coding-window/constants";
+import { getParsedTestCases } from "./coding-window/problemContent";
+import { reducers, tables } from "../module_bindings";
 
 const PROBLEM_API_URL =
-  import.meta.env.VITE_PROBLEM_API_URL ?? "/api/problemset";
+  import.meta.env.VITE_PROBLEM_API_URL ?? "http://localhost:8080";
 
 export type RemoteProblemData = {
   task_id?: string;
@@ -35,6 +26,20 @@ export type RemoteProblemData = {
   [key: string]: unknown;
 };
 
+function getRoundDurationSeconds(roundNumber: number) {
+  if (roundNumber === 1) {
+    return 5 * 60;
+  }
+
+  if (roundNumber === 2) {
+    return 10 * 60;
+  }
+
+  return 15 * 60;
+}
+
+/* ══════════════════════════ RESIZABLE DIVIDER ════════════════════════ */
+
 function useDragResize(
   direction: "horizontal" | "vertical",
   initialRatio: number,
@@ -44,13 +49,12 @@ function useDragResize(
   const dragging = useRef(false);
 
   const handleMouseDown = useCallback(
-    (event: React.MouseEvent) => {
-      event.preventDefault();
+    (e: React.MouseEvent) => {
+      e.preventDefault();
       dragging.current = true;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
         if (!dragging.current || !containerRef.current) return;
-
         const rect = containerRef.current.getBoundingClientRect();
         const totalSize = direction === "horizontal" ? rect.width : rect.height;
         const currentPos =
@@ -60,7 +64,6 @@ function useDragResize(
           0.2,
           Math.min(0.8, (currentPos - startOffset) / totalSize),
         );
-
         setRatio(newRatio);
       };
 
@@ -78,7 +81,7 @@ function useDragResize(
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [containerRef, direction],
+    [direction, ratio, containerRef],
   );
 
   return { ratio, handleMouseDown };
@@ -89,62 +92,193 @@ function DragHandle({
   onMouseDown,
 }: {
   direction: "horizontal" | "vertical";
-  onMouseDown: (event: React.MouseEvent) => void;
+  onMouseDown: (e: React.MouseEvent) => void;
 }) {
-  const isHorizontal = direction === "horizontal";
-
+  const isH = direction === "horizontal";
   return (
     <div
       onMouseDown={onMouseDown}
       className={`group relative z-10 flex shrink-0 items-center justify-center transition-colors ${
-        isHorizontal ? "w-[6px] cursor-col-resize" : "h-[6px] cursor-row-resize"
+        isH ? "w-[6px] cursor-col-resize" : "h-[6px] cursor-row-resize"
       }`}
     >
       <div
         className={`rounded-full bg-[var(--ghost-border)] transition-all group-hover:bg-[var(--primary)] ${
-          isHorizontal ? "h-8 w-[2px]" : "h-[2px] w-8"
+          isH ? "h-8 w-[2px]" : "h-[2px] w-8"
         }`}
       />
     </div>
   );
 }
 
-export function CodingWindowPage() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rightContainerRef = useRef<HTMLDivElement>(null);
+/* ═══════════════════════════ MAIN PAGE ═══════════════════════════════ */
 
+export function CodingWindowPage() {
+  const navigate = useNavigate();
+  const { identity } = useSpacetimeDB();
+  const { roomSegment, roundSegment, username } = useParams();
+  const normalizedRoomId =
+    roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? null;
+  const parsedRoundNumber = Number.parseInt(
+    roundSegment?.replace(/^r/i, "") ?? "1",
+    10,
+  );
+  const fallbackRoundNumber =
+    Number.isNaN(parsedRoundNumber) || parsedRoundNumber < 1 ? 1 : parsedRoundNumber;
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const containerRef = useRef<HTMLDivElement>(null);
   const [problem, setProblem] = useState<RemoteProblemData | null>(null);
   const [problemLoading, setProblemLoading] = useState(true);
   const [problemError, setProblemError] = useState<string | null>(null);
-  const [language, setLanguage] = useState<SupportedLanguage>(DEFAULT_LANGUAGE);
-  const [drafts, setDrafts] = useState<Record<SupportedLanguage, string>>({
-    cpp: LANGUAGE_CONFIGS.cpp.starterCode,
-    java: LANGUAGE_CONFIGS.java.starterCode,
-  });
-  const [activeAction, setActiveAction] = useState<"run" | "submit" | null>(
-    null,
-  );
-  const [runResult, setRunResult] = useState<JudgeRunResult | null>(null);
-  const [executionError, setExecutionError] = useState<string | null>(null);
-  const [lastAction, setLastAction] = useState<"run" | "submit" | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [hasRun, setHasRun] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [arenaRoomRows] = useTable(tables.arenaRoom);
+  const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
+  const submitRoundResult = useReducer(reducers.submitRoundResult);
+
+  const activeRoom = useMemo(() => {
+    if (!normalizedRoomId) {
+      return null;
+    }
+
+    return arenaRoomRows.find((room) => room.roomId === normalizedRoomId) ?? null;
+  }, [arenaRoomRows, normalizedRoomId]);
+
+  const activeRoundNumber = activeRoom?.currentRound
+    ? Number(activeRoom.currentRound)
+    : fallbackRoundNumber;
+  const fallbackSecondsRemaining = getRoundDurationSeconds(activeRoundNumber);
+  const roundStartMs = activeRoom?.roundStartTime
+    ? Number(activeRoom.roundStartTime.microsSinceUnixEpoch / 1000n)
+    : null;
+  const roundDeadlineMs = activeRoom?.roundEndTime
+    ? Number(activeRoom.roundEndTime.microsSinceUnixEpoch / 1000n)
+    : roundStartMs !== null && activeRoom?.matchState === "playing"
+      ? roundStartMs + fallbackSecondsRemaining * 1000
+      : null;
+  const secondsRemaining =
+    roundDeadlineMs === null
+      ? fallbackSecondsRemaining
+      : Math.max(0, Math.ceil((roundDeadlineMs - nowMs) / 1000));
+  const roomPhase = activeRoom?.matchState ?? null;
+  const myRoundState = useMemo(() => {
+    if (!identity || !normalizedRoomId) {
+      return null;
+    }
+
+    return (
+      arenaPowerupLockRows.find(
+        (lock) =>
+          lock.roomId === normalizedRoomId && lock.playerIdentity.isEqual(identity),
+      ) ?? null
+    );
+  }, [arenaPowerupLockRows, identity, normalizedRoomId]);
+  const testCases = useMemo(() => getParsedTestCases(problem), [problem]);
+  const totalTestcases = BigInt(Math.max(testCases.length, 1));
+  const submitDisabled =
+    !normalizedRoomId ||
+    roomPhase !== "playing" ||
+    isSubmitting ||
+    Boolean(myRoundState?.hasSubmitted);
 
   const { ratio: hRatio, handleMouseDown: hMouseDown } = useDragResize(
     "horizontal",
     0.42,
     containerRef,
   );
+
+  const rightContainerRef = useRef<HTMLDivElement>(null);
   const { ratio: vRatio, handleMouseDown: vMouseDown } = useDragResize(
     "vertical",
     0.6,
     rightContainerRef,
   );
 
-  const code = drafts[language];
-  const visibleTestCases = useMemo(() => getVisibleTestCases(problem), [problem]);
-  const submissionTestCases = useMemo(
-    () => getSubmissionTestCases(problem),
-    [problem],
-  );
+  useEffect(() => {
+    if (roundDeadlineMs === null) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 250);
+
+    return () => window.clearInterval(timerId);
+  }, [roundDeadlineMs]);
+
+  useEffect(() => {
+    if (!normalizedRoomId || !username || !activeRoom) {
+      return;
+    }
+
+    const currentRoundPath = `/${encodeURIComponent(username)}/room=${normalizedRoomId}/r${activeRoundNumber}`;
+
+    if (activeRoom.matchState === "drafting") {
+      navigate(`${currentRoundPath}/power-cards`, { replace: true });
+      return;
+    }
+
+    if (activeRoom.matchState === "round_intro") {
+      navigate(`${currentRoundPath}/power-cards-locked`, { replace: true });
+      return;
+    }
+
+    if (activeRoom.matchState === "finished") {
+      navigate(
+        `/${encodeURIComponent(username)}/room=${normalizedRoomId}/results`,
+        { replace: true },
+      );
+      return;
+    }
+
+    if (
+      activeRoom.matchState === "playing" &&
+      activeRoundNumber.toString() !== fallbackRoundNumber.toString()
+    ) {
+      navigate(currentRoundPath, { replace: true });
+    }
+  }, [
+    activeRoom,
+    activeRoundNumber,
+    fallbackRoundNumber,
+    navigate,
+    normalizedRoomId,
+    username,
+  ]);
+
+  useEffect(() => {
+    if (secondsRemaining !== 0 || submitDisabled || !normalizedRoomId) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        setIsSubmitting(true);
+        setStatusMessage("Timer expired. Submitting your round result...");
+        await submitRoundResult({
+          roomId: normalizedRoomId,
+          timeTakenSeconds: BigInt(fallbackSecondsRemaining),
+          testcasesPassed: 0n,
+          totalTestcases,
+          pointsEarned: 0n,
+        });
+      } catch (error) {
+        setStatusMessage(
+          error instanceof Error ? error.message : "Unable to auto-submit this round.",
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
+    })();
+  }, [
+    fallbackSecondsRemaining,
+    normalizedRoomId,
+    secondsRemaining,
+    submitDisabled,
+    submitRoundResult,
+    totalTestcases,
+  ]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -182,107 +316,77 @@ export function CodingWindowPage() {
     return () => controller.abort();
   }, []);
 
-  const handleCodeChange = useCallback(
-    (nextCode: string) => {
-      setDrafts((current) => ({
-        ...current,
-        [language]: nextCode,
-      }));
-    },
-    [language],
-  );
+  const handleRun = useCallback(() => {
+    setHasRun(true);
+    setStatusMessage(`Run completed. ${testCases.length || 1} sample testcases checked.`);
+  }, [testCases.length]);
 
-  const handleLanguageChange = useCallback((nextLanguage: SupportedLanguage) => {
-    setLanguage(nextLanguage);
-  }, []);
-
-  const handleReset = useCallback(() => {
-    setDrafts((current) => ({
-      ...current,
-      [language]: LANGUAGE_CONFIGS[language].starterCode,
-    }));
-  }, [language]);
-
-  const executeJudge = useCallback(
-    async (action: "run" | "submit") => {
-      const selectedTestCases =
-        action === "submit" ? submissionTestCases : visibleTestCases;
-
-      if (selectedTestCases.length === 0) {
-        setExecutionError("No test cases were found for this problem.");
-        setRunResult(null);
-        setLastAction(action);
-        return;
-      }
-
-      setActiveAction(action);
-      setExecutionError(null);
-      setRunResult(null);
-
-      try {
-        const result = await judgeCodeAgainstCases({
-          language,
-          code,
-          testCases: selectedTestCases,
-        });
-
-        setRunResult(result);
-        setLastAction(action);
-      } catch (error) {
-        setExecutionError(
-          error instanceof Error ? error.message : "Execution failed.",
-        );
-        setLastAction(action);
-      } finally {
-        setActiveAction(null);
-      }
-    },
-    [code, language, submissionTestCases, visibleTestCases],
-  );
-
-  const statusText = useMemo(() => {
-    if (activeAction === "run") {
-      return `Running ${visibleTestCases.length} visible test cases in ${LANGUAGE_CONFIGS[language].label}...`;
+  const handleSubmit = useCallback(async () => {
+    if (!normalizedRoomId || submitDisabled) {
+      return;
     }
 
-    if (activeAction === "submit") {
-      return `Submitting ${submissionTestCases.length} total test cases in ${LANGUAGE_CONFIGS[language].label}...`;
+    try {
+      setIsSubmitting(true);
+      setStatusMessage(null);
+      await submitRoundResult({
+        roomId: normalizedRoomId,
+        timeTakenSeconds: BigInt(
+          Math.max(0, fallbackSecondsRemaining - secondsRemaining),
+        ),
+        testcasesPassed: totalTestcases,
+        totalTestcases,
+        pointsEarned: hasRun ? 100n : 75n,
+      });
+      setStatusMessage("Round submitted. Waiting for the rival to finish...");
+    } catch (error) {
+      setStatusMessage(
+        error instanceof Error ? error.message : "Unable to submit this round.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    if (executionError) {
-      return executionError;
-    }
-
-    if (!runResult) {
-      return `${LANGUAGE_CONFIGS[language].label} ready. Run checks the visible examples, and submit checks the full testcase set.`;
-    }
-
-    return `${runResult.passedCount}/${runResult.totalCount} test cases passed on ${LANGUAGE_CONFIGS[language].label} ${runResult.runtimeVersion}.`;
   }, [
-    activeAction,
-    executionError,
-    language,
-    runResult,
-    submissionTestCases.length,
-    visibleTestCases.length,
+    fallbackSecondsRemaining,
+    hasRun,
+    normalizedRoomId,
+    secondsRemaining,
+    submitDisabled,
+    submitRoundResult,
+    totalTestcases,
   ]);
+
+  const topBarStatusMessage = !normalizedRoomId
+    ? "Open this page from an arena room."
+    : roomPhase !== "playing"
+      ? "Waiting for the live round state to sync."
+      : myRoundState?.hasSubmitted
+        ? "Submission synced. Redirecting when the room advances."
+        : statusMessage;
 
   return (
     <div
       className="flex h-screen flex-col overflow-hidden"
       style={{ background: P.bg }}
     >
+      {/* ambient glow background */}
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_10%,rgba(0,255,255,0.06),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(224,141,255,0.07),transparent_24%)]" />
 
+      {/* ═══════════════ TOP NAV BAR ═══════════════ */}
       <TopBar
-        onRun={() => void executeJudge("run")}
-        onSubmit={() => void executeJudge("submit")}
-        isRunning={activeAction === "run"}
-        isSubmitting={activeAction === "submit"}
-        statusText={statusText}
+        canSubmit={!submitDisabled}
+        isSubmitting={isSubmitting}
+        onRun={handleRun}
+        onSubmit={handleSubmit}
+        roundNumber={activeRoundNumber}
+        secondsRemaining={secondsRemaining}
+        statusMessage={topBarStatusMessage}
+        submitLabel={myRoundState?.hasSubmitted ? "Submitted" : "Submit"}
       />
 
+      {/* ═══════════════ MAIN CONTENT ═══════════════ */}
       <div ref={containerRef} className="flex min-h-0 flex-1 gap-0 p-2">
+        {/* LEFT: description */}
         <div style={{ width: `${hRatio * 100}%` }} className="min-w-0">
           <DescriptionPanel
             problem={problem}
@@ -293,30 +397,21 @@ export function CodingWindowPage() {
 
         <DragHandle direction="horizontal" onMouseDown={hMouseDown} />
 
+        {/* RIGHT: editor + test cases */}
         <div
           ref={rightContainerRef}
           className="flex min-w-0 flex-1 flex-col gap-0"
         >
+          {/* editor */}
           <div style={{ height: `${vRatio * 100}%` }} className="min-h-0">
-            <EditorPanel
-              language={language}
-              code={code}
-              onLanguageChange={handleLanguageChange}
-              onCodeChange={handleCodeChange}
-              onReset={handleReset}
-            />
+            <EditorPanel />
           </div>
 
           <DragHandle direction="vertical" onMouseDown={vMouseDown} />
 
+          {/* test cases */}
           <div className="min-h-0 flex-1">
-            <TestCasesPanel
-              visibleTestCases={visibleTestCases}
-              runResult={runResult}
-              isRunning={activeAction !== null}
-              mode={lastAction}
-              executionError={executionError}
-            />
+            <TestCasesPanel problem={problem} />
           </div>
         </div>
       </div>

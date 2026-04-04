@@ -1,4 +1,4 @@
-import { ScheduleAt } from "spacetimedb";
+import { ScheduleAt, Timestamp } from "spacetimedb";
 import {
   SenderError,
   t,
@@ -14,6 +14,9 @@ import {
 
 type ArenaReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 const TOTAL_ROUNDS = 3n;
+const ROUND_ONE_DURATION_MICROS = 5n * 60n * 1_000_000n;
+const ROUND_TWO_DURATION_MICROS = 10n * 60n * 1_000_000n;
+const ROUND_THREE_DURATION_MICROS = 15n * 60n * 1_000_000n;
 
 const POWER_CARD_NAMES = [
   "FlashbangCard",
@@ -60,6 +63,18 @@ function buildRolledPowers(
   }
 
   return shuffled.slice(0, 3);
+}
+
+function getRoundDurationMicros(roundNumber: bigint) {
+  if (roundNumber === 1n) {
+    return ROUND_ONE_DURATION_MICROS;
+  }
+
+  if (roundNumber === 2n) {
+    return ROUND_TWO_DURATION_MICROS;
+  }
+
+  return ROUND_THREE_DURATION_MICROS;
 }
 
 function requireSession(ctx: ArenaReducerCtx) {
@@ -488,11 +503,14 @@ export const begin_playing_round = spacetimedb.reducer(
       return;
     }
 
+    const roundEndMicros =
+      ctx.timestamp.microsSinceUnixEpoch + getRoundDurationMicros(room.currentRound);
+
     ctx.db.arenaRoom.roomId.update({
       ...room,
       matchState: "playing",
       roundStartTime: ctx.timestamp,
-      roundEndTime: undefined,
+      roundEndTime: new Timestamp(roundEndMicros),
     });
   },
 );
