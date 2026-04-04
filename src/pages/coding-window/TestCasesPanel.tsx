@@ -3,24 +3,53 @@ import { motion, AnimatePresence } from "framer-motion";
 import { PROBLEM } from "./constants";
 import type { RemoteProblemData } from "../CodingWindowPage";
 import { getParsedTestCases } from "./problemContent";
+import type { JudgeCaseResult } from "./judge";
 
 type TestCasesPanelProps = {
+  errorMessage?: string | null;
   flashbangActive?: boolean;
+  isRunning?: boolean;
   problem?: RemoteProblemData | null;
   zenMode?: boolean;
+  results?: JudgeCaseResult[];
 };
 
 export function TestCasesPanel({
+  errorMessage = null,
   flashbangActive = false,
+  isRunning = false,
   problem,
   zenMode = false,
+  results = [],
 }: TestCasesPanelProps) {
   const [activeMainTab, setActiveMainTab] = useState<"testcase" | "result">(
     "testcase",
   );
   const [activeCase, setActiveCase] = useState(0);
-  const [hasRun, setHasRun] = useState(false);
   const testCases = getParsedTestCases(problem);
+  const hasRun = results.length > 0;
+  const currentResult = results[activeCase] ?? null;
+  const passedCount = results.filter((result) => result.passed).length;
+  const failedCount = results.length - passedCount;
+  const visibleActualOutput =
+    currentResult && currentResult.actualOutput.trim().length > 0
+      ? currentResult.actualOutput
+      : "(no stdout)";
+
+  useEffect(() => {
+    if (isRunning || hasRun || errorMessage) {
+      setActiveMainTab("result");
+    }
+  }, [errorMessage, hasRun, isRunning]);
+
+  useEffect(() => {
+    if (!hasRun) {
+      return;
+    }
+
+    const firstFailedCaseIndex = results.findIndex((result) => !result.passed);
+    setActiveCase(firstFailedCaseIndex >= 0 ? firstFailedCaseIndex : 0);
+  }, [hasRun, results]);
 
   useEffect(() => {
     if (activeCase >= testCases.length) {
@@ -211,20 +240,244 @@ export function TestCasesPanel({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -16 }}
               transition={{ duration: 0.2, ease: "easeInOut" }}
-              className="flex h-full flex-col items-center justify-center gap-2 py-12 text-center"
+              className="flex min-h-full flex-col gap-4 py-2"
             >
-              {!hasRun ? (
+              {isRunning ? (
                 <p
-                  className={`text-base ${
+                  className={`py-12 text-center text-base ${
+                    zenMode ? "text-[#8e8e8e]" : "text-[var(--text-tertiary)]"
+                  }`}
+                >
+                  Running each testcase separately...
+                </p>
+              ) : errorMessage ? (
+                <div className="w-full max-w-3xl rounded-xl border border-[rgba(255,120,120,0.22)] bg-[rgba(255,120,120,0.08)] p-4 text-left">
+                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-[#ffb4b4]">
+                    Execution Error
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[#ffd0d0]">
+                    {errorMessage}
+                  </p>
+                </div>
+              ) : !hasRun ? (
+                <p
+                  className={`py-12 text-center text-base ${
                     zenMode ? "text-[#8e8e8e]" : "text-[var(--text-tertiary)]"
                   }`}
                 >
                   You must run your code first
                 </p>
               ) : (
-                <p className="text-base text-[#7cd87c]">
-                  All test cases passed!
-                </p>
+                <div className="flex w-full flex-col gap-4 text-left">
+                  <div
+                    className={`rounded-xl border p-4 ${
+                      failedCount === 0
+                        ? "border-[rgba(124,216,124,0.24)] bg-[rgba(124,216,124,0.08)]"
+                        : "border-[rgba(255,120,120,0.22)] bg-[rgba(255,120,120,0.08)]"
+                    }`}
+                  >
+                    <p
+                      className={`text-sm font-semibold uppercase tracking-[0.14em] ${
+                        failedCount === 0
+                          ? "text-[#7cd87c]"
+                          : "text-[#ffb4b4]"
+                      }`}
+                    >
+                      {failedCount === 0 ? "Accepted" : "Partial Result"}
+                    </p>
+                    <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                      {passedCount} / {results.length} testcases passed
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
+                      <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-tertiary)]">
+                        Total
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-[var(--on-background)]">
+                        {results.length}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[rgba(124,216,124,0.24)] bg-[rgba(124,216,124,0.08)] p-4">
+                      <p className="text-xs uppercase tracking-[0.14em] text-[#9ae99a]">
+                        Passed
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-[#7cd87c]">
+                        {passedCount}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-[rgba(255,120,120,0.22)] bg-[rgba(255,120,120,0.08)] p-4">
+                      <p className="text-xs uppercase tracking-[0.14em] text-[#ffb4b4]">
+                        Failed
+                      </p>
+                      <p className="mt-2 text-2xl font-semibold text-[#ffb4b4]">
+                        {failedCount}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {results.map((result, index) => (
+                      <button
+                        key={`${result.label}-${index}`}
+                        onClick={() => setActiveCase(index)}
+                        className={`rounded-md border px-3 py-2 text-sm font-medium transition ${
+                          activeCase === index
+                            ? result.passed
+                              ? "border-[rgba(124,216,124,0.4)] bg-[rgba(124,216,124,0.12)] text-[#7cd87c]"
+                              : "border-[rgba(255,120,120,0.4)] bg-[rgba(255,120,120,0.12)] text-[#ffb4b4]"
+                            : "border-[var(--ghost-border)] bg-[rgba(255,255,255,0.03)] text-[var(--text-secondary)]"
+                        }`}
+                      >
+                        {result.label.replace(":", "")} {result.passed ? "Passed" : "Failed"}
+                      </button>
+                    ))}
+                  </div>
+
+                  {currentResult ? (
+                    <>
+                      <div
+                        className={`rounded-xl border p-4 ${
+                          currentResult.passed
+                            ? "border-[rgba(124,216,124,0.24)] bg-[rgba(124,216,124,0.08)]"
+                            : "border-[rgba(255,120,120,0.22)] bg-[rgba(255,120,120,0.08)]"
+                        }`}
+                      >
+                        <p
+                          className={`text-sm font-semibold uppercase tracking-[0.14em] ${
+                            currentResult.passed
+                              ? "text-[#7cd87c]"
+                              : "text-[#ffb4b4]"
+                          }`}
+                        >
+                          {currentResult.passed
+                            ? "Accepted"
+                            : currentResult.status.replace(/_/g, " ")}
+                        </p>
+                        {currentResult.exitCode !== null ? (
+                          <p className="mt-2 text-xs text-[var(--text-tertiary)]">
+                            Exit code: {currentResult.exitCode}
+                            {currentResult.signal
+                              ? ` | Signal: ${currentResult.signal}`
+                              : ""}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      <div>
+                        <label
+                          className={`mb-1.5 block text-sm font-medium ${
+                            flashbangActive
+                              ? "text-[#f2eee9]"
+                              : "text-[var(--text-tertiary)]"
+                          }`}
+                        >
+                          Input
+                        </label>
+                        <pre
+                          className={`overflow-x-auto rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 whitespace-pre-wrap break-words ${
+                            flashbangActive
+                              ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                              : "border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] text-[var(--on-background)]"
+                          }`}
+                        >
+                          {currentResult.input}
+                        </pre>
+                      </div>
+
+                      <div>
+                        <label
+                          className={`mb-1.5 block text-sm font-medium ${
+                            flashbangActive
+                              ? "text-[#f2eee9]"
+                              : "text-[var(--text-tertiary)]"
+                          }`}
+                        >
+                          Your Output
+                        </label>
+                        <pre
+                          className={`overflow-x-auto rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 whitespace-pre-wrap break-words ${
+                            flashbangActive
+                              ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                              : "border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] text-[var(--on-background)]"
+                          }`}
+                        >
+                          {visibleActualOutput}
+                        </pre>
+                      </div>
+
+                      {!currentResult.passed ? (
+                        <div>
+                          <label
+                            className={`mb-1.5 block text-sm font-medium ${
+                              flashbangActive
+                                ? "text-[#f2eee9]"
+                                : "text-[var(--text-tertiary)]"
+                            }`}
+                          >
+                            Expected Output
+                          </label>
+                          <pre
+                            className={`overflow-x-auto rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 whitespace-pre-wrap break-words ${
+                              flashbangActive
+                                ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                                : "border-[var(--ghost-border)] bg-[rgba(0,0,0,0.5)] text-[var(--on-background)]"
+                            }`}
+                          >
+                            {currentResult.expectedOutput}
+                          </pre>
+                        </div>
+                      ) : null}
+
+                      {currentResult.errorOutput ? (
+                        <div>
+                          <label
+                            className={`mb-1.5 block text-sm font-medium ${
+                              flashbangActive
+                                ? "text-[#f2eee9]"
+                                : "text-[var(--text-tertiary)]"
+                            }`}
+                          >
+                            Runtime Error
+                          </label>
+                          <pre
+                            className={`overflow-x-auto rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 whitespace-pre-wrap break-words ${
+                              flashbangActive
+                                ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                                : "border-[rgba(255,120,120,0.18)] bg-[rgba(255,120,120,0.08)] text-[#ffd0d0]"
+                            }`}
+                          >
+                            {currentResult.errorOutput}
+                          </pre>
+                        </div>
+                      ) : null}
+
+                      {currentResult.compileOutput ? (
+                        <div>
+                          <label
+                            className={`mb-1.5 block text-sm font-medium ${
+                              flashbangActive
+                                ? "text-[#f2eee9]"
+                                : "text-[var(--text-tertiary)]"
+                            }`}
+                          >
+                            Compile Error
+                          </label>
+                          <pre
+                            className={`overflow-x-auto rounded-lg border p-4 font-[var(--font-mono)] text-[0.88rem] leading-7 whitespace-pre-wrap break-words ${
+                              flashbangActive
+                                ? "border-[#fbf8f4] bg-white text-[#efebe6]"
+                                : "border-[rgba(255,120,120,0.18)] bg-[rgba(255,120,120,0.08)] text-[#ffd0d0]"
+                            }`}
+                          >
+                            {currentResult.compileOutput}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
               )}
             </motion.div>
           )}

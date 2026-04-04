@@ -4,3 +4,12 @@ services:
     container_name: api-problemset
     ports:
       - "8080:8080"
+  piston:
+    image: ghcr.io/engineer-man/piston
+    container_name: piston
+    ports:
+      - "2000:2000"
+    environment:
+      PISTON_DISABLE_NETWORK: "true"
+    tmpfs:
+      - /piston/jobs:exec,mode=1777

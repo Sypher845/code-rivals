@@ -5,7 +5,17 @@ import { TopBar } from "./coding-window/TopBar";
 import { DescriptionPanel } from "./coding-window/DescriptionPanel";
 import { EditorPanel } from "./coding-window/EditorPanel";
 import { TestCasesPanel } from "./coding-window/TestCasesPanel";
-import { P } from "./coding-window/constants";
+import {
+  DEFAULT_CODE,
+  DEFAULT_LANGUAGE,
+  EXECUTION_LANGUAGE_CONFIG,
+  P,
+  type SupportedEditorLanguage,
+} from "./coding-window/constants";
+import {
+  judgeCodeAgainstTestCases,
+  type JudgeRunResult,
+} from "./coding-window/judge";
 import { getParsedTestCases } from "./coding-window/problemContent";
 import { reducers, tables } from "../module_bindings";
 import type { ArenaSabotageEvent } from "../module_bindings/types";
@@ -296,6 +306,7 @@ export function CodingWindowPage() {
   const { roomSegment, roundSegment, username } = useParams();
   const normalizedRoomId =
     roomSegment?.replace(/^room=/i, "").trim().toUpperCase() ?? null;
+  const isStandaloneTestingMode = normalizedRoomId === null;
   const parsedRoundNumber = Number.parseInt(
     roundSegment?.replace(/^r/i, "") ?? "1",
     10,
@@ -327,8 +338,13 @@ export function CodingWindowPage() {
   const [activeOutgoingSabotage, setActiveOutgoingSabotage] =
     useState<OutgoingSabotage | null>(null);
   const [usedSabotageRoundKey, setUsedSabotageRoundKey] = useState<string | null>(null);
-  const [hasRun, setHasRun] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] =
+    useState<SupportedEditorLanguage>(DEFAULT_LANGUAGE);
+  const [code, setCode] = useState(DEFAULT_CODE);
+  const [judgeResult, setJudgeResult] = useState<JudgeRunResult | null>(null);
+  const [judgeError, setJudgeError] = useState<string | null>(null);
   const [arenaRoomRows] = useTable(tables.arenaRoom);
   const [arenaRoomMemberRows] = useTable(tables.arenaRoomMember);
   const [arenaPowerupLockRows] = useTable(tables.arenaPowerupLock);
@@ -562,7 +578,9 @@ export function CodingWindowPage() {
         );
   const submitDisabled = isZenMode
     ? zenRoundStage !== "playing" || isSubmitting
-    : arenaSubmitDisabled;
+    : isStandaloneTestingMode
+      ? isSubmitting
+      : arenaSubmitDisabled;
 
   const { ratio: hRatio, handleMouseDown: hMouseDown } = useDragResize(
     "horizontal",
@@ -960,12 +978,37 @@ export function CodingWindowPage() {
     storedRoundProblem,
   ]);
 
-  const handleRun = useCallback(() => {
+  const handleLanguageChange = useCallback((language: SupportedEditorLanguage) => {
+    setSelectedLanguage(language);
+    setCode(EXECUTION_LANGUAGE_CONFIG[language].boilerplate);
+    setJudgeResult(null);
+    setJudgeError(null);
+    setStatusMessage(null);
+  }, []);
+
+  const handleResetCode = useCallback(() => {
+    setCode(EXECUTION_LANGUAGE_CONFIG[selectedLanguage].boilerplate);
+    setJudgeResult(null);
+    setJudgeError(null);
+    setStatusMessage("Editor reset to the default boilerplate.");
+  }, [selectedLanguage]);
+
+  const runJudge = useCallback(async () => {
+    setJudgeError(null);
+    const executionResult = await judgeCodeAgainstTestCases(
+      selectedLanguage,
+      code,
+      testCases,
+    );
+    setJudgeResult(executionResult);
+    return executionResult;
+  }, [code, selectedLanguage, testCases]);
+
+  const handleRun = useCallback(async () => {
     if (isZenMode && zenRoundStage !== "playing") {
       setStatusMessage("Start the Zen round before running code.");
       return;
     }
-
     if (noMistakesActive) {
       setStatusMessage(
         "No Mistakes is active. Run is disabled, so this round is submit-only.",
@@ -973,9 +1016,30 @@ export function CodingWindowPage() {
       return;
     }
 
-    setHasRun(true);
-    setStatusMessage(`Run completed. ${testCases.length || 1} sample testcases checked.`);
-  }, [isZenMode, noMistakesActive, testCases.length, zenRoundStage]);
+    try {
+      setIsRunning(true);
+      setJudgeError(null);
+      setStatusMessage("Running your code against all visible testcases...");
+      const result = await runJudge();
+      setStatusMessage(
+        `Run completed. ${result.passedCount}/${result.totalCount} testcases passed.`,
+      );
+    } catch (error) {
+      setJudgeResult(null);
+      setJudgeError(
+        error instanceof Error
+          ? error.message
+          : "Unable to execute your code right now.",
+      );
+      setStatusMessage(
+        error instanceof Error
+          ? error.message
+          : "Unable to execute your code right now.",
+      );
+    } finally {
+      setIsRunning(false);
+    }
+  }, [isZenMode, noMistakesActive, runJudge, zenRoundStage]);
 
   const handleSabotage = useCallback(async () => {
     if (!normalizedRoomId) {
@@ -1033,45 +1097,82 @@ export function CodingWindowPage() {
         return;
       }
 
-      const submittedRound = zenRoundNumber;
-      setIsSubmitting(true);
-      setActiveEditorSabotage(null);
-      setZenAssignedSabotageId(null);
-      setZenRoundStartMs(null);
+      try {
+        setIsSubmitting(true);
+        setJudgeError(null);
+        setStatusMessage("Judging your latest code against all testcases...");
+        const result = await runJudge();
+        const submittedRound = zenRoundNumber;
 
-      if (submittedRound >= 3) {
-        setZenRoundStage("finished");
-        setStatusMessage("Zen practice complete. All three rounds are done.");
-      } else {
-        const nextRound = submittedRound + 1;
-        setZenRoundNumber(nextRound);
-        setZenRoundStage("intro");
-        setZenRoundDurationSeconds(getRoundDurationSeconds(nextRound));
-        setStatusMessage(`Round ${submittedRound} submitted. Start Round ${nextRound} when you're ready.`);
+        setActiveEditorSabotage(null);
+        setZenAssignedSabotageId(null);
+        setZenRoundStartMs(null);
+
+        if (submittedRound >= 3) {
+          setZenRoundStage("finished");
+          setStatusMessage(
+            `Zen practice complete. ${result.passedCount}/${result.totalCount} testcases passed.`,
+          );
+        } else {
+          const nextRound = submittedRound + 1;
+          setZenRoundNumber(nextRound);
+          setZenRoundStage("intro");
+          setZenRoundDurationSeconds(getRoundDurationSeconds(nextRound));
+          setStatusMessage(
+            `Round ${submittedRound} submitted. ${result.passedCount}/${result.totalCount} testcases passed. Start Round ${nextRound} when you're ready.`,
+          );
+        }
+      } catch (error) {
+        setJudgeResult(null);
+        setJudgeError(
+          error instanceof Error ? error.message : "Unable to submit this round.",
+        );
+        setStatusMessage(
+          error instanceof Error ? error.message : "Unable to submit this round.",
+        );
+      } finally {
+        setIsSubmitting(false);
       }
-
-      setIsSubmitting(false);
       return;
     }
 
-    if (!normalizedRoomId || submitDisabled) {
+    if (submitDisabled) {
       return;
     }
 
     try {
       setIsSubmitting(true);
-      setStatusMessage(null);
+      setJudgeError(null);
+      setStatusMessage("Judging your latest code against all testcases...");
+      const result = await runJudge();
+
+      if (isStandaloneTestingMode) {
+        setStatusMessage(
+          `Submitted in testing mode. ${result.passedCount}/${result.totalCount} testcases passed.`,
+        );
+        return;
+      }
+
+      if (!normalizedRoomId) {
+        throw new Error("Open this page from an arena room to submit the round.");
+      }
+
       await submitRoundResult({
         roomId: normalizedRoomId,
         timeTakenSeconds: BigInt(
           Math.max(0, myRoundDurationSeconds - secondsRemaining),
         ),
-        testcasesPassed: totalTestcases,
+        testcasesPassed: BigInt(result.passedCount),
         totalTestcases,
         pointsEarned: 0n,
       });
-      setStatusMessage("Round submitted. Waiting for the rival to finish...");
+      setStatusMessage(
+        `Round submitted. ${result.passedCount}/${result.totalCount} testcases passed.`,
+      );
     } catch (error) {
+      setJudgeError(
+        error instanceof Error ? error.message : "Unable to submit this round.",
+      );
       setStatusMessage(
         error instanceof Error ? error.message : "Unable to submit this round.",
       );
@@ -1079,9 +1180,11 @@ export function CodingWindowPage() {
       setIsSubmitting(false);
     }
   }, [
+    isStandaloneTestingMode,
     isZenMode,
     myRoundDurationSeconds,
     normalizedRoomId,
+    runJudge,
     secondsRemaining,
     submitDisabled,
     submitRoundResult,
@@ -1129,7 +1232,8 @@ export function CodingWindowPage() {
       setActiveEditorSabotage(null);
     }
 
-    setHasRun(false);
+    setJudgeResult(null);
+    setJudgeError(null);
     setZenAssignedSabotageId(selectedSabotageId);
     setZenRoundDurationSeconds(nextDurationSeconds);
     setZenRoundStartMs(emittedAtMs);
@@ -1185,12 +1289,13 @@ export function CodingWindowPage() {
           : "Zen Mode is ready. Start whenever you want."
         : zenAssignedSabotageId
           ? `${formatPowerupName(zenAssignedSabotageId)} is active for this round.`
-          : statusMessage
+          : statusMessage ?? "Zen round is live."
     : !normalizedRoomId
-    ? "Open this page from an arena room."
+      ? statusMessage ??
+        "Testing mode: run or submit code against the current problem at /coding-window."
     : !activeRoom && playerSummary
       ? "Match complete. Redirecting to results..."
-    : roomPhase !== "playing"
+      : roomPhase !== "playing"
       ? "Waiting for the live round state to sync."
       : myRoundState?.hasSubmitted
         ? "Submission synced. Redirecting when the room advances."
@@ -1240,6 +1345,7 @@ export function CodingWindowPage() {
         }
         canSubmit={!submitDisabled}
         canRun={!noMistakesActive}
+        isRunning={isRunning}
         isSubmitting={isSubmitting}
         myPowerupAppliedAtStart={hasRealTimestamp(myRoundState?.appliedAtRoundStartAt)}
         mySelectedPowerupId={mySelectedPowerupId}
@@ -1324,13 +1430,18 @@ export function CodingWindowPage() {
           {/* editor */}
           <div style={{ height: `${vRatio * 100}%` }} className="min-h-0">
             <EditorPanel
+              code={code}
               editorThemeId={displayedEditorThemeId}
               keySwapActive={keySwapActive}
               keySwapMap={keySwapMap}
+              language={selectedLanguage}
               lineJumperActive={lineJumperActive}
               visuallyImpairedActive={visuallyImpairedActive}
               noRetreatActive={noRetreatActive}
               zenMode={isZenMode}
+              onCodeChange={setCode}
+              onLanguageChange={handleLanguageChange}
+              onReset={handleResetCode}
             />
           </div>
 
@@ -1340,8 +1451,11 @@ export function CodingWindowPage() {
           <div className="min-h-0 flex-1">
             <TestCasesPanel
               flashbangActive={flashbangActive}
+              errorMessage={judgeError}
+              isRunning={isRunning}
               problem={problem}
               zenMode={isZenMode}
+              results={judgeResult?.results ?? []}
             />
           </div>
         </div>
