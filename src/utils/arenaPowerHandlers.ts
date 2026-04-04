@@ -30,25 +30,26 @@ type PowerupHandlerOutput = {
 
 function buildKeySwapMap() {
   const alphabet = "abcdefghijklmnopqrstuvwxyz".split("");
-  const shuffled = [...alphabet];
+  const shuffledSources = [...alphabet];
 
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+  for (let index = shuffledSources.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
-    const current = shuffled[index];
-    shuffled[index] = shuffled[swapIndex];
-    shuffled[swapIndex] = current;
+    const current = shuffledSources[index];
+    shuffledSources[index] = shuffledSources[swapIndex];
+    shuffledSources[swapIndex] = current;
   }
 
+  const selectedSources = shuffledSources.slice(0, Math.ceil(alphabet.length / 2));
   const keySwapMap: Record<string, string> = {};
-  for (let index = 0; index < alphabet.length; index += 2) {
-    const left = shuffled[index];
-    const right = shuffled[index + 1];
-    if (!left || !right) {
+  for (const source of selectedSources) {
+    const possibleTargets = alphabet.filter((letter) => letter !== source);
+    const target =
+      possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
+    if (!target) {
       continue;
     }
 
-    keySwapMap[left] = right;
-    keySwapMap[right] = left;
+    keySwapMap[source] = target;
   }
 
   return keySwapMap;

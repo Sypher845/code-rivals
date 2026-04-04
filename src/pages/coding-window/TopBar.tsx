@@ -113,9 +113,7 @@ function SabotageButton({
 
   const CardComponent = descriptor.Card;
   const displayName = formatPowerupName(cardName);
-  const actionLabel = powerupAppliedAtStart
-    ? "Applied"
-    : isSabotaged
+  const actionLabel = isSabotaged || powerupAppliedAtStart
       ? "Sabotaged"
       : "Sabotage";
   const handleClick = () => {
@@ -226,12 +224,16 @@ export function TopBar({
       {/* RIGHT — Power card + Run/Submit */}
       <div className="flex min-w-0 flex-1 items-center justify-end gap-3">
         {/* Power card sabotage button */}
-        {mySelectedPowerupId && powerupRequiresManualActivation(mySelectedPowerupId) ? (
+        {mySelectedPowerupId ? (
           <SabotageButton
             cardName={mySelectedPowerupId}
             isSabotaged={sabotageUsed}
             powerupAppliedAtStart={myPowerupAppliedAtStart}
-            onClick={onSabotage}
+            onClick={
+              powerupRequiresManualActivation(mySelectedPowerupId)
+                ? onSabotage
+                : undefined
+            }
           />
         ) : null}
 

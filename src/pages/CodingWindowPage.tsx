@@ -259,9 +259,7 @@ export function CodingWindowPage() {
     : false;
   const noMistakesActive =
     roomPhase === "playing" &&
-    opponentRoundState?.hasLockedPower &&
-    opponentRoundState.powerupId === "NoMistakesCard" &&
-    hasRealTimestamp(opponentRoundState.appliedAtRoundStartAt);
+    Boolean(myRoundState?.activeDebuffs.includes("NoMistakesCard"));
   const myRoundStartMs = microsTimestampToMs(myRoundState?.playerRoundStartTime);
   const myBaseRoundDeadlineMs = microsTimestampToMs(myRoundState?.playerRoundEndTime);
   const myBaseRoundDurationSeconds =

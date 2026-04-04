@@ -784,6 +784,8 @@ export const begin_playing_round = spacetimedb.reducer(
 
     let playerOneBonusMicros = 0n;
     let playerTwoBonusMicros = 0n;
+    const playerOneDebuffs: string[] = [];
+    const playerTwoDebuffs: string[] = [];
     const timeHeistMicros = getTimeHeistMicros(room.currentRound);
     const timeKumMicros =
       getTimeKumPenaltySeconds(room.currentRound) * 1_000_000n;
@@ -848,9 +850,34 @@ export const begin_playing_round = spacetimedb.reducer(
       }
     }
 
+    if (
+      playerOneState?.hasLockedPower &&
+      appliesPowerupAtRoundStart(playerOneState.powerupId) &&
+      playerOneState.powerupId === NO_MISTAKES_POWERUP_ID
+    ) {
+      if (playerTwoHasMirrorShield) {
+        playerOneDebuffs.push(NO_MISTAKES_POWERUP_ID);
+      } else {
+        playerTwoDebuffs.push(NO_MISTAKES_POWERUP_ID);
+      }
+    }
+
+    if (
+      playerTwoState?.hasLockedPower &&
+      appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
+      playerTwoState.powerupId === NO_MISTAKES_POWERUP_ID
+    ) {
+      if (playerOneHasMirrorShield) {
+        playerTwoDebuffs.push(NO_MISTAKES_POWERUP_ID);
+      } else {
+        playerOneDebuffs.push(NO_MISTAKES_POWERUP_ID);
+      }
+    }
+
     if (playerOneState) {
       ctx.db.arenaPowerupLock.selectionKey.update({
         ...playerOneState,
+        activeDebuffs: playerOneDebuffs,
         appliedAtRoundStartAt:
           appliesPowerupAtRoundStart(playerOneState.powerupId) &&
           playerOneState.hasLockedPower
@@ -868,6 +895,7 @@ export const begin_playing_round = spacetimedb.reducer(
     if (playerTwoState) {
       ctx.db.arenaPowerupLock.selectionKey.update({
         ...playerTwoState,
+        activeDebuffs: playerTwoDebuffs,
         appliedAtRoundStartAt:
           appliesPowerupAtRoundStart(playerTwoState.powerupId) &&
           playerTwoState.hasLockedPower
