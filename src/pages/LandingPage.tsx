@@ -4,6 +4,7 @@ import { LogoStrip } from "./landing/BottomSections";
 import { FeaturesSection } from "./landing/FeaturesSection";
 import { FlowSection } from "./landing/FlowSection";
 import { PowersSection } from "./landing/PowersSection";
+import { ZenSection } from "./landing/ZenSection";
 import { StatsSection, CTASection, Footer } from "./landing/BottomSections";
 
 type LandingPageProps = {
@@ -65,6 +66,7 @@ export function LandingPage({
       <FeaturesSection />
       <FlowSection />
       <PowersSection />
+      <ZenSection isAuthenticated={isAuthenticated} username={username} />
       <StatsSection />
       <CTASection isAuthenticated={isAuthenticated} username={username} />
       <Footer />

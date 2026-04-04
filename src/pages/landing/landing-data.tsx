@@ -59,6 +59,7 @@ export const navLinks: NavLink[] = [
   { href: "#features", label: "Features" },
   { href: "#flow", label: "How it works" },
   { href: "#powers", label: "Superpowers" },
+  { href: "#zen", label: "Zen Mode" },
   { href: "#stats", label: "Leaderboard" },
 ];
 
@@ -204,16 +205,7 @@ export const powers: Power[] = [
     icon: Shield,
     iconClassName: "text-[var(--tertiary)]",
   },
-  {
-    name: "Full Confidence",
-    description:
-      "Opponent can't run test cases. Submit blind or not at all.",
-    tag: "Restrict",
-    tagClassName:
-      "border-[rgba(255,112,112,0.18)] bg-[rgba(255,112,112,0.1)] text-[var(--signal-danger)]",
-    icon: Lock,
-    iconClassName: "text-[var(--signal-danger)]",
-  },
+  
 ];
 
 export const stats: Stat[] = [

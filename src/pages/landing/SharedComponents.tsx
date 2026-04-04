@@ -3,7 +3,7 @@ import type { LucideProps } from "lucide-react";
 
 export function BrandMark() {
   return (
-    <div className="grid h-9 w-9 grid-cols-2 gap-[3px] rounded-xl border border-[rgba(224,141,255,0.22)] bg-[rgba(224,141,255,0.08)] p-[3px] shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_10px_24px_rgba(0,0,0,0.22)]">
+    <div className="grid h-10 w-10 grid-cols-2 gap-[3px] rounded-xl border border-[rgba(224,141,255,0.22)] bg-[rgba(224,141,255,0.08)] p-[3px] shadow-[0_0_0_1px_rgba(255,255,255,0.02),0_10px_24px_rgba(0,0,0,0.22)]">
       <span className="rounded-[4px] bg-[var(--primary)]" />
       <span className="rounded-[4px] bg-[rgba(224,141,255,0.4)]" />
       <span className="rounded-[4px] bg-[rgba(224,141,255,0.32)]" />

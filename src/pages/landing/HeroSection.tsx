@@ -11,6 +11,7 @@ type NavbarProps = {
 
 export function Navbar({ isAuthenticated, username }: NavbarProps) {
   const [navScrolled, setNavScrolled] = useState(false);
+  const [activeHref, setActiveHref] = useState(navLinks[0]?.href ?? "");
 
   const userArenaPath =
     isAuthenticated && username
@@ -30,6 +31,61 @@ export function Navbar({ isAuthenticated, username }: NavbarProps) {
     };
   }, []);
 
+  useEffect(() => {
+    const sectionEntries = navLinks
+      .map((item) => {
+        const id = item.href.replace(/^#/, "");
+        return {
+          href: item.href,
+          element: document.getElementById(id),
+        };
+      })
+      .filter(
+        (
+          entry,
+        ): entry is {
+          href: string;
+          element: HTMLElement;
+        } => entry.element instanceof HTMLElement,
+      );
+
+    if (sectionEntries.length === 0) {
+      return;
+    }
+
+    const updateActiveSection = () => {
+      const offset = window.innerHeight * 0.28;
+      const currentSection =
+        [...sectionEntries]
+          .reverse()
+          .find(
+            ({ element }) => element.getBoundingClientRect().top <= offset,
+          ) ?? sectionEntries[0];
+
+      setActiveHref(currentSection.href);
+    };
+
+    updateActiveSection();
+
+    const observer = new IntersectionObserver(
+      () => {
+        updateActiveSection();
+      },
+      {
+        rootMargin: "-18% 0px -55% 0px",
+        threshold: [0.1, 0.25, 0.5],
+      },
+    );
+
+    sectionEntries.forEach(({ element }) => observer.observe(element));
+    window.addEventListener("scroll", updateActiveSection, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", updateActiveSection);
+    };
+  }, []);
+
   return (
     <nav
       className={`fixed inset-x-0 top-0 z-50 border-b transition-all duration-200 ${
@@ -38,10 +94,10 @@ export function Navbar({ isAuthenticated, username }: NavbarProps) {
           : "border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,10,0.72)] backdrop-blur-md"
       }`}
     >
-      <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between gap-6 px-5 sm:px-8 xl:px-10">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between gap-6 px-5 sm:px-8 xl:px-10">
         <Link to="/" className="inline-flex items-center gap-3">
           <BrandMark />
-          <span className="text-sm font-semibold tracking-[-0.02em]">
+          <span className="text-[0.95rem] font-semibold tracking-[-0.02em]">
             CodeRivals
           </span>
         </Link>
@@ -51,7 +107,12 @@ export function Navbar({ isAuthenticated, username }: NavbarProps) {
             <a
               key={item.href}
               href={item.href}
-              className="rounded-lg px-3 py-1.5 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--surface-subtle)] hover:text-[var(--on-background)]"
+              aria-current={activeHref === item.href ? "page" : undefined}
+              className={`rounded-lg px-3.5 py-2 text-[0.95rem] transition ${
+                activeHref === item.href
+                  ? "bg-[rgba(224,141,255,0.12)] text-[var(--on-background)] shadow-[inset_0_0_0_1px_rgba(224,141,255,0.16)]"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] hover:text-[var(--on-background)]"
+              }`}
             >
               {item.label}
             </a>
@@ -61,14 +122,19 @@ export function Navbar({ isAuthenticated, username }: NavbarProps) {
         <div className="inline-flex items-center gap-2">
           <Link
             to={isAuthenticated ? userArenaPath : "/login"}
-            className="inline-flex min-h-9 items-center rounded-lg px-3.5 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--surface-subtle)] hover:text-[var(--on-background)]"
+            className={`inline-flex min-h-10 items-center rounded-lg px-4 text-[0.95rem] transition ${
+              isAuthenticated
+                ? "gap-2 border border-[rgba(0,255,255,0.28)] bg-[linear-gradient(135deg,rgba(0,255,255,0.9),rgba(115,245,255,0.78))] font-semibold text-[#041014] shadow-[0_0_24px_rgba(0,255,255,0.22),inset_0_1px_0_rgba(255,255,255,0.28)] hover:-translate-y-px hover:brightness-105"
+                : "text-[var(--text-secondary)] hover:bg-[var(--surface-subtle)] hover:text-[var(--on-background)]"
+            }`}
           >
             {isAuthenticated ? "Arena" : "Log in"}
+            {isAuthenticated && <ArrowRight className="h-4 w-4" />}
           </Link>
           {!isAuthenticated && (
             <Link
               to="/signup"
-              className="inline-flex min-h-9 items-center rounded-lg border border-transparent bg-[var(--primary)] px-3.5 text-sm font-medium text-black shadow-[0_0_18px_rgba(224,141,255,0.28)] transition hover:-translate-y-px hover:opacity-90"
+              className="inline-flex min-h-10 items-center rounded-lg border border-transparent bg-[var(--primary)] px-4 text-[0.95rem] font-medium text-black shadow-[0_0_18px_rgba(224,141,255,0.28)] transition hover:-translate-y-px hover:opacity-90"
             >
               Sign up
             </Link>
