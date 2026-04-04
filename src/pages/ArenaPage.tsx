@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Bell, ChevronDown, LogOut, Moon, User } from "lucide-react";
+import { Bell, LogOut, Moon } from "lucide-react";
 import type { Identity } from "spacetimedb";
 import { useReducer, useTable } from "spacetimedb/react";
 import coderivalsMark from "../assets/coderivals-mark.svg";
@@ -15,7 +15,6 @@ type ArenaPageProps = {
   identity: Identity | undefined;
   isLoggingOut: boolean;
   onLogOut: () => void;
-  shortIdentity: string;
   username: string;
 };
 
@@ -23,7 +22,6 @@ export function ArenaPage({
   identity,
   isLoggingOut,
   onLogOut,
-  shortIdentity,
   username,
 }: ArenaPageProps) {
   const location = useLocation();
@@ -155,7 +153,7 @@ export function ArenaPage({
       <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_14%_10%,rgba(0,255,255,0.08),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(224,141,255,0.09),transparent_24%),radial-gradient(circle_at_50%_100%,rgba(224,141,255,0.08),transparent_30%)]" />
 
       <header className="sticky top-0 z-40 border-b border-[rgba(255,255,255,0.06)] bg-[rgba(8,9,10,0.88)] backdrop-blur-xl">
-        <div className="mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
+        <div className="relative mx-auto flex h-16 w-full max-w-[1400px] items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
           <Link to="/" className="inline-flex items-center gap-3">
             <div className="grid h-9 w-9 place-items-center rounded-lg border border-[rgba(0,229,204,0.3)] bg-[rgba(0,229,204,0.08)]">
               <img
@@ -172,7 +170,7 @@ export function ArenaPage({
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-2 md:inline-flex">
+          <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-2 md:inline-flex">
             <Link
               to={`/${username}`}
               className={`rounded-md px-3 py-2 text-sm font-medium transition ${
@@ -215,20 +213,20 @@ export function ArenaPage({
               onClick={() =>
                 navigate(zenModeActive ? `/${encodeURIComponent(username)}` : zenModePath)
               }
-              className="inline-flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-3 py-1.5 text-[rgba(241,243,252,0.72)] transition hover:text-(--on-background)"
+              className="inline-flex items-center p-0.5 transition"
             >
-              <Moon className="h-4 w-4" />
-              <span className="text-xs font-medium">Zen</span>
               <span
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition ${
+                className={`relative inline-flex h-7 w-14 items-center rounded-full transition ${
                   zenModeActive ? "bg-[rgba(224,224,224,0.75)]" : "bg-[rgba(255,255,255,0.12)]"
                 }`}
               >
                 <span
-                  className={`absolute h-4 w-4 rounded-full bg-[#e6e6e6] transition ${
+                  className={`absolute grid h-6 w-6 place-items-center rounded-full bg-[#e6e6e6] transition ${
                     zenModeActive ? "right-0.5" : "left-0.5"
                   }`}
-                />
+                >
+                  <Moon className="h-3.5 w-3.5 text-[rgba(8,9,10,0.82)]" />
+                </span>
               </span>
             </button>
 
@@ -244,16 +242,6 @@ export function ArenaPage({
                 {Math.min(inboxCount, 9)}
               </span>
             </button>
-
-            <div className="inline-flex items-center gap-2 rounded-lg border border-[rgba(255,255,255,0.1)] px-2 py-1.5">
-              <div className="grid h-7 w-7 place-items-center rounded-full bg-[rgba(0,229,204,0.12)] text-(--arena-accent)">
-                <User className="h-4 w-4" />
-              </div>
-              <span className="hidden font-(--font-mono) text-[0.65rem] tracking-[0.12em] text-[rgba(241,243,252,0.72)] uppercase sm:inline-block">
-                {shortIdentity}
-              </span>
-              <ChevronDown className="h-4 w-4 text-[rgba(241,243,252,0.6)]" />
-            </div>
 
             <button
               className="inline-flex min-h-9 items-center rounded-lg border border-[rgba(224,141,255,0.35)] px-3.5 text-xs font-semibold tracking-[0.12em] text-(--on-background) uppercase transition hover:bg-[rgba(224,141,255,0.1)] disabled:cursor-not-allowed disabled:opacity-60"

@@ -13,7 +13,6 @@ type ArenaLobbyPageProps = {
   identity: Identity | undefined;
   isLoggingOut: boolean;
   onLogOut: () => void;
-  shortIdentity: string;
   username: string;
 };
 
@@ -21,7 +20,6 @@ export function ArenaLobbyPage({
   identity,
   isLoggingOut,
   onLogOut,
-  shortIdentity,
   username,
 }: ArenaLobbyPageProps) {
   const {
@@ -47,7 +45,6 @@ export function ArenaLobbyPage({
   return (
     <main className="min-h-full px-6 py-6 sm:px-8 lg:px-10">
       <ArenaHeader
-        shortIdentity={shortIdentity}
         isLoggingOut={isLoggingOut}
         onLogOut={onLogOut}
       />

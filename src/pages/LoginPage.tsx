@@ -9,7 +9,6 @@ type LoginPageProps = {
   onFieldChange: (field: keyof LoginFormState, value: string) => void;
   onSignupClick: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  shortIdentity: string;
   statusMessage: string;
   statusTone: "error" | "neutral";
   submitting: "login" | "signup" | "logout" | null;
@@ -21,7 +20,6 @@ export function LoginPage({
   onFieldChange,
   onSignupClick,
   onSubmit,
-  shortIdentity,
   statusMessage,
   statusTone,
   submitting,
@@ -35,7 +33,6 @@ export function LoginPage({
           onSignupClick();
         }
       }}
-      shortIdentity={shortIdentity}
       statusMessage={statusMessage}
       statusTone={statusTone}
       title="LOG BACK INTO THE CODERIVAL GRID"

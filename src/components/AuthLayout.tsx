@@ -19,7 +19,6 @@ type AuthLayoutProps = {
   children: ReactNode;
   helperMessage: string;
   onTabChange: (tab: "login" | "signup") => void;
-  shortIdentity: string;
   statusMessage: string;
   statusTone: "error" | "neutral";
   title: string;
@@ -30,7 +29,6 @@ export function AuthLayout({
   children,
   helperMessage,
   onTabChange,
-  shortIdentity,
   statusMessage,
   statusTone,
   title,
@@ -142,12 +140,7 @@ export function AuthLayout({
             </button>
           </p>
 
-          <div className="mt-auto flex items-center justify-between gap-4 pt-6 font-[var(--font-mono)] text-[0.86rem] tracking-[0.18em] text-[rgba(241,243,252,0.58)] uppercase max-md:flex-col max-md:items-start">
-            <span>LIVE SESSION</span>
-            <strong className="tracking-[0.1em] text-[var(--secondary)]">
-              {shortIdentity}
-            </strong>
-          </div>
+          <div className="mt-auto pt-6" />
         </div>
       </section>
     </main>

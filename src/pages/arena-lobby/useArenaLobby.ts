@@ -72,7 +72,7 @@ export function useArenaLobby(identity: Identity | undefined) {
   const openRoomByCode = useCallback(
     async (incomingRoomCode: string, source: "input" | "url") => {
       if (!identity) {
-        pushArenaStatus("Session identity is not ready yet.", "error");
+        pushArenaStatus("Connection is not ready yet.", "error");
         return;
       }
       if (!arenaReady) {
@@ -112,7 +112,7 @@ export function useArenaLobby(identity: Identity | undefined) {
 
   const handleCreateArena = useCallback(async () => {
     if (!identity) {
-      pushArenaStatus("Session identity is not ready yet.", "error");
+      pushArenaStatus("Connection is not ready yet.", "error");
       return;
     }
     if (!arenaReady) {

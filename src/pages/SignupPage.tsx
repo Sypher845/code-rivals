@@ -8,7 +8,6 @@ type SignupPageProps = {
   onFieldChange: (field: keyof SignUpFormState, value: string) => void;
   onLoginClick: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
-  shortIdentity: string;
   signUpForm: SignUpFormState;
   statusMessage: string;
   statusTone: "error" | "neutral";
@@ -20,7 +19,6 @@ export function SignupPage({
   onFieldChange,
   onLoginClick,
   onSubmit,
-  shortIdentity,
   signUpForm,
   statusMessage,
   statusTone,
@@ -35,7 +33,6 @@ export function SignupPage({
           onLoginClick();
         }
       }}
-      shortIdentity={shortIdentity}
       statusMessage={statusMessage}
       statusTone={statusTone}
       title="CREATE YOUR CODERIVAL IDENTITY"

@@ -61,7 +61,6 @@ type UserArenaRouteProps = {
   identity: Identity | undefined;
   isLoggingOut: boolean;
   onLogOut: () => void;
-  shortIdentity: string;
   username: string;
 };
 
@@ -70,7 +69,6 @@ function UserArenaRoute({
   identity,
   isLoggingOut,
   onLogOut,
-  shortIdentity,
   username,
 }: UserArenaRouteProps) {
   const params = useParams();
@@ -102,7 +100,6 @@ function UserArenaRoute({
       identity={identity}
       isLoggingOut={isLoggingOut}
       onLogOut={onLogOut}
-      shortIdentity={shortIdentity}
       username={username}
     />
   );
@@ -197,7 +194,6 @@ function App() {
     ? buildUserArenaPath(currentUsername)
     : "/login";
 
-  const shortIdentity = identity?.toHexString().slice(0, 12) ?? "syncing";
   const isBusy = submitting !== null;
   const canSubmit = connected && !isBusy;
   const statusTone = statusMessage || connectionError ? "error" : "neutral";
@@ -207,7 +203,7 @@ function App() {
     (!connected
       ? "Establishing SpacetimeDB uplink..."
       : !identity
-        ? "Waiting for session identity..."
+        ? "Waiting for connection to be ready..."
         : !sessionReady
           ? "Loading auth session table..."
           : "No linked account yet. Use Sign up or Log in.");
@@ -350,7 +346,6 @@ function App() {
               }}
               onSignupClick={() => handleTabChange("signup")}
               onSubmit={handleLogIn}
-              shortIdentity={shortIdentity}
               statusMessage={resolvedStatusMessage}
               statusTone={statusTone}
               submitting={submitting}
@@ -371,7 +366,6 @@ function App() {
               }}
               onLoginClick={() => handleTabChange("login")}
               onSubmit={handleSignUp}
-              shortIdentity={shortIdentity}
               signUpForm={signUpForm}
               statusMessage={resolvedStatusMessage}
               statusTone={statusTone}
@@ -471,7 +465,6 @@ function App() {
               onLogOut={() => {
                 void handleLogOut();
               }}
-              shortIdentity={shortIdentity}
               username={session.username}
             />
           ) : (
