@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, Play, Target, Trophy, Zap } from "lucide-react";
+import { Target, Trophy, Zap } from "lucide-react";
 import { useSpacetimeDB, useTable } from "spacetimedb/react";
 import { panelFrameClass, panelNoiseClass } from "../../components/uiClasses";
 import { getLeagueFromElo, getLeagueTierStyle } from "../../lib/ranking";
@@ -136,16 +136,13 @@ export function StatsTab() {
       <section className={`${panelFrameClass} arena-stagger p-5`} style={{ animationDelay: "220ms" }}>
         <div className={panelNoiseClass} />
         <div className="relative z-[1] space-y-4">
-          <div className="flex items-center justify-between">
+          <div>
             <div>
               <p className="font-[var(--font-mono)] text-[0.78rem] font-medium tracking-[0.22em] text-[rgba(241,243,252,0.56)] uppercase">Match History</p>
               <p className="mt-2 text-sm text-[rgba(241,243,252,0.46)]">
                 Your last arena duels, rating shifts, and opponent snapshots.
               </p>
             </div>
-            <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-3 py-1 font-[var(--font-mono)] text-[0.62rem] tracking-[0.16em] text-[rgba(241,243,252,0.54)] uppercase">
-              {recentMatches.length} logged
-            </span>
           </div>
           <div className="space-y-3">
             {recentMatches.length === 0 ? (
@@ -186,10 +183,6 @@ export function StatsTab() {
                       <div className="text-right">
                         <p className={`text-lg font-bold ${Number(match.deltaRating) > 0 ? "text-(--signal-success)" : "text-(--signal-danger)"}`}>{Number(match.deltaRating) > 0 ? "+" : ""}{Number(match.deltaRating)}</p>
                         <p className="text-xs text-[rgba(241,243,252,0.52)]">{formatTimeAgo(match.createdAt.toDate())}</p>
-                      </div>
-                      <div className="hidden gap-1 opacity-0 transition-opacity group-hover:flex group-hover:opacity-100 sm:flex sm:opacity-100 md:opacity-0 md:group-hover:opacity-100">
-                        <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-[rgba(255,255,255,0.12)] text-[rgba(241,243,252,0.68)] transition hover:text-(--on-background)"><Play className="h-4 w-4" /></button>
-                        <button type="button" className="grid h-8 w-8 place-items-center rounded-md border border-[rgba(255,255,255,0.12)] text-[rgba(241,243,252,0.68)] transition hover:text-(--on-background)"><ExternalLink className="h-4 w-4" /></button>
                       </div>
                     </div>
                   </div>

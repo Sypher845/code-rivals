@@ -314,10 +314,6 @@ export function FriendsTab({
     }
   };
 
-  const openFriendsView = () => {
-    navigate(`/${encodeURIComponent(username)}/friends`);
-  };
-
   const handleAcceptInvite = async (inviteId: string) => {
     await runAction(`accept-invite:${inviteId}`, async () => {
       await acceptGameInvite({ inviteId });
@@ -339,13 +335,6 @@ export function FriendsTab({
               Incoming requests, incoming challenges, and recent alerts all live here.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={openFriendsView}
-            className="inline-flex h-10 items-center justify-center rounded-lg border border-[rgba(255,255,255,0.14)] px-4 text-sm font-semibold text-(--on-background)"
-          >
-            Back to Friends
-          </button>
         </div>
 
         {statusMessage ? (

@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Clock3,
-  Share2,
   Swords,
   Target,
   TestTubeDiagonal,
@@ -15,6 +14,7 @@ import {
 } from "../components/uiClasses";
 import { getAdjacentLeaguesForElo, getLeagueInfoFromElo } from "../lib/ranking";
 import { tables } from "../module_bindings";
+import { formatPowerupName } from "../utils/arenaPowerEffects";
 
 type RoundResult = {
   roundNumber: number;
@@ -70,11 +70,6 @@ function parseDurationToSeconds(duration: string) {
   return minutes * 60 + seconds;
 }
 
-function formatPowerName(powerId?: string) {
-  if (!powerId) return "No Power";
-  return powerId.replace(/Card$/, "").replace(/([a-z])([A-Z])/g, "$1 $2");
-}
-
 function metricBarClass(tone: "cyan" | "violet" | "blue") {
   if (tone === "violet") {
     return "bg-[linear-gradient(90deg,rgba(217,120,255,0.95),rgba(168,85,247,0.75))]";
@@ -91,11 +86,7 @@ function getLeagueProgress(
   previousRating: number,
   nextRating: number,
 ): LeagueProgressConfig {
-  const {
-    previousLeague: previousLeagueInfo,
-    currentLeague,
-    nextLeague: nextLeagueInfo,
-  } = getAdjacentLeaguesForElo(nextRating);
+  const { currentLeague } = getAdjacentLeaguesForElo(nextRating);
   const currentLeagueMinElo = currentLeague.minElo;
   const currentLeagueMaxElo = currentLeague.maxElo;
   const range = Math.max(1, currentLeagueMaxElo - currentLeagueMinElo);
@@ -108,8 +99,8 @@ function getLeagueProgress(
   );
 
   return {
-    previousLeague: previousLeagueInfo.league,
-    nextLeague: nextLeagueInfo.league,
+    previousLeague: getLeagueInfoFromElo(previousRating).league,
+    nextLeague: getLeagueInfoFromElo(nextRating).league,
     currentLeagueMinElo,
     currentLeagueMaxElo,
     previousRating,
@@ -117,6 +108,17 @@ function getLeagueProgress(
     delta: nextRating - previousRating,
     progressPercent,
   };
+}
+
+function formatLeagueUpdateSummary(
+  previousLeague: string,
+  nextLeague: string,
+) {
+  if (previousLeague === nextLeague) {
+    return `League unchanged: ${nextLeague}`;
+  }
+
+  return `League update: ${previousLeague} to ${nextLeague}`;
 }
 
 function getLeagueTransition(
@@ -207,7 +209,7 @@ export function ResultsPage() {
 
         const user = {
           duration: formatDuration(Number(mine?.timeTakenSeconds ?? 0n)),
-          powerUsed: formatPowerName(mine?.powerUsed),
+          powerUsed: mine?.powerUsed ? formatPowerupName(mine.powerUsed) : "No Power",
           points: Number(mine?.pointsEarned ?? 0n),
           accuracy: myTotal > 0 ? Math.round((myPassed / myTotal) * 100) : 0,
           testsPassed: myPassed,
@@ -217,7 +219,7 @@ export function ResultsPage() {
 
         const opponent = {
           duration: formatDuration(Number(theirs?.timeTakenSeconds ?? 0n)),
-          powerUsed: formatPowerName(theirs?.powerUsed),
+          powerUsed: theirs?.powerUsed ? formatPowerupName(theirs.powerUsed) : "No Power",
           points: Number(theirs?.pointsEarned ?? 0n),
           accuracy:
             theirTotal > 0 ? Math.round((theirPassed / theirTotal) * 100) : 0,
@@ -589,10 +591,7 @@ export function ResultsPage() {
 
               <div className="grid gap-2 text-sm text-[rgba(241,243,252,0.64)] sm:text-right">
                 <p>Room {roomId}</p>
-                <p>
-                  League update: {leagueProgress.previousLeague} to{" "}
-                  {leagueProgress.nextLeague}
-                </p>
+                <p>{formatLeagueUpdateSummary(leagueProgress.previousLeague, leagueProgress.nextLeague)}</p>
                 <p>New rating: {leagueProgress.nextRating}</p>
               </div>
             </div>
@@ -663,11 +662,6 @@ export function ResultsPage() {
                         label: "Tests Passed",
                         userValue: `${round.user.testsPassed}/${round.user.totalTests}`,
                         opponentValue: `${round.opponent.testsPassed}/${round.opponent.totalTests}`,
-                      },
-                      {
-                        label: "Used Against You",
-                        userValue: round.opponent.powerUsed,
-                        opponentValue: round.user.powerUsed,
                       },
                     ].map((item) => (
                       <div
@@ -783,14 +777,6 @@ export function ResultsPage() {
               className={`${arenaActionClass} min-w-[13rem]`}
             >
               {isContinuing ? "Continuing..." : "Continue"}
-            </button>
-
-            <button
-              type="button"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.03)] px-5 text-sm font-semibold tracking-[0.08em] text-(--on-background) uppercase transition hover:border-[rgba(0,229,204,0.35)] hover:bg-[rgba(0,229,204,0.08)]"
-            >
-              <Share2 className="h-4 w-4" />
-              Share Log
             </button>
           </div>
         </section>
