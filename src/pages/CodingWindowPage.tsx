@@ -1,9 +1,26 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { TopBar } from "./coding-window/TopBar";
 import { DescriptionPanel } from "./coding-window/DescriptionPanel";
 import { EditorPanel } from "./coding-window/EditorPanel";
 import { TestCasesPanel } from "./coding-window/TestCasesPanel";
 import { P } from "./coding-window/constants";
+
+const PROBLEM_API_URL =
+  import.meta.env.VITE_PROBLEM_API_URL ?? "http://localhost:8080";
+
+export type RemoteProblemData = {
+  task_id?: string;
+  title?: string;
+  difficulty?: string;
+  tags?: string[];
+  description?: unknown;
+  problem_description?: string;
+  input_output?: Array<{
+    input?: string;
+    output?: string;
+  }>;
+  [key: string]: unknown;
+};
 
 /* ══════════════════════════ RESIZABLE DIVIDER ════════════════════════ */
 
@@ -84,6 +101,9 @@ function DragHandle({
 
 export function CodingWindowPage() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [problem, setProblem] = useState<RemoteProblemData | null>(null);
+  const [problemLoading, setProblemLoading] = useState(true);
+  const [problemError, setProblemError] = useState<string | null>(null);
 
   const { ratio: hRatio, handleMouseDown: hMouseDown } = useDragResize(
     "horizontal",
@@ -97,6 +117,42 @@ export function CodingWindowPage() {
     0.6,
     rightContainerRef,
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadProblem() {
+      try {
+        setProblemLoading(true);
+        setProblemError(null);
+
+        const response = await fetch(PROBLEM_API_URL, {
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const data = (await response.json()) as RemoteProblemData;
+        setProblem(data);
+      } catch (error) {
+        if ((error as Error).name === "AbortError") {
+          return;
+        }
+
+        setProblemError(
+          `Unable to load description from ${PROBLEM_API_URL}. Showing fallback content.`,
+        );
+      } finally {
+        setProblemLoading(false);
+      }
+    }
+
+    void loadProblem();
+
+    return () => controller.abort();
+  }, []);
 
   return (
     <div
@@ -113,7 +169,11 @@ export function CodingWindowPage() {
       <div ref={containerRef} className="flex min-h-0 flex-1 gap-0 p-2">
         {/* LEFT: description */}
         <div style={{ width: `${hRatio * 100}%` }} className="min-w-0">
-          <DescriptionPanel />
+          <DescriptionPanel
+            problem={problem}
+            isLoading={problemLoading}
+            error={problemError}
+          />
         </div>
 
         <DragHandle direction="horizontal" onMouseDown={hMouseDown} />
