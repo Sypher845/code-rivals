@@ -701,6 +701,56 @@ export const begin_playing_round = spacetimedb.reducer(
   },
 );
 
+export const trigger_arena_sabotage = spacetimedb.reducer(
+  { roomId: t.string() },
+  (ctx, { roomId }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+    if (!room) {
+      throw new SenderError("Room not found.");
+    }
+
+    if (room.matchState !== "playing") {
+      throw new SenderError("Sabotage can only be triggered during a live round.");
+    }
+
+    const roomMembers = listRoomMembers(ctx, normalizedRoomId);
+    const senderIsInRoom = roomMembers.some((member) =>
+      member.memberIdentity.isEqual(ctx.sender),
+    );
+    if (!senderIsInRoom) {
+      throw new SenderError("Only players in the room can trigger sabotage.");
+    }
+
+    const targetMember = roomMembers.find(
+      (member) => !member.memberIdentity.isEqual(ctx.sender),
+    );
+    if (!targetMember) {
+      throw new SenderError("A rival must be present before you can sabotage.");
+    }
+
+    const selectionKey = buildPowerupSelectionKey(
+      normalizedRoomId,
+      ctx.sender.toHexString(),
+    );
+    const playerState = ctx.db.arenaPowerupLock.selectionKey.find(selectionKey);
+    if (!playerState || !playerState.hasLockedPower || !playerState.powerupId) {
+      throw new SenderError("Lock a powerup before triggering sabotage.");
+    }
+
+    ctx.db.arenaSabotageEvent.insert({
+      eventId: 0n,
+      roomId: normalizedRoomId,
+      roundNumber: room.currentRound,
+      sourcePlayerIdentity: ctx.sender,
+      targetPlayerIdentity: targetMember.memberIdentity,
+      powerupId: playerState.powerupId,
+      createdAt: ctx.timestamp,
+    });
+  },
+);
+
 export const submit_round_result = spacetimedb.reducer(
   {
     roomId: t.string(),

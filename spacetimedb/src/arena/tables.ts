@@ -70,6 +70,37 @@ export const arena_powerup_lock = table(
   },
 );
 
+export const arena_sabotage_event = table(
+  {
+    name: "arena_sabotage_event",
+    public: true,
+    event: true,
+    indexes: [
+      {
+        accessor: "arena_sabotage_event_room_id",
+        name: "arena_sabotage_event_room_id",
+        algorithm: "btree",
+        columns: ["roomId"],
+      },
+      {
+        accessor: "arena_sabotage_event_target_player_identity",
+        name: "arena_sabotage_event_target_player_identity",
+        algorithm: "btree",
+        columns: ["targetPlayerIdentity"],
+      },
+    ],
+  },
+  {
+    eventId: t.u64().primaryKey().autoInc(),
+    roomId: t.string(),
+    roundNumber: t.u64(),
+    sourcePlayerIdentity: t.identity(),
+    targetPlayerIdentity: t.identity(),
+    powerupId: t.string(),
+    createdAt: t.timestamp(),
+  },
+);
+
 export const arena_round_result = table(
   {
     name: "arena_round_result",
