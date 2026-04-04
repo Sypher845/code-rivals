@@ -185,9 +185,7 @@ export function EditorPanel({
     onReset();
   };
 
-  const availableLanguages = LANGUAGES.filter(
-    (lang) => lang.value !== "java" && lang.value !== "python",
-  );
+  const availableLanguages = LANGUAGES;
 
   useEffect(() => {
     if (!monacoRef.current) {
