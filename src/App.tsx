@@ -17,7 +17,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { PowerupReadyPage } from "./pages/PowerupReadyPage";
 import { PowerupSelectionPage } from "./pages/PowerSelectionPage";
 import { CodingWindowPage } from "./pages/CodingWindowPage";
-import { ArenaResultsPage } from "./pages/ArenaResultsPage";
+import { ResultsPage } from "./pages/ResultsPage";
 import { SignupPage } from "./pages/SignupPage";
 
 export type LoginFormState = {
@@ -152,7 +152,7 @@ function UserPowerupReadyRoute({
   return <PowerupReadyPage identity={identity} username={username} />;
 }
 
-function UserArenaResultsRoute({
+function UserResultsRoute({
   expectedUsername,
 }: {
   expectedUsername: string;
@@ -168,7 +168,7 @@ function UserArenaResultsRoute({
     return <Navigate replace to={buildUserArenaPath(expectedUsername)} />;
   }
 
-  return <ArenaResultsPage />;
+  return <ResultsPage />;
 }
 
 
@@ -411,20 +411,20 @@ function App() {
         }
       />
       <Route
-        path="/:username/:roomSegment/results"
+        path="/:username/:roomSegment/:roundSegment"
         element={
           session && currentUsername ? (
-            <UserArenaResultsRoute expectedUsername={currentUsername} />
+            <CodingWindowPage />
           ) : (
             <Navigate replace to="/login" />
           )
         }
       />
       <Route
-        path="/:username/:roomSegment/:roundSegment"
+        path="/:username/:roomSegment/results"
         element={
           session && currentUsername ? (
-            <CodingWindowPage />
+            <UserResultsRoute expectedUsername={currentUsername} />
           ) : (
             <Navigate replace to="/login" />
           )

@@ -336,7 +336,7 @@ export function CodingWindowPage() {
         ),
         testcasesPassed: totalTestcases,
         totalTestcases,
-        pointsEarned: hasRun ? 100n : 75n,
+        pointsEarned: 0n,
       });
       setStatusMessage("Round submitted. Waiting for the rival to finish...");
     } catch (error) {
@@ -348,7 +348,6 @@ export function CodingWindowPage() {
     }
   }, [
     fallbackSecondsRemaining,
-    hasRun,
     normalizedRoomId,
     secondsRemaining,
     submitDisabled,
