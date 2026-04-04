@@ -687,7 +687,7 @@ export function ArenaSidebar({
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="font-[var(--font-mono)] text-[0.78rem] font-medium tracking-[0.22em] text-(--arena-accent) uppercase">
-                Rivals Online
+                Rival History
               </p>
             </div>
             <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-2.5 py-1 text-[0.62rem] tracking-[0.08em] text-[rgba(241,243,252,0.5)] uppercase">

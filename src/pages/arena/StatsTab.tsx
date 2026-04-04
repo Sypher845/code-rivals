@@ -138,7 +138,7 @@ export function StatsTab() {
         <div className="relative z-[1] space-y-4">
           <div>
             <div>
-              <p className="font-[var(--font-mono)] text-[0.78rem] font-medium tracking-[0.22em] text-[rgba(241,243,252,0.56)] uppercase">Match History</p>
+              <p className="font-[var(--font-mono)] text-[0.78rem] font-medium tracking-[0.22em] text-(--arena-accent) uppercase">Match History</p>
               <p className="mt-2 text-sm text-[rgba(241,243,252,0.46)]">
                 Your last arena duels, rating shifts, and opponent snapshots.
               </p>

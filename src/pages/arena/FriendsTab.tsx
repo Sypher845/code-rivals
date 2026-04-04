@@ -94,7 +94,6 @@ export function FriendsTab({
   const sendFriendRequest = useReducer(reducers.sendFriendRequest);
   const acceptFriendRequest = useReducer(reducers.acceptFriendRequest);
   const declineFriendRequest = useReducer(reducers.declineFriendRequest);
-  const cancelFriendRequest = useReducer(reducers.cancelFriendRequest);
   const removeFriend = useReducer(reducers.removeFriend);
   const sendGameInvite = useReducer(reducers.sendGameInvite);
   const acceptGameInvite = useReducer(reducers.acceptGameInvite);
@@ -565,17 +564,9 @@ export function FriendsTab({
             {outgoingFriendRequests.map((request) => (
               <article key={request.requestId} className="rounded-lg border border-[rgba(255,255,255,0.08)] p-4">
                 <p className="text-sm text-(--on-background)">Friend request sent to {request.recipientName}</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void runAction(`cancel-request:${request.requestId}`, async () => {
-                      await cancelFriendRequest({ requestId: request.requestId });
-                    });
-                  }}
-                  className="mt-3 inline-flex h-9 items-center rounded-lg border border-[rgba(255,255,255,0.14)] px-3 text-xs font-semibold uppercase"
-                >
-                  Cancel Request
-                </button>
+                <p className="mt-3 text-xs font-semibold uppercase tracking-[0.08em] text-[rgba(241,243,252,0.52)]">
+                  Awaiting response
+                </p>
               </article>
             ))}
             {outgoingInvites.map((invite) => (
@@ -672,17 +663,9 @@ export function FriendsTab({
                       </button>
                     </div>
                   ) : outgoingRequest ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void runAction(`cancel-rival-request:${outgoingRequest.requestId}`, async () => {
-                          await cancelFriendRequest({ requestId: outgoingRequest.requestId });
-                        });
-                      }}
-                      className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-[rgba(255,255,255,0.14)] px-3 text-xs font-semibold uppercase text-[rgba(241,243,252,0.72)]"
-                    >
-                      Cancel Friend Request
-                    </button>
+                    <div className="inline-flex h-9 w-full items-center justify-center rounded-lg border border-[rgba(255,255,255,0.14)] px-3 text-xs font-semibold uppercase text-[rgba(241,243,252,0.72)]">
+                      Friend Request Sent
+                    </div>
                   ) : (
                     <button
                       type="button"
