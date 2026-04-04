@@ -14,6 +14,24 @@ import {
 
 type AuthReducerCtx = ReducerCtx<InferSchema<typeof spacetimedb>>;
 
+function ensurePlayerProfile(ctx: AuthReducerCtx, username: string) {
+  const usernameKey = normalizeUsernameKey(username);
+  const existingProfile = ctx.db.playerProfile.usernameKey.find(usernameKey);
+  if (existingProfile) {
+    return existingProfile;
+  }
+
+  return ctx.db.playerProfile.insert({
+    usernameKey,
+    username,
+    eloRating: 400n,
+    matchesPlayed: 0n,
+    wins: 0n,
+    losses: 0n,
+    updatedAt: ctx.timestamp,
+  });
+}
+
 function upsertSession(ctx: AuthReducerCtx, username: string) {
   const session = ctx.db.authSession.sessionIdentity.find(ctx.sender);
 
@@ -71,6 +89,8 @@ export const sign_up = spacetimedb.reducer(
       updatedAt: ctx.timestamp,
     });
 
+    ensurePlayerProfile(ctx, normalizedUsername);
+
     upsertSession(ctx, normalizedUsername);
 
     console.log(`[Auth] sign-up success username=${normalizedUsername}`);
@@ -92,6 +112,7 @@ export const log_in = spacetimedb.reducer(
       updatedAt: ctx.timestamp,
     });
 
+    ensurePlayerProfile(ctx, account.username);
     upsertSession(ctx, account.username);
 
     console.log(`[Auth] log-in success username=${account.username}`);
@@ -128,6 +149,7 @@ export const on_connect = spacetimedb.clientConnected((ctx) => {
     return;
   }
 
+  ensurePlayerProfile(ctx, account.username);
   ctx.db.authSession.sessionIdentity.update({
     ...session,
     username: account.username,

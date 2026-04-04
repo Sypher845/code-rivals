@@ -10,6 +10,25 @@ import {
   type Infer as __Infer,
 } from "spacetimedb";
 
+export const ArenaMatchSummary = __t.object("ArenaMatchSummary", {
+  summaryKey: __t.string(),
+  roomId: __t.string(),
+  playerUsernameKey: __t.string(),
+  playerUsername: __t.string(),
+  opponentUsernameKey: __t.string(),
+  opponentUsername: __t.string(),
+  opponentEloBefore: __t.u64(),
+  opponentLeague: __t.string(),
+  winner: __t.string(),
+  pointsScored: __t.u64(),
+  deltaRating: __t.i64(),
+  playerEloBefore: __t.u64(),
+  playerEloAfter: __t.u64(),
+  playerLeagueAfter: __t.string(),
+  createdAt: __t.timestamp(),
+});
+export type ArenaMatchSummary = __Infer<typeof ArenaMatchSummary>;
+
 export const ArenaPowerupLock = __t.object("ArenaPowerupLock", {
   selectionKey: __t.string(),
   roomId: __t.string(),
@@ -100,4 +119,15 @@ export const AuthSession = __t.object("AuthSession", {
   lastSeenAt: __t.timestamp(),
 });
 export type AuthSession = __Infer<typeof AuthSession>;
+
+export const PlayerProfile = __t.object("PlayerProfile", {
+  usernameKey: __t.string(),
+  username: __t.string(),
+  eloRating: __t.u64(),
+  matchesPlayed: __t.u64(),
+  wins: __t.u64(),
+  losses: __t.u64(),
+  updatedAt: __t.timestamp(),
+});
+export type PlayerProfile = __Infer<typeof PlayerProfile>;
 

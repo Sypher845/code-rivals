@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { Search, Swords, TrendingDown, TrendingUp, UserPlus } from "lucide-react";
-import { mockFriends } from "./arena-data";
+import { useSpacetimeDB, useTable } from "spacetimedb/react";
+import { getLeagueFromElo } from "../../lib/ranking";
+import { tables } from "../../module_bindings";
 
 type FriendStatus = "online" | "offline";
 type FriendsTabKey = "online" | "all" | "pending" | "blocked";
@@ -111,10 +113,29 @@ function FriendCard({
 }
 
 export function FriendsTab() {
+  const { identity } = useSpacetimeDB();
   const [activeTab, setActiveTab] = useState<FriendsTabKey>("online");
   const [searchQuery, setSearchQuery] = useState("");
-
-  const friends = mockFriends;
+  const [sessionRows] = useTable(tables.authSession);
+  const [playerProfileRows] = useTable(tables.playerProfile);
+  const currentSession = sessionRows.find((row) =>
+    identity ? row.sessionIdentity.isEqual(identity) : false,
+  );
+  const friends = useMemo(
+    () =>
+      playerProfileRows
+        .filter((profile) => profile.username !== currentSession?.username)
+        .map((profile) => ({
+          id: profile.usernameKey,
+          username: profile.username,
+          elo: Number(profile.eloRating),
+          league: getLeagueFromElo(Number(profile.eloRating)),
+          isOnline: sessionRows.some(
+            (session) => session.username === profile.username && session.connected,
+          ),
+        })),
+    [currentSession?.username, playerProfileRows, sessionRows],
+  );
   const onlineFriends = useMemo(() => friends.filter((friend) => friend.isOnline), [friends]);
   const offlineFriends = useMemo(() => friends.filter((friend) => !friend.isOnline), [friends]);
 
