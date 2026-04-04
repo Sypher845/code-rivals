@@ -4,6 +4,7 @@ export {
   create_arena_room,
   delete_arena_room,
   join_arena_room,
+  leave_arena_room,
   kick_arena_member,
   start_arena_match,
   submit_round_result,

@@ -45,6 +45,7 @@ import DeclineGameInviteReducer from "./decline_game_invite_reducer";
 import DeleteArenaRoomReducer from "./delete_arena_room_reducer";
 import JoinArenaRoomReducer from "./join_arena_room_reducer";
 import KickArenaMemberReducer from "./kick_arena_member_reducer";
+import LeaveArenaRoomReducer from "./leave_arena_room_reducer";
 import LockArenaPowerupReducer from "./lock_arena_powerup_reducer";
 import LogInReducer from "./log_in_reducer";
 import LogOutReducer from "./log_out_reducer";
@@ -322,6 +323,7 @@ const reducersSchema = __reducers(
   __reducerSchema("delete_arena_room", DeleteArenaRoomReducer),
   __reducerSchema("join_arena_room", JoinArenaRoomReducer),
   __reducerSchema("kick_arena_member", KickArenaMemberReducer),
+  __reducerSchema("leave_arena_room", LeaveArenaRoomReducer),
   __reducerSchema("lock_arena_powerup", LockArenaPowerupReducer),
   __reducerSchema("log_in", LogInReducer),
   __reducerSchema("log_out", LogOutReducer),

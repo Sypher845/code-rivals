@@ -148,30 +148,29 @@ export function ResultsPage() {
   const [playerProfileRows] = useTable(tables.playerProfile);
   const [matchSummaryRows] = useTable(tables.arenaMatchSummary);
   const [roundResultRows] = useTable(tables.arenaRoundResult);
-  const [roomMemberRows] = useTable(tables.arenaRoomMember);
 
   const session = sessionRows.find((row) =>
     identity ? row.sessionIdentity.isEqual(identity) : false,
   );
   const playerName = session?.username ?? username;
 
-  const roomMembers = roomMemberRows.filter((row) => row.roomId === roomId);
-  const opponentName =
-    roomMembers.find((row) => row.memberName !== playerName)?.memberName ??
-    "Opponent";
-
   const playerProfile = playerProfileRows.find(
     (row) => row.username === playerName,
-  );
-  const opponentProfile = playerProfileRows.find(
-    (row) => row.username === opponentName,
   );
 
   const playerSummary = matchSummaryRows.find(
     (row) => row.roomId === roomId && row.playerUsername === playerName,
   );
   const opponentSummary = matchSummaryRows.find(
-    (row) => row.roomId === roomId && row.playerUsername === opponentName,
+    (row) =>
+      row.roomId === roomId &&
+      row.playerUsername !== playerName &&
+      row.opponentUsername === playerName,
+  );
+  const opponentName =
+    playerSummary?.opponentUsername ?? opponentSummary?.playerUsername ?? "Opponent";
+  const opponentProfile = playerProfileRows.find(
+    (row) => row.username === opponentName,
   );
 
   const roundResults = useMemo<RoundResult[]>(() => {
@@ -182,17 +181,12 @@ export function ResultsPage() {
       if (row.roomId !== roomId) continue;
 
       const roundNumber = Number(row.roundNumber);
-      const member = roomMembers.find((candidate) =>
-        candidate.memberIdentity.isEqual(row.playerIdentity),
-      );
-
-      if (member?.memberName === playerName) {
+      if (identity && row.playerIdentity.isEqual(identity)) {
         myRows.set(roundNumber, row);
+        continue;
       }
 
-      if (member?.memberName === opponentName) {
-        opponentRows.set(roundNumber, row);
-      }
+      opponentRows.set(roundNumber, row);
     }
 
     return Array.from(new Set([...myRows.keys(), ...opponentRows.keys()]))
@@ -232,7 +226,7 @@ export function ResultsPage() {
           verdict: user.points >= opponent.points ? "Won" : "Lost",
         };
       });
-  }, [opponentName, playerName, roomId, roomMembers, roundResultRows]);
+  }, [identity, opponentName, playerName, roomId, roundResultRows]);
 
   const totalPoints = roundResults.reduce(
     (sum, round) => sum + round.user.points,

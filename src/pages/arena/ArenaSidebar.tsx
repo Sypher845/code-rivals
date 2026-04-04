@@ -59,6 +59,7 @@ export function ArenaSidebar({
   const createArenaRoom = useReducer(reducers.createArenaRoom);
   const deleteArenaRoom = useReducer(reducers.deleteArenaRoom);
   const joinArenaRoom = useReducer(reducers.joinArenaRoom);
+  const leaveArenaRoom = useReducer(reducers.leaveArenaRoom);
   const startArenaMatch = useReducer(reducers.startArenaMatch);
   const kickArenaMember = useReducer(reducers.kickArenaMember);
 
@@ -70,6 +71,8 @@ export function ArenaSidebar({
     if (!activeRoomId) return null;
     return arenaRoomRows.find((room) => room.roomId === activeRoomId) ?? null;
   }, [activeRoomId, arenaRoomRows]);
+  const activeLobbyRoom =
+    activeRoom && activeRoom.matchState !== "finished" ? activeRoom : null;
 
   const activeRoomMembers = useMemo(() => {
     if (!activeRoom) return [];
@@ -85,6 +88,11 @@ export function ArenaSidebar({
         return 0;
       });
   }, [activeRoom, arenaMemberRows]);
+
+  const activeLobbyRoomMembers = useMemo(() => {
+    if (!activeLobbyRoom) return [];
+    return activeRoomMembers;
+  }, [activeLobbyRoom, activeRoomMembers]);
 
   useEffect(() => {
     if (!identity) {
@@ -121,9 +129,9 @@ export function ArenaSidebar({
   }, [activeRoomId, arenaMemberRows, identity]);
 
   const isArenaAdmin = Boolean(
-    activeRoom && identity && activeRoom.creatorIdentity.isEqual(identity),
+    activeLobbyRoom && identity && activeLobbyRoom.creatorIdentity.isEqual(identity),
   );
-  const isLobbyReady = Boolean(activeRoom && activeRoomMembers.length >= 2);
+  const isLobbyReady = Boolean(activeLobbyRoom && activeLobbyRoomMembers.length >= 2);
   const isCurrentUserInActiveRoom = Boolean(
     identity &&
     activeRoom &&
@@ -347,78 +355,97 @@ export function ArenaSidebar({
     }
   };
 
+  const handleLeaveRoom = async () => {
+    if (!activeLobbyRoom) {
+      return;
+    }
+
+    try {
+      await leaveArenaRoom({ roomId: activeLobbyRoom.roomId });
+      setActiveRoomId(null);
+      pushStatus(`Left room ${activeLobbyRoom.roomId}.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to leave room.";
+      pushStatus(message, "error");
+    }
+  };
+
   return (
     <aside className="space-y-5">
       <section className={`${panelFrameClass} border-[rgba(0,229,204,0.24)] bg-[rgba(6,11,18,0.72)] p-5`}>
         <div className={panelNoiseClass} />
         <div className="relative z-1 space-y-5">
-          <div>
-            <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
-              Quick Arena
-            </p>
-          </div>
+          {!activeLobbyRoom ? (
+            <>
+              <div>
+                <p className="text-sm font-bold tracking-[0.14em] text-(--arena-accent) uppercase">
+                  Quick Arena
+                </p>
+              </div>
 
-          <div className="inline-flex w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(241,243,252,0.06)] p-1">
-            <button
-              type="button"
-              onClick={() => setArenaMode("create")}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "create"
-                ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
-                : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
-                }`}
-            >
-              Create
-            </button>
-            <button
-              type="button"
-              onClick={() => setArenaMode("join")}
-              className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "join"
-                ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
-                : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
-                }`}
-            >
-              Join
-            </button>
-          </div>
+              <div className="inline-flex w-full rounded-lg border border-[rgba(255,255,255,0.1)] bg-[rgba(241,243,252,0.06)] p-1">
+                <button
+                  type="button"
+                  onClick={() => setArenaMode("create")}
+                  className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "create"
+                    ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
+                    : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
+                    }`}
+                >
+                  Create
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setArenaMode("join")}
+                  className={`flex-1 rounded-md px-3 py-2 text-xs font-semibold tracking-[0.08em] uppercase transition ${arenaMode === "join"
+                    ? "bg-[rgba(0,229,204,0.16)] text-(--on-background)"
+                    : "text-[rgba(241,243,252,0.62)] hover:text-(--on-background)"
+                    }`}
+                >
+                  Join
+                </button>
+              </div>
 
-          {arenaMode === "create" ? (
-            <div className="space-y-3">
-              <p className="text-sm text-[rgba(241,243,252,0.58)]">
-                Create a private arena and invite a rival to duel.
-              </p>
-              <button
-                className={arenaActionClass}
-                type="button"
-                onClick={handleCreateArena}
-                disabled={!arenaReady}
-              >
-                {!arenaReady ? "Syncing Tables" : "Create Arena"}
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <label className="space-y-2">
-                <span className="text-xs tracking-[0.08em] text-[rgba(241,243,252,0.58)] uppercase">
-                  Room Code
-                </span>
-                <input
-                  className={arenaInputClass}
-                  value={roomCodeInput}
-                  onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase())}
-                  placeholder="ENTER 6-CHAR ROOM CODE"
-                  maxLength={6}
-                />
-              </label>
-              <button
-                className={arenaActionClass}
-                type="button"
-                onClick={handleJoinArena}
-                disabled={!arenaReady}
-              >
-                {!arenaReady ? "Syncing Tables" : "Join Arena"}
-              </button>
-            </div>
-          )}
+              {arenaMode === "create" ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-[rgba(241,243,252,0.58)]">
+                    Create a private arena and invite a rival to duel.
+                  </p>
+                  <button
+                    className={arenaActionClass}
+                    type="button"
+                    onClick={handleCreateArena}
+                    disabled={!arenaReady}
+                  >
+                    {!arenaReady ? "Syncing Tables" : "Create Arena"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <label className="space-y-2">
+                    <span className="text-xs tracking-[0.08em] text-[rgba(241,243,252,0.58)] uppercase">
+                      Room Code
+                    </span>
+                    <input
+                      className={arenaInputClass}
+                      value={roomCodeInput}
+                      onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase())}
+                      placeholder="ENTER 6-CHAR ROOM CODE"
+                      maxLength={6}
+                    />
+                  </label>
+                  <button
+                    className={arenaActionClass}
+                    type="button"
+                    onClick={handleJoinArena}
+                    disabled={!arenaReady}
+                  >
+                    {!arenaReady ? "Syncing Tables" : "Join Arena"}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : null}
 
           {statusMessage ? (
             <div
@@ -431,7 +458,7 @@ export function ArenaSidebar({
             </div>
           ) : null}
 
-          {activeRoom ? (
+          {activeLobbyRoom ? (
             <section className="space-y-4 rounded-lg border border-[rgba(255,255,255,0.12)] bg-[rgba(5,10,16,0.74)] p-4">
               <header className="flex items-start justify-between gap-3">
                 <div>
@@ -439,7 +466,7 @@ export function ArenaSidebar({
                     Arena Room Card
                   </p>
                   <h3 className="mt-1 flex items-center gap-2 text-xl font-semibold tracking-[-0.02em]">
-                    <span>Room {activeRoom.roomId}</span>
+                    <span>Room {activeLobbyRoom.roomId}</span>
                     <button
                       type="button"
                       className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-[rgba(241,243,252,0.22)] text-[rgba(241,243,252,0.76)] transition hover:border-[rgba(0,255,255,0.38)] hover:text-(--secondary)"
@@ -472,11 +499,15 @@ export function ArenaSidebar({
                   type="button"
                   className="rounded-md border border-[rgba(241,243,252,0.22)] px-3 py-1.5 text-[0.62rem] font-semibold tracking-[0.08em] uppercase transition hover:border-[rgba(0,255,255,0.35)] disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => {
-                    void handleDeleteRoom();
+                    if (isArenaAdmin) {
+                      void handleDeleteRoom();
+                      return;
+                    }
+
+                    void handleLeaveRoom();
                   }}
-                  disabled={!isArenaAdmin}
                 >
-                  Delete Room
+                  {isArenaAdmin ? "Delete Room" : "Exit Room"}
                 </button>
               </header>
 
@@ -485,29 +516,29 @@ export function ArenaSidebar({
                   <p className="font-[var(--font-mono)] text-[0.56rem] tracking-[0.14em] text-[rgba(241,243,252,0.58)] uppercase">
                     Room ID
                   </p>
-                  <p className="mt-1 text-xs font-semibold">{activeRoom.roomId}</p>
+                  <p className="mt-1 text-xs font-semibold">{activeLobbyRoom.roomId}</p>
                 </article>
                 <article className="rounded-xl border border-[rgba(241,243,252,0.12)] bg-[rgba(5,10,16,0.82)] p-2.5">
                   <p className="font-[var(--font-mono)] text-[0.56rem] tracking-[0.14em] text-[rgba(241,243,252,0.58)] uppercase">
                     Creator
                   </p>
-                  <p className="mt-1 text-xs font-semibold">{activeRoom.creatorName}</p>
+                  <p className="mt-1 text-xs font-semibold">{activeLobbyRoom.creatorName}</p>
                 </article>
                 <article className="rounded-xl border border-[rgba(241,243,252,0.12)] bg-[rgba(5,10,16,0.82)] p-2.5">
                   <p className="font-[var(--font-mono)] text-[0.56rem] tracking-[0.14em] text-[rgba(241,243,252,0.58)] uppercase">
                     Match
                   </p>
-                  <p className="mt-1 text-xs font-semibold">{activeRoom.matchState.toUpperCase()}</p>
+                  <p className="mt-1 text-xs font-semibold">{activeLobbyRoom.matchState.toUpperCase()}</p>
                 </article>
               </div>
 
               <section className="rounded-xl border border-[rgba(241,243,252,0.12)] bg-[rgba(5,10,16,0.82)] p-3">
                 <p className="font-[var(--font-mono)] text-[0.62rem] tracking-[0.16em] text-[rgba(241,243,252,0.62)] uppercase">
-                  Joined Users ({activeRoomMembers.length})
+                  Joined Users ({activeLobbyRoomMembers.length})
                 </p>
 
                 <ul className="mt-2 space-y-2">
-                  {activeRoomMembers.map((member) => (
+                  {activeLobbyRoomMembers.map((member) => (
                     <li
                       key={member.memberId.toString()}
                       className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[rgba(241,243,252,0.1)] bg-[rgba(4,10,16,0.86)] px-2.5 py-2"
@@ -520,7 +551,7 @@ export function ArenaSidebar({
                       </div>
 
                       <div className="flex items-center gap-2">
-                        {member.memberIdentity.isEqual(activeRoom.creatorIdentity) ? (
+                        {member.memberIdentity.isEqual(activeLobbyRoom.creatorIdentity) ? (
                           <span className="rounded-full border border-[rgba(224,141,255,0.34)] px-2 py-1 font-[var(--font-mono)] text-[0.58rem] tracking-[0.08em] uppercase">
                             ADMIN
                           </span>
@@ -531,7 +562,7 @@ export function ArenaSidebar({
                           </span>
                         ) : null}
                         {isArenaAdmin &&
-                          !member.memberIdentity.isEqual(activeRoom.creatorIdentity) ? (
+                          !member.memberIdentity.isEqual(activeLobbyRoom.creatorIdentity) ? (
                           <button
                             type="button"
                             className="rounded-lg border border-[rgba(224,141,255,0.35)] bg-[rgba(45,22,41,0.72)] px-2.5 py-1 text-[0.6rem] font-semibold tracking-[0.08em] uppercase"
@@ -557,12 +588,12 @@ export function ArenaSidebar({
                   }}
                   disabled={!isArenaAdmin}
                 >
-                  {activeRoom.matchState === "started" ? "Match Started" : "Start Match"}
+                  {activeLobbyRoom.matchState === "started" ? "Match Started" : "Start Match"}
                 </button>
 
                 {!isArenaAdmin ? (
                   <p className="text-xs text-[rgba(241,243,252,0.62)]">
-                    Only {activeRoom.creatorName} can start the match and kick users.
+                    Only {activeLobbyRoom.creatorName} can start the match and kick users.
                   </p>
                 ) : null}
               </div>

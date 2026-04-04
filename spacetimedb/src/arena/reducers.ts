@@ -277,11 +277,6 @@ function deleteRoomAndMembers(ctx: ArenaReducerCtx, roomId: string) {
     ctx.db.arenaPowerupLock.selectionKey.delete(powerupLock.selectionKey);
   }
 
-  const roundResults = listRoundResults(ctx, roomId);
-  for (const roundResult of roundResults) {
-    ctx.db.arenaRoundResult.resultKey.delete(roundResult.resultKey);
-  }
-
   const timeoutJobs = listRoomTimeoutJobs(ctx, roomId);
   for (const timeoutJob of timeoutJobs) {
     ctx.db.arenaRoomTimeoutJob.scheduledId.delete(timeoutJob.scheduledId);
@@ -455,6 +450,38 @@ export const join_arena_room = spacetimedb.reducer(
     console.log(
       `[Arena] member joined room_id=${normalizedRoomId} username=${session.username}`,
     );
+  },
+);
+
+export const leave_arena_room = spacetimedb.reducer(
+  { roomId: t.string() },
+  (ctx, { roomId }) => {
+    requireSession(ctx);
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const room = ctx.db.arenaRoom.roomId.find(normalizedRoomId);
+    if (!room) {
+      throw new SenderError("Room not found.");
+    }
+
+    if (room.matchState !== "waiting") {
+      throw new SenderError("You can only leave before the match starts.");
+    }
+
+    if (room.creatorIdentity.isEqual(ctx.sender)) {
+      throw new SenderError("Room creator must delete the room instead.");
+    }
+
+    const membershipKey = buildMembershipKey(
+      normalizedRoomId,
+      ctx.sender.toHexString(),
+    );
+    const membership = ctx.db.arenaRoomMember.membershipKey.find(membershipKey);
+    if (!membership) {
+      return;
+    }
+
+    ctx.db.arenaRoomMember.memberId.delete(membership.memberId);
+    clearPresenceIfInRoom(ctx, ctx.sender, normalizedRoomId);
   },
 );
 
@@ -925,6 +952,7 @@ export const submit_round_result = spacetimedb.reducer(
       if (playerTwoIdentity) {
         clearPresenceIfInRoom(ctx, playerTwoIdentity, normalizedRoomId);
       }
+      deleteRoomAndMembers(ctx, normalizedRoomId);
       return;
     }
 
