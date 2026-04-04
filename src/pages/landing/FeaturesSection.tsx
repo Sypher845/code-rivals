@@ -2,159 +2,167 @@ import { Layers3 } from "lucide-react";
 import { SectionEyebrow } from "./SharedComponents";
 import { featureList } from "./landing-data";
 
+const MONACO_EDITOR_FONT_FAMILY =
+  "'IBM Plex Mono', 'Cascadia Code', 'Consolas', monospace";
+const MONACO_EDITOR_FOREGROUND = "#f1f3fc";
+const MONACO_EDITOR_LINE_NUMBER = "#3b4254";
+const MONACO_EDITOR_KEYWORD = "#e08dff";
+const MONACO_EDITOR_TYPE = "#00ffff";
+const MONACO_EDITOR_STRING = "#7cd87c";
+
 export function FeaturesSection() {
   const codeRows = [
     {
       line: "1",
       tokens: [
-        { text: "#include ", color: "var(--primary)" },
-        { text: "<bits/stdc++.h>", color: "var(--signal-success)" },
+        { text: "#include ", color: MONACO_EDITOR_KEYWORD },
+        { text: "<bits/stdc++.h>", color: MONACO_EDITOR_STRING },
       ],
     },
     {
       line: "2",
       tokens: [
-        { text: "using ", color: "var(--primary)" },
-        { text: "namespace ", color: "var(--primary)" },
-        { text: "std", color: "var(--tertiary)" },
-        { text: ";", color: "var(--on-background)" },
+        { text: "using ", color: MONACO_EDITOR_KEYWORD },
+        { text: "namespace ", color: MONACO_EDITOR_KEYWORD },
+        { text: "std", color: MONACO_EDITOR_TYPE },
+        { text: ";", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     { line: "3", tokens: [] },
     {
       line: "4",
       tokens: [
-        { text: "vector", color: "var(--tertiary)" },
-        { text: "<", color: "var(--on-background)" },
-        { text: "int", color: "var(--tertiary)" },
-        { text: "> ", color: "var(--on-background)" },
-        { text: "twoSum", color: "var(--primary)" },
-        { text: "(", color: "var(--on-background)" },
-        { text: "vector", color: "var(--tertiary)" },
-        { text: "<", color: "var(--on-background)" },
-        { text: "int", color: "var(--tertiary)" },
-        { text: ">& ", color: "var(--on-background)" },
-        { text: "nums", color: "var(--on-background)" },
-        { text: ", ", color: "var(--on-background)" },
-        { text: "int", color: "var(--tertiary)" },
-        { text: " ", color: "var(--on-background)" },
-        { text: "target", color: "var(--on-background)" },
-        { text: ") {", color: "var(--on-background)" },
+        { text: "vector", color: MONACO_EDITOR_TYPE },
+        { text: "<", color: MONACO_EDITOR_FOREGROUND },
+        { text: "int", color: MONACO_EDITOR_TYPE },
+        { text: "> ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "twoSum", color: MONACO_EDITOR_KEYWORD },
+        { text: "(", color: MONACO_EDITOR_FOREGROUND },
+        { text: "vector", color: MONACO_EDITOR_TYPE },
+        { text: "<", color: MONACO_EDITOR_FOREGROUND },
+        { text: "int", color: MONACO_EDITOR_TYPE },
+        { text: ">& ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "nums", color: MONACO_EDITOR_FOREGROUND },
+        { text: ", ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "int", color: MONACO_EDITOR_TYPE },
+        { text: " ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "target", color: MONACO_EDITOR_FOREGROUND },
+        { text: ") {", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     {
       line: "5",
       tokens: [
-        { text: "    ", color: "var(--on-background)" },
-        { text: "unordered_map", color: "var(--tertiary)" },
-        { text: "<", color: "var(--on-background)" },
-        { text: "int", color: "var(--tertiary)" },
-        { text: ", ", color: "var(--on-background)" },
-        { text: "int", color: "var(--tertiary)" },
-        { text: "> ", color: "var(--on-background)" },
-        { text: "seen", color: "var(--on-background)" },
-        { text: ";", color: "var(--on-background)" },
+        { text: "    ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "unordered_map", color: MONACO_EDITOR_TYPE },
+        { text: "<", color: MONACO_EDITOR_FOREGROUND },
+        { text: "int", color: MONACO_EDITOR_TYPE },
+        { text: ", ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "int", color: MONACO_EDITOR_TYPE },
+        { text: "> ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "seen", color: MONACO_EDITOR_FOREGROUND },
+        { text: ";", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     {
       line: "6",
       tokens: [
-        { text: "    ", color: "var(--on-background)" },
-        { text: "for", color: "var(--primary)" },
-        { text: " (", color: "var(--on-background)" },
-        { text: "int", color: "var(--tertiary)" },
-        { text: " ", color: "var(--on-background)" },
-        { text: "i", color: "var(--on-background)" },
-        { text: " = ", color: "var(--on-background)" },
-        { text: "0", color: "var(--tertiary)" },
-        { text: "; ", color: "var(--on-background)" },
-        { text: "i", color: "var(--on-background)" },
-        { text: " < ", color: "var(--on-background)" },
-        { text: "nums", color: "var(--on-background)" },
-        { text: ".", color: "var(--on-background)" },
-        { text: "size", color: "var(--on-background)" },
-        { text: "(); ", color: "var(--on-background)" },
-        { text: "i", color: "var(--on-background)" },
-        { text: "++) {", color: "var(--on-background)" },
+        { text: "    ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "for", color: MONACO_EDITOR_KEYWORD },
+        { text: " (", color: MONACO_EDITOR_FOREGROUND },
+        { text: "int", color: MONACO_EDITOR_TYPE },
+        { text: " ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "i", color: MONACO_EDITOR_FOREGROUND },
+        { text: " = ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "0", color: MONACO_EDITOR_TYPE },
+        { text: "; ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "i", color: MONACO_EDITOR_FOREGROUND },
+        { text: " < ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "nums", color: MONACO_EDITOR_FOREGROUND },
+        { text: ".", color: MONACO_EDITOR_FOREGROUND },
+        { text: "size", color: MONACO_EDITOR_FOREGROUND },
+        { text: "(); ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "i", color: MONACO_EDITOR_FOREGROUND },
+        { text: "++) {", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     {
       line: "7",
       tokens: [
-        { text: "        ", color: "var(--on-background)" },
-        { text: "int", color: "var(--tertiary)" },
-        { text: " ", color: "var(--on-background)" },
-        { text: "diff", color: "var(--on-background)" },
-        { text: " = ", color: "var(--on-background)" },
-        { text: "target", color: "var(--on-background)" },
-        { text: " - ", color: "var(--on-background)" },
-        { text: "nums", color: "var(--on-background)" },
-        { text: "[", color: "var(--on-background)" },
-        { text: "i", color: "var(--on-background)" },
-        { text: "];", color: "var(--on-background)" },
+        { text: "        ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "int", color: MONACO_EDITOR_TYPE },
+        { text: " ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "diff", color: MONACO_EDITOR_FOREGROUND },
+        { text: " = ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "target", color: MONACO_EDITOR_FOREGROUND },
+        { text: " - ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "nums", color: MONACO_EDITOR_FOREGROUND },
+        { text: "[", color: MONACO_EDITOR_FOREGROUND },
+        { text: "i", color: MONACO_EDITOR_FOREGROUND },
+        { text: "];", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     {
       line: "8",
       tokens: [
-        { text: "        ", color: "var(--on-background)" },
-        { text: "if", color: "var(--primary)" },
-        { text: " (", color: "var(--on-background)" },
-        { text: "seen", color: "var(--on-background)" },
-        { text: ".", color: "var(--on-background)" },
-        { text: "count", color: "var(--on-background)" },
-        { text: "(", color: "var(--on-background)" },
-        { text: "diff", color: "var(--on-background)" },
-        { text: "))", color: "var(--on-background)" },
+        { text: "        ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "if", color: MONACO_EDITOR_KEYWORD },
+        { text: " (", color: MONACO_EDITOR_FOREGROUND },
+        { text: "seen", color: MONACO_EDITOR_FOREGROUND },
+        { text: ".", color: MONACO_EDITOR_FOREGROUND },
+        { text: "count", color: MONACO_EDITOR_FOREGROUND },
+        { text: "(", color: MONACO_EDITOR_FOREGROUND },
+        { text: "diff", color: MONACO_EDITOR_FOREGROUND },
+        { text: "))", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     {
       line: "9",
       tokens: [
-        { text: "            ", color: "var(--on-background)" },
-        { text: "return", color: "var(--primary)" },
-        { text: " {", color: "var(--on-background)" },
-        { text: "seen", color: "var(--on-background)" },
-        { text: "[", color: "var(--on-background)" },
-        { text: "diff", color: "var(--on-background)" },
-        { text: "], ", color: "var(--on-background)" },
-        { text: "i", color: "var(--on-background)" },
-        { text: "};", color: "var(--on-background)" },
+        { text: "            ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "return", color: MONACO_EDITOR_KEYWORD },
+        { text: " {", color: MONACO_EDITOR_FOREGROUND },
+        { text: "seen", color: MONACO_EDITOR_FOREGROUND },
+        { text: "[", color: MONACO_EDITOR_FOREGROUND },
+        { text: "diff", color: MONACO_EDITOR_FOREGROUND },
+        { text: "], ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "i", color: MONACO_EDITOR_FOREGROUND },
+        { text: "};", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     {
       line: "10",
       tokens: [
-        { text: "        ", color: "var(--on-background)" },
-        { text: "seen", color: "var(--on-background)" },
-        { text: "[", color: "var(--on-background)" },
-        { text: "nums", color: "var(--on-background)" },
-        { text: "[", color: "var(--on-background)" },
-        { text: "i", color: "var(--on-background)" },
-        { text: "]] = ", color: "var(--on-background)" },
-        { text: "i", color: "var(--on-background)" },
-        { text: ";", color: "var(--on-background)" },
+        { text: "        ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "seen", color: MONACO_EDITOR_FOREGROUND },
+        { text: "[", color: MONACO_EDITOR_FOREGROUND },
+        { text: "nums", color: MONACO_EDITOR_FOREGROUND },
+        { text: "[", color: MONACO_EDITOR_FOREGROUND },
+        { text: "i", color: MONACO_EDITOR_FOREGROUND },
+        { text: "]] = ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "i", color: MONACO_EDITOR_FOREGROUND },
+        { text: ";", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     {
       line: "11",
       tokens: [
-        { text: "    ", color: "var(--on-background)" },
-        { text: "}", color: "var(--on-background)" },
+        { text: "    ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "}", color: MONACO_EDITOR_FOREGROUND },
       ],
     },
     {
       line: "12",
       tokens: [
-        { text: "    ", color: "var(--on-background)" },
-        { text: "return", color: "var(--primary)" },
-        { text: " {};", color: "var(--on-background)" },
-        { text: "", color: "var(--primary)", cursor: true },
+        { text: "    ", color: MONACO_EDITOR_FOREGROUND },
+        { text: "return", color: MONACO_EDITOR_KEYWORD },
+        { text: " {};", color: MONACO_EDITOR_FOREGROUND },
+        { text: "", color: MONACO_EDITOR_KEYWORD, cursor: true },
       ],
     },
     {
       line: "13",
-      tokens: [{ text: "}", color: "var(--on-background)" }],
+      tokens: [{ text: "}", color: MONACO_EDITOR_FOREGROUND }],
     },
   ];
 
@@ -213,7 +221,10 @@ export function FeaturesSection() {
               <span className="h-2 w-2 rounded-full bg-[var(--surface-elevated)]" />
               <span className="h-2 w-2 rounded-full bg-[var(--surface-elevated)]" />
             </div>
-            <span className="font-[var(--font-mono)] text-[0.7rem] text-[var(--text-tertiary)]">
+            <span
+              className="text-[0.7rem] text-[var(--text-tertiary)]"
+              style={{ fontFamily: MONACO_EDITOR_FONT_FAMILY }}
+            >
               main.cpp
             </span>
             <span />
@@ -221,17 +232,27 @@ export function FeaturesSection() {
 
           {/* Tab bar - single file */}
           <div className="flex border-b border-[var(--border-subtle)]">
-            <div className="border-r border-[var(--border-subtle)] px-5 py-2.5 font-[var(--font-mono)] text-[0.7rem] bg-[rgba(224,141,255,0.06)] text-[var(--primary)]">
+            <div
+              className="border-r border-[var(--border-subtle)] bg-[rgba(224,141,255,0.06)] px-5 py-2.5 text-[0.7rem]"
+              style={{
+                color: MONACO_EDITOR_KEYWORD,
+                fontFamily: MONACO_EDITOR_FONT_FAMILY,
+              }}
+            >
               main.cpp
             </div>
           </div>
 
           {/* Code content */}
-          <div className="px-0 py-6 font-[var(--font-mono)] text-[0.8rem] leading-8">
+          <div
+            className="px-0 py-6 text-[0.8rem] leading-8"
+            style={{ fontFamily: MONACO_EDITOR_FONT_FAMILY }}
+          >
             {codeRows.map((row) => (
               <div key={row.line} className="flex whitespace-pre">
                 <span
-                  className="w-12 shrink-0 border-r border-[rgba(255,255,255,0.05)] pr-3 text-right text-[0.7rem] text-[var(--text-tertiary)]"
+                  className="w-12 shrink-0 border-r border-[rgba(255,255,255,0.05)] pr-3 text-right text-[0.7rem]"
+                  style={{ color: MONACO_EDITOR_LINE_NUMBER }}
                 >
                   {row.line}
                 </span>
