@@ -40,12 +40,10 @@ function useDragResize(
       const handleMouseMove = (moveEvent: MouseEvent) => {
         if (!dragging.current || !containerRef.current) return;
         const rect = containerRef.current.getBoundingClientRect();
-        const totalSize =
-          direction === "horizontal" ? rect.width : rect.height;
+        const totalSize = direction === "horizontal" ? rect.width : rect.height;
         const currentPos =
           direction === "horizontal" ? moveEvent.clientX : moveEvent.clientY;
-        const startOffset =
-          direction === "horizontal" ? rect.left : rect.top;
+        const startOffset = direction === "horizontal" ? rect.left : rect.top;
         const newRatio = Math.max(
           0.2,
           Math.min(0.8, (currentPos - startOffset) / totalSize),
@@ -84,14 +82,14 @@ function DragHandle({
   return (
     <div
       onMouseDown={onMouseDown}
-      className={`group relative z-10 flex shrink-0 items-center justify-center transition-colors ${isH
-        ? "w-[6px] cursor-col-resize"
-        : "h-[6px] cursor-row-resize"
-        }`}
+      className={`group relative z-10 flex shrink-0 items-center justify-center transition-colors ${
+        isH ? "w-[6px] cursor-col-resize" : "h-[6px] cursor-row-resize"
+      }`}
     >
       <div
-        className={`rounded-full bg-[var(--ghost-border)] transition-all group-hover:bg-[var(--primary)] ${isH ? "h-8 w-[2px]" : "h-[2px] w-8"
-          }`}
+        className={`rounded-full bg-[var(--ghost-border)] transition-all group-hover:bg-[var(--primary)] ${
+          isH ? "h-8 w-[2px]" : "h-[2px] w-8"
+        }`}
       />
     </div>
   );
@@ -192,7 +190,7 @@ export function CodingWindowPage() {
 
           {/* test cases */}
           <div className="min-h-0 flex-1">
-            <TestCasesPanel />
+            <TestCasesPanel problem={problem} />
           </div>
         </div>
       </div>

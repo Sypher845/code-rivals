@@ -1,20 +1,17 @@
-import { PROBLEM } from "./constants";
 import type { RemoteProblemData } from "../CodingWindowPage";
+import {
+  getDescriptionText,
+  getExampleBlocks,
+  getTitle,
+  parseBodyContent,
+  parseDescriptionSections,
+} from "./problemContent";
+import { PROBLEM } from "./constants";
 
 type DescriptionPanelProps = {
   problem?: RemoteProblemData | null;
   isLoading?: boolean;
   error?: string | null;
-};
-
-type ExampleField = {
-  label: string;
-  value: string;
-};
-
-type ExampleBlock = {
-  heading: string;
-  fields: ExampleField[];
 };
 
 /** render backtick-wrapped text as <code> */
@@ -35,7 +32,10 @@ function renderInlineCode(text: string) {
     return boldParts.map((bp, j) => {
       if (bp.startsWith("**") && bp.endsWith("**")) {
         return (
-          <strong key={`${i}-${j}`} className="font-semibold text-[var(--on-background)]">
+          <strong
+            key={`${i}-${j}`}
+            className="font-semibold text-[var(--on-background)]"
+          >
             {bp.slice(2, -2)}
           </strong>
         );
@@ -55,152 +55,6 @@ function renderInlineCode(text: string) {
   });
 }
 
-function getDescriptionText(problem?: RemoteProblemData | null) {
-  if (
-    typeof problem?.problem_description === "string" &&
-    problem.problem_description.trim()
-  ) {
-    return problem.problem_description;
-  }
-
-  if (typeof problem?.description === "string" && problem.description.trim()) {
-    return problem.description;
-  }
-
-  if (
-    problem &&
-    typeof problem.description !== "undefined" &&
-    problem.description !== null
-  ) {
-    return JSON.stringify(problem.description, null, 2);
-  }
-
-  return PROBLEM.description;
-}
-
-function formatTaskId(taskId?: string) {
-  if (!taskId?.trim()) return null;
-  return taskId
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function getTitle(problem?: RemoteProblemData | null) {
-  if (typeof problem?.title === "string" && problem.title.trim()) {
-    return problem.title;
-  }
-
-  return formatTaskId(problem?.task_id) ?? PROBLEM.title;
-}
-
-function parseDescriptionSections(descriptionText: string) {
-  const constraintsMarker = "\nConstraints:\n";
-  const followUpMarker = "\nFollow up:";
-  const constraintsIndex = descriptionText.indexOf(constraintsMarker);
-  const followUpIndex = descriptionText.indexOf(followUpMarker);
-
-  const descriptionBody =
-    constraintsIndex >= 0
-      ? descriptionText.slice(0, constraintsIndex).trim()
-      : followUpIndex >= 0
-        ? descriptionText.slice(0, followUpIndex).trim()
-        : descriptionText.trim();
-
-  let constraints: string[] = [];
-  if (constraintsIndex >= 0) {
-    const rawConstraints = descriptionText
-      .slice(
-        constraintsIndex + constraintsMarker.length,
-        followUpIndex >= 0 ? followUpIndex : undefined,
-      )
-      .trim();
-
-    constraints = rawConstraints
-      .split("\n")
-      .map((line) => line.trim())
-      .filter(Boolean);
-  }
-
-  const followUp =
-    followUpIndex >= 0
-      ? descriptionText.slice(followUpIndex + 1).trim()
-      : null;
-
-  return { descriptionBody, constraints, followUp };
-}
-
-function parseBodyContent(descriptionBody: string) {
-  const intro: string[] = [];
-  const examples: ExampleBlock[] = [];
-
-  const normalizedBody = descriptionBody.replace(/\n{3,}/g, "\n\n");
-  const exampleStart = normalizedBody.search(/(?:^|\n\s*)Example\s+\d+:/i);
-
-  if (exampleStart === -1) {
-    intro.push(
-      ...normalizedBody
-        .split(/\n\s*\n/)
-        .map((section) => section.trim())
-        .filter(Boolean),
-    );
-    return { intro, examples };
-  }
-
-  const introText = normalizedBody.slice(0, exampleStart).trim();
-  if (introText) {
-    intro.push(
-      ...introText
-        .split(/\n\s*\n/)
-        .map((section) => section.trim())
-        .filter(Boolean),
-    );
-  }
-
-  const examplesText = normalizedBody.slice(exampleStart).trim();
-  const blocks = examplesText
-    .split(/(?=(?:^|\n)\s*Example\s+\d+:)/i)
-    .map((block) => block.trim())
-    .filter(Boolean);
-
-  for (const block of blocks) {
-    const headingMatch = block.match(/^Example\s+\d+:/i);
-    if (!headingMatch) {
-      continue;
-    }
-
-    const heading = headingMatch[0];
-    const body = block.slice(heading.length).trim();
-    const fields: ExampleField[] = [];
-    const fieldRegex = /(Input|Output|Explanation):\s*/gi;
-    const matches = [...body.matchAll(fieldRegex)];
-
-    if (matches.length === 0) {
-      continue;
-    }
-
-    for (let index = 0; index < matches.length; index += 1) {
-      const match = matches[index];
-      const label = match[1];
-      const valueStart = (match.index ?? 0) + match[0].length;
-      const valueEnd =
-        index + 1 < matches.length
-          ? matches[index + 1].index ?? body.length
-          : body.length;
-      const value = body.slice(valueStart, valueEnd).trim();
-
-      fields.push({ label, value });
-    }
-
-    if (fields.length > 0) {
-      examples.push({ heading, fields });
-    }
-  }
-
-  return { intro, examples };
-}
-
 export function DescriptionPanel({
   problem,
   isLoading = false,
@@ -210,11 +64,19 @@ export function DescriptionPanel({
   const descriptionText = getDescriptionText(problem);
   const { descriptionBody, constraints, followUp } =
     parseDescriptionSections(descriptionText);
-  const { intro, examples } = parseBodyContent(descriptionBody);
+  const { intro } = parseBodyContent(descriptionBody);
+  const examples = getExampleBlocks(problem);
   const difficulty =
     typeof problem?.difficulty === "string" ? problem.difficulty : null;
+  const hasRemoteProblem =
+    typeof problem?.problem_description === "string" ||
+    typeof problem?.description !== "undefined";
   const displayConstraints =
-    constraints.length > 0 ? constraints : PROBLEM.constraints;
+    constraints.length > 0
+      ? constraints
+      : hasRemoteProblem
+        ? []
+        : PROBLEM.constraints;
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]">
@@ -287,20 +149,22 @@ export function DescriptionPanel({
         )}
 
         {/* constraints */}
-        <div className="mt-8">
-          <h3 className="text-base font-semibold text-[var(--on-background)]">
-            Constraints:
-          </h3>
-          <ul className="mt-3 list-disc space-y-2 pl-6 text-[0.9rem] leading-7 text-[var(--text-secondary)]">
-            {displayConstraints.map((c, i) => (
-              <li key={i}>
-                <code className="rounded bg-[rgba(255,255,255,0.05)] px-1.5 py-0.5 font-[var(--font-mono)] text-[0.86rem] text-[var(--on-background)]">
-                  {c}
-                </code>
-              </li>
-            ))}
-          </ul>
-        </div>
+        {displayConstraints.length > 0 && (
+          <div className="mt-8">
+            <h3 className="text-base font-semibold text-[var(--on-background)]">
+              Constraints:
+            </h3>
+            <ul className="mt-3 list-disc space-y-2 pl-6 text-[0.9rem] leading-7 text-[var(--text-secondary)]">
+              {displayConstraints.map((c, i) => (
+                <li key={i}>
+                  <code className="rounded bg-[rgba(255,255,255,0.05)] px-1.5 py-0.5 font-[var(--font-mono)] text-[0.86rem] text-[var(--on-background)]">
+                    {c}
+                  </code>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {followUp && (
           <div className="mt-8">

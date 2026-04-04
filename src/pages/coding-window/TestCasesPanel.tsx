@@ -1,15 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PROBLEM } from "./constants";
+import type { RemoteProblemData } from "../CodingWindowPage";
+import { getParsedTestCases } from "./problemContent";
 
-export function TestCasesPanel() {
+type TestCasesPanelProps = {
+  problem?: RemoteProblemData | null;
+};
+
+export function TestCasesPanel({ problem }: TestCasesPanelProps) {
   const [activeMainTab, setActiveMainTab] = useState<"testcase" | "result">(
     "testcase",
   );
   const [activeCase, setActiveCase] = useState(0);
   const [hasRun, setHasRun] = useState(false);
+  const testCases = getParsedTestCases(problem);
 
-  const currentCase = PROBLEM.testCases[activeCase];
+  useEffect(() => {
+    if (activeCase >= testCases.length) {
+      setActiveCase(0);
+    }
+  }, [activeCase, testCases.length]);
+
+  const currentCase = testCases[activeCase] ?? PROBLEM.testCases[0];
 
   return (
     <div className="flex h-full flex-col overflow-hidden rounded-xl border border-[var(--ghost-border)] bg-[rgba(10,14,20,0.94)]">
@@ -20,10 +33,11 @@ export function TestCasesPanel() {
             <button
               key={tab}
               onClick={() => setActiveMainTab(tab)}
-              className={`relative inline-flex items-center gap-2 px-4 py-3 text-sm font-medium capitalize transition-colors ${activeMainTab === tab
-                ? "text-[var(--primary)]"
-                : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                }`}
+              className={`relative inline-flex items-center gap-2 px-4 py-3 text-sm font-medium capitalize transition-colors ${
+                activeMainTab === tab
+                  ? "text-[var(--primary)]"
+                  : "text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+              }`}
             >
               {tab === "testcase" ? "Testcases" : "Test Result"}
               {activeMainTab === tab && (
@@ -51,23 +65,30 @@ export function TestCasesPanel() {
             >
               {/* case tabs */}
               <div className="mb-4 flex items-center gap-2">
-                {PROBLEM.testCases.map((_, i) => (
+                {testCases.map((testCase, i) => (
                   <button
                     key={i}
                     onClick={() => setActiveCase(i)}
-                    className={`relative rounded-md px-4 py-2 text-sm font-medium transition ${activeCase === i
-                      ? "text-[var(--primary)]"
-                      : "bg-[rgba(255,255,255,0.03)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
-                      }`}
+                    className={`relative rounded-md px-4 py-2 text-sm font-medium transition ${
+                      activeCase === i
+                        ? "text-[var(--primary)]"
+                        : "bg-[rgba(255,255,255,0.03)] text-[var(--text-tertiary)] hover:text-[var(--text-secondary)]"
+                    }`}
                   >
                     {activeCase === i && (
                       <motion.div
                         layoutId="caseTab-bg"
                         className="absolute inset-0 rounded-md bg-[rgba(224,141,255,0.1)]"
-                        transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 400,
+                          damping: 28,
+                        }}
                       />
                     )}
-                    <span className="relative z-10">Case {i + 1}</span>
+                    <span className="relative z-10">
+                      {testCase.label.replace(":", "")}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -115,7 +136,9 @@ export function TestCasesPanel() {
                   You must run your code first
                 </p>
               ) : (
-                <p className="text-base text-[#7cd87c]">All test cases passed!</p>
+                <p className="text-base text-[#7cd87c]">
+                  All test cases passed!
+                </p>
               )}
             </motion.div>
           )}
