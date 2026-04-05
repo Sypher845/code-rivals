@@ -4,9 +4,9 @@
 
 ## Demo Video
 
-<video src="./public/coderivals-demo.mp4" controls width="100%"></video>
+[![Watch the Code Rivals demo](https://img.youtube.com/vi/mmFpLflQln4/maxresdefault.jpg?v=2)](https://www.youtube.com/watch?v=mmFpLflQln4)
 
-[Open the demo video directly](./public/coderivals-demo.mp4)
+[Watch the demo on YouTube](https://www.youtube.com/watch?v=mmFpLflQln4)
 
 Code Rivals is a real-time competitive coding game where two players enter an arena, lock in power cards, get the same problem for the round, and try to out-code each other before the timer runs out.
 
