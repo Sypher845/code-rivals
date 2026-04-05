@@ -60,7 +60,6 @@ export const navLinks: NavLink[] = [
   { href: "#flow", label: "How it works" },
   { href: "#powers", label: "Superpowers" },
   { href: "#zen", label: "Zen Mode" },
-  { href: "#stats", label: "Leaderboard" },
 ];
 
 export const featureList: Feature[] = [

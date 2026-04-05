@@ -365,10 +365,10 @@ export function ArenaPage({
                     <span className="inline-flex items-center rounded-full border border-[rgba(0,229,204,0.38)] bg-[rgba(0,229,204,0.12)] px-3 py-1 text-[0.74rem] font-semibold tracking-[0.08em] text-(--arena-accent) uppercase">
                       {myLeague}
                     </span>
-                    <span className="text-[rgba(241,243,252,0.4)]">|</span>
-                    <span className="font-(--font-mono) text-3xl text-(--arena-accent)">
+                    {/* <span className="text-[rgba(241,243,252,0.4)]">|</span> */}
+                    {/* <span className="font-(--font-mono) text-3xl text-(--arena-accent)">
                       {myElo.toLocaleString()} ELO
-                    </span>
+                    </span> */}
                   </div>
                 </div>
               </div>

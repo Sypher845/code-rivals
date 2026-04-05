@@ -43,6 +43,7 @@ type RoundResult = {
 type LeagueProgressConfig = {
   previousLeague: string;
   nextLeague: string;
+  currentLeague: string;
   currentLeagueMinElo: number;
   currentLeagueMaxElo: number;
   previousRating: number;
@@ -85,8 +86,10 @@ function metricBarClass(tone: "cyan" | "violet" | "blue") {
 function getLeagueProgress(
   previousRating: number,
   nextRating: number,
+  currentLeagueOverride?: string,
 ): LeagueProgressConfig {
-  const { currentLeague } = getAdjacentLeaguesForElo(nextRating);
+  const { currentLeague, nextLeague } = getAdjacentLeaguesForElo(nextRating);
+  const resolvedLeague = currentLeagueOverride ?? currentLeague.league;
   const currentLeagueMinElo = currentLeague.minElo;
   const currentLeagueMaxElo = currentLeague.maxElo;
   const range = Math.max(1, currentLeagueMaxElo - currentLeagueMinElo);
@@ -100,7 +103,8 @@ function getLeagueProgress(
 
   return {
     previousLeague: getLeagueInfoFromElo(previousRating).league,
-    nextLeague: getLeagueInfoFromElo(nextRating).league,
+    nextLeague: nextLeague.league,
+    currentLeague: resolvedLeague,
     currentLeagueMinElo,
     currentLeagueMaxElo,
     previousRating,
@@ -166,15 +170,28 @@ export function ResultsPage() {
     (row) => row.username === playerName,
   );
 
-  const playerSummary = matchSummaryRows.find(
-    (row) => row.roomId === roomId && row.playerUsername === playerName,
-  );
-  const opponentSummary = matchSummaryRows.find(
-    (row) =>
-      row.roomId === roomId &&
-      row.playerUsername !== playerName &&
-      row.opponentUsername === playerName,
-  );
+  const playerSummary = useMemo(() => {
+    return matchSummaryRows
+      .filter((row) => row.roomId === roomId && row.playerUsername === playerName)
+      .sort(
+        (left, right) =>
+          Number(right.createdAt.microsSinceUnixEpoch - left.createdAt.microsSinceUnixEpoch),
+      )[0];
+  }, [matchSummaryRows, playerName, roomId]);
+
+  const opponentSummary = useMemo(() => {
+    return matchSummaryRows
+      .filter(
+        (row) =>
+          row.roomId === roomId &&
+          row.playerUsername !== playerName &&
+          row.opponentUsername === playerName,
+      )
+      .sort(
+        (left, right) =>
+          Number(right.createdAt.microsSinceUnixEpoch - left.createdAt.microsSinceUnixEpoch),
+      )[0];
+  }, [matchSummaryRows, playerName, roomId]);
   const opponentName =
     playerSummary?.opponentUsername ?? opponentSummary?.playerUsername ?? "Opponent";
   const opponentProfile = playerProfileRows.find(
@@ -298,6 +315,7 @@ export function ResultsPage() {
   const leagueProgress = getLeagueProgress(
     Number(playerSummary?.playerEloBefore ?? playerProfile?.eloRating ?? 400n),
     Number(playerSummary?.playerEloAfter ?? playerProfile?.eloRating ?? 400n),
+    playerSummary?.playerLeagueAfter,
   );
   const opponentLeagueProgress = getLeagueProgress(
     Number(
@@ -306,6 +324,7 @@ export function ResultsPage() {
     Number(
       opponentSummary?.playerEloAfter ?? opponentProfile?.eloRating ?? 400n,
     ),
+    opponentSummary?.playerLeagueAfter,
   );
   const opponentLeagueTransition = getLeagueTransition(
     Number(
@@ -506,7 +525,10 @@ export function ResultsPage() {
                     </div>
                   </div>
 
-                  <div className="relative mt-3 flex items-start justify-between text-sm">
+                  <div className="relative mt-4 flex items-start justify-between text-sm">
+                    <span className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 text-center font-(--font-heading) text-lg leading-none tracking-[-0.03em] text-(--on-background)">
+                      {leagueProgress.currentLeague}
+                    </span>
                     <span className="font-(--font-mono) text-[rgba(241,243,252,0.42)]">
                       {leagueProgress.currentLeagueMinElo}
                     </span>
