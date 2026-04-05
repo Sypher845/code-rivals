@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/piston/:path*",
-      "destination": "http://13.63.158.115/:path*"
+      "source": "/api/v2/execute/:path*",
+      "destination": "http://13.63.158.115/api/v2/execute/:path*"
     },
     {
       "source": "/(.*)",
